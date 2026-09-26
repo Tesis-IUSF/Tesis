@@ -1,0 +1,61 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+application.properties
+.env
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+# Archivos de entorno y credenciales (Aplica para la raíz y cualquier subcarpeta)
+.env
+.env.*
+
+# Java / Maven (Aplica dentro de backend/demo o cualquier otra subcarpeta)
+**/target/
+**/.mvn/wrapper/maven-wrapper.jar
+application.properties
+
+# Editores de código e IDEs
+**/.vscode/
+**/.idea/
+*.iws
+*.iml
+*.ipr
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+
+# Node.js / Frontend
+**/node_modules/
+**/dist/
