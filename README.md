@@ -1,3 +1,5 @@
+![CI Status](https://github.com/Tesis-IUSF/Tesis/actions/workflows/ci.yml/badge.svg)
+
 # 🏫 Sistema de Gestión y Portal Web Escolar
 
 Este repositorio contiene el código fuente de una plataforma web integral diseñada para digitalizar, centralizar y optimizar los procesos administrativos y de comunicación de un plantel educativo. 
@@ -73,4 +75,32 @@ El sistema adapta sus funciones dependiendo del rol del usuario que inicie sesi�
 
 1. Clona el repositorio:
    ```bash
-   git clone [https://github.com/tu-usuario/tu-repo.git](https://github.com/tu-usuario/tu-repo.git)
+   git clone [https://github.com/tu-usuario/tu-repo.git](https://github.com/tu-usuario/tu-repo.git)```
+
+
+Instrucciones para desplegar en Producción:
+
+    Configurar las variables de entorno:
+    Copia o crea el archivo .env en el servidor de producción y define los valores reales de producción.
+
+    Descargar las imágenes y desplegar los servicios:
+    A diferencia del entorno de desarrollo, en producción se especifica de forma explícita el archivo YAML mediante la bandera -f:
+    Bash
+
+    # Descargar las imágenes preconstruidas desde el Registry
+    docker compose -f docker-compose.prod.yml pull
+
+    # Iniciar los servicios en segundo plano
+    docker compose -f docker-compose.prod.yml up -d
+
+    Verificar el estado de los servicios y Healthchecks:
+    Bash
+
+    docker compose -f docker-compose.prod.yml ps
+
+    Los contenedores deberán mostrar la etiqueta (healthy) en la columna STATUS.
+
+    Detener el entorno de producción:
+    Bash
+
+    docker compose -f docker-compose.prod.yml down

@@ -1,0 +1,79 @@
+services:
+  # ==========================================
+  # Base de Datos (MySQL)
+  # ==========================================
+  db:
+    image: mysql:8
+    container_name: prod_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_prod_data:/var/lib/mysql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # Backend
+  # ==========================================
+  backend:
+    image: ${DOCKER_REGISTRY}/backend:${IMAGE_TAG:-latest}
+    container_name: prod_backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: db
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider --tries=1 http://localhost:8080/ 2>&1 | grep -q 'HTTP/' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ==========================================
+  # Frontend
+  # ==========================================
+  frontend:
+    image: ${DOCKER_REGISTRY}/frontend:${IMAGE_TAG:-latest}
+    container_name: prod_frontend
+    restart: always
+    ports:
+      - "80:80"
+    environment:
+      VITE_API_URL: ${VITE_API_URL}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+# ==========================================
+# Redes y Volúmenes
+# ==========================================
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  db_prod_data:
