@@ -1,3 +1,5 @@
+![CI Status](https://github.com/Tesis-IUSF/Tesis/actions/workflows/ci.yml/badge.svg)
+
 # 🏫 Sistema de Gestión y Portal Web Escolar
 
 Este repositorio contiene el código fuente de una plataforma web integral diseñada para digitalizar, centralizar y optimizar los procesos administrativos y de comunicación de un plantel educativo. 
