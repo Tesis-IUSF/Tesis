@@ -104,3 +104,18 @@ Instrucciones para desplegar en Producción:
     Bash
 
     docker compose -f docker-compose.prod.yml down
+
+## Despliegue en Producción
+
+El proyecto incluye un script automatizado para actualizar los servicios en el entorno de producción.
+
+### Requisitos previos
+- Docker y Docker Compose instalados.
+- Permisos suficientes para ejecutar comandos de Docker.
+
+### Cómo ejecutar el despliegue
+
+1. Asegúrate de estar en la raíz del proyecto.
+2. Dale permisos de ejecución al script (solo la primera vez):
+   ```bash
+   chmod +x scripts/deploy.sh
