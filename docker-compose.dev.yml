@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # Base de Datos (MySQL)
+  # ==========================================
+  db:
+    image: mysql:8
+    container_name: dev_db
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_NAME:-mi_app_dev}
+      MYSQL_USER: ${DB_USER:-root}
+      MYSQL_PASSWORD: ${DB_PASS:-root}
+    volumes:
+      - db_data:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: dev_phpmyadmin
+    ports:
+      - "8081:80"
+    env_file:
+      - .env
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+    depends_on:
+      - db    
+
+  # ==========================================
+  # Backend (Spring Boot - Dev)
+  # ==========================================
+  backend:
+    build: 
+      context: ./backend/demo
+      dockerfile: Dockerfile
+    container_name: dev_backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # Activa el perfil de desarrollo para leer application-dev.properties
+      SPRING_PROFILES_ACTIVE: dev
+      # Forzamos que el host sea el nombre del servicio de la DB en la red de Docker
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-mi_app_dev}
+      DB_USER: ${DB_USER:-root}
+      DB_PASS: ${DB_PASS:-root}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - db
+
+  # ==========================================
+  # Frontend
+  # ==========================================
+  frontend:
+    build: 
+      context: ./frontend
+    container_name: dev_frontend
+    ports:
+      - "5173:5173" # Cambiado a 5173 para el servidor de desarrollo de Vite
+    env_file:
+      - .env
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8080/api}
+    depends_on:
+      - backend
+
+volumes:
+  db_data:

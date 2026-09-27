@@ -20,7 +20,7 @@ jobs:
     
     defaults:
       run:
-        working-directory: backend/demo  # Revisa que coincida con la ruta de tu pom.xml
+        working-directory: backend/demo  # Ruta donde está tu pom.xml
 
     steps:
       - name: Checkout del código
@@ -33,8 +33,8 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Compilar y empaquetar con Maven
-        run: mvn clean package -DskipTests
+      - name: Compilar y ejecutar pruebas con perfil test
+        run: mvn clean verify -Dspring.profiles.active=test
 
   # ==========================================
   # JOB 2: Validar Frontend (Node.js + Build)

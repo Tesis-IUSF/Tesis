@@ -1,35 +1,36 @@
 # ==========================================
 # STAGE 1: Builder (Compilación)
-# Eclipse Temurin 25 (Sin bloqueos) + Maven
 # ==========================================
 FROM eclipse-temurin:25-jdk-alpine AS builder
 
-# Instalar Maven desde los repositorios de Alpine
 RUN apk add --no-cache maven
-
 WORKDIR /app
 
-# Copiar el pom.xml y descargar dependencias para aprovechar la caché
+# Descargar dependencias en caché
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# Copiar el código fuente y compilar omitiendo tests
+# Compilar la aplicación
 COPY src ./src
 RUN mvn clean package -DskipTests
 
+# Extraer las capas del JAR usando la herramienta de Spring Boot
+RUN java -Djarmode=layertools -jar target/*.jar extract
+
 # ==========================================
-# STAGE 2: Runtime (Imagen Final)
-# Usamos el JRE ligero de Java 25 para ejecutar el JAR empaquetado
+# STAGE 2: Runtime (Imagen Final Ligera)
 # ==========================================
 FROM eclipse-temurin:25-jre-alpine
 
 WORKDIR /app
 
-# Copiar el ejecutable generado directamente desde el Stage 1
-COPY --from=builder /app/target/*.jar app.jar
+# Copiar cada capa por separado (las más pesadas cambian con menos frecuencia)
+COPY --from=builder /app/dependencies/ ./
+COPY --from=builder /app/spring-boot-loader/ ./
+COPY --from=builder /app/snapshot-dependencies/ ./
+COPY --from=builder /app/application/ ./
 
-# Exponer el puerto predeterminado de Spring Boot
 EXPOSE 8080
 
-# Punto de entrada para ejecutar la aplicación
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Ejecutar usando el Launcher de Spring Boot en lugar de "java -jar"
+ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
