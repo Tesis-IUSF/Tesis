@@ -14,7 +14,9 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
       MYSQL_DATABASE: ${DB_NAME:-mi_app_dev}
-      MYSQL_USER: ${DB_USER:-root}
+      # Si DB_USER es 'root', dejamos que actúe MYSQL_ROOT_PASSWORD y no pasamos MYSQL_USER/MYSQL_PASSWORD
+      # Si deseas crear un usuario distinto a root, define DB_USER con otro nombre (ej. 'admin' o 'app_user')
+      MYSQL_USER: ${DB_USER:-admin} 
       MYSQL_PASSWORD: ${DB_PASS:-root}
     volumes:
       - db_data:/var/lib/mysql

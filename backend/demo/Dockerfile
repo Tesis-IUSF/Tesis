@@ -1,36 +1,33 @@
 # ==========================================
-# STAGE 1: Builder (Compilación)
+# STAGE 1: Builder
 # ==========================================
 FROM eclipse-temurin:25-jdk-alpine AS builder
 
 RUN apk add --no-cache maven
 WORKDIR /app
 
-# Descargar dependencias en caché
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# Compilar la aplicación
 COPY src ./src
 RUN mvn clean package -DskipTests
 
-# Extraer las capas del JAR usando la herramienta de Spring Boot
-# En lugar de target/*.jar, usa target/*.app.jar o renombralo previamente:
-RUN mv target/*.jar target/app.jar && java -Djarmode=layertools -jar target/app.jar extract
+# Extraer las capas correctamente
+RUN cd target && jar xf *.jar
+
 # ==========================================
-# STAGE 2: Runtime (Imagen Final Ligera)
+# STAGE 2: Runtime
 # ==========================================
 FROM eclipse-temurin:25-jre-alpine
 
 WORKDIR /app
 
-# Copiar cada capa por separado (las más pesadas cambian con menos frecuencia)
-COPY --from=builder /app/dependencies/ ./
-COPY --from=builder /app/spring-boot-loader/ ./
-COPY --from=builder /app/snapshot-dependencies/ ./
-COPY --from=builder /app/application/ ./
+# Copiar desde la raíz extraída (sin subcarpeta "extracted")
+COPY --from=builder /app/target/BOOT-INF/lib /app/BOOT-INF/lib
+COPY --from=builder /app/target/BOOT-INF/classes /app/BOOT-INF/classes
+COPY --from=builder /app/target/META-INF /app/META-INF
+COPY --from=builder /app/target/org /app/org
 
 EXPOSE 8080
 
-# Ejecutar usando el Launcher de Spring Boot en lugar de "java -jar"
-ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
+ENTRYPOINT ["java", "-cp", "/app:/app/BOOT-INF/lib/*:/app/BOOT-INF/classes", "com.tesis.DemoApplication"]
