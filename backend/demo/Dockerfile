@@ -15,8 +15,8 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # Extraer las capas del JAR usando la herramienta de Spring Boot
-RUN java -Djarmode=layertools -jar target/*.jar extract
-
+# En lugar de target/*.jar, usa target/*.app.jar o renombralo previamente:
+RUN mv target/*.jar target/app.jar && java -Djarmode=layertools -jar target/app.jar extract
 # ==========================================
 # STAGE 2: Runtime (Imagen Final Ligera)
 # ==========================================
