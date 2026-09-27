@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ROLES } from "../constants/roles";
 import "./Login.css";
 
 function Login() {
@@ -16,10 +17,27 @@ function Login() {
     }
     setCargando(true);
     setError("");
+
     try {
-      // TODO: conectar con services/api.js más adelante
+      // TODO: reemplazar por fetch real a /api/auth/login cuando el backend esté listo (SW-30/SW-32)
       console.log("Login simulado con:", usuario);
-      navigate("/dashboard");
+
+      // Simulación temporal — borrar cuando conectemos el backend real
+      const dataSimulada = {
+        token: "token-simulado",
+        rol: ROLES.ADMIN,
+        nombre: usuario,
+      };
+
+      localStorage.setItem("token", dataSimulada.token);
+      localStorage.setItem("rol", dataSimulada.rol);
+      localStorage.setItem("nombre", dataSimulada.nombre);
+
+      if (dataSimulada.rol === ROLES.ESCANER) {
+        navigate("/escaner");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err) {
       if (err.response?.status === 401 || err.response?.status === 403) {
         setError("Usuario o contraseña incorrectos.");
