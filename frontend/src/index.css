@@ -1,0 +1,34 @@
+@import "./styles/variables.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+body {
+  font-family: var(--font-texto);
+  color: var(--texto);
+  background-color: var(--blanco);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-titulos);
+  margin: 0;
+}

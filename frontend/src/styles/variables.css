@@ -1,0 +1,45 @@
+/* src/styles/variables.css */
+:root {
+  /* ============================================
+     Sistema principal (login, index público)
+     ============================================ */
+  --azul: #2f5a8a;
+  --azul-oscuro: #1a3a5c;
+  --azul-claro: #d6e8f7;
+  --dorado: #e8b84b;
+  --dorado-oscuro: #b8891e;
+  --vino: #3d1a1a;
+  --vino-medio: #5c2a2a;
+  --crema: #f5eddc;
+  --crema-claro: #faf5ec;
+  --blanco: #ffffff;
+  --gris: #f0f4f8;
+  --texto: #1a1a2e;
+  --texto-suave: #556a8f;
+
+  /* ============================================
+     Sistema "cen-" (dashboard, personal, departamentos, asistencia)
+     Nota: --cen-azul (#4a7db5) es distinto de --azul (#2f5a8a);
+     el primero es un azul más claro/saturado usado como acento
+     en esos módulos internos. Los mantenemos separados tal
+     cual estaban en el CSS original para no romper nada.
+     ============================================ */
+  --cen-azul: #4a7db5;
+  --cen-azul-oscuro: #2f5a8a;
+  --cen-azul-claro: #d6e8f7;
+  --cen-dorado: #e8b84b;
+  --cen-dorado-oscuro: #b8891e;
+  --cen-verde: #3a7d44;
+  --cen-verde-claro: #d4edda;
+  --cen-rojo: #c0392b;
+  --cen-rojo-claro: #fde8e8;
+  --cen-naranja: #c97a3a;
+  --cen-blanco: #ffffff;
+  --cen-gris-suave: #f0f4f8;
+
+  /* ============================================
+     Tipografías
+     ============================================ */
+  --font-titulos: "Lora", serif;
+  --font-texto: "Source Sans 3", "Segoe UI", sans-serif;
+}
