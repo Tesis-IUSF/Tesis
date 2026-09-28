@@ -1,0 +1,26 @@
+# ============================================================
+# CONFIGURACIÓN GENERAL Y PERFIL ACTIVO
+# ============================================================
+# Define el perfil activo por defecto para desarrollo local
+spring.profiles.active=dev
+spring.application.name=sitio-web
+
+# ============================================================
+# SERVIDOR (Configuración común)
+# ============================================================
+server.servlet.context-path=/api
+server.servlet.encoding.charset=UTF-8
+server.servlet.encoding.enabled=true
+
+# ============================================================
+# SERIALIZACIÓN Y FORMATO JSON (Jackson)
+# ============================================================
+spring.jackson.serialization.write-dates-as-timestamps=false
+spring.jackson.time-zone=UTC
+spring.jackson.default-property-inclusion=non_null
+
+# ============================================================
+# MONITOREO (Actuator)
+# ============================================================
+management.endpoints.web.base-path=/actuator
+management.endpoints.web.exposure.include=health,info,metrics

@@ -1,35 +1,33 @@
 # ==========================================
-# STAGE 1: Builder (Compilación)
-# Eclipse Temurin 25 (Sin bloqueos) + Maven
+# STAGE 1: Builder
 # ==========================================
 FROM eclipse-temurin:25-jdk-alpine AS builder
 
-# Instalar Maven desde los repositorios de Alpine
 RUN apk add --no-cache maven
-
 WORKDIR /app
 
-# Copiar el pom.xml y descargar dependencias para aprovechar la caché
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# Copiar el código fuente y compilar omitiendo tests
 COPY src ./src
 RUN mvn clean package -DskipTests
 
+# Extraer las capas correctamente
+RUN cd target && jar xf *.jar
+
 # ==========================================
-# STAGE 2: Runtime (Imagen Final)
-# Usamos el JRE ligero de Java 25 para ejecutar el JAR empaquetado
+# STAGE 2: Runtime
 # ==========================================
 FROM eclipse-temurin:25-jre-alpine
 
 WORKDIR /app
 
-# Copiar el ejecutable generado directamente desde el Stage 1
-COPY --from=builder /app/target/*.jar app.jar
+# Copiar desde la raíz extraída (sin subcarpeta "extracted")
+COPY --from=builder /app/target/BOOT-INF/lib /app/BOOT-INF/lib
+COPY --from=builder /app/target/BOOT-INF/classes /app/BOOT-INF/classes
+COPY --from=builder /app/target/META-INF /app/META-INF
+COPY --from=builder /app/target/org /app/org
 
-# Exponer el puerto predeterminado de Spring Boot
 EXPOSE 8080
 
-# Punto de entrada para ejecutar la aplicación
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-cp", "/app:/app/BOOT-INF/lib/*:/app/BOOT-INF/classes", "com.tesis.DemoApplication"]

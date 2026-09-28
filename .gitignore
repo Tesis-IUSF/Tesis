@@ -11,6 +11,7 @@ app-prod.log
 application-dev.properties
 
 
+
 ### STS ###
 .apt_generated
 .classpath
@@ -47,6 +48,8 @@ build/
 **/target/
 **/.mvn/wrapper/maven-wrapper.jar
 application.properties
+application-dev.properties
+
 
 # Editores de código e IDEs
 **/.vscode/

@@ -1,0 +1,21 @@
+# Archivos de entorno y credenciales (Seguridad)
+.env
+.env.*
+!.env.example
+
+# Archivos de ejemplo / documentación
+*.example
+application*.example
+
+# Archivos y carpetas de construcción local (Ahorra tiempo de build)
+target/
+.mvn/
+mvnw
+mvnw.cmd
+
+# Archivos del IDE y Sistema
+.git/
+.gitignore
+.idea/
+.vscode/
+*.iml
