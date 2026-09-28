@@ -5,6 +5,11 @@ target/
 !**/src/test/**/target/
 application.properties
 .env
+.sql
+.log
+app-prod.log
+application-dev.properties
+
 
 
 ### STS ###

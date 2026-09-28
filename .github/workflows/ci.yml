@@ -33,8 +33,8 @@ jobs:
           distribution: "temurin"
           cache: maven
 
-      - name: Compilar y ejecutar pruebas con perfil test
-        run: mvn clean verify -Dspring.profiles.active=test
+      - name: Ejecutar pruebas y empaquetar con Maven
+        run: ./mvnw -B clean verify
 
   # ==========================================
   # JOB 2: Validar Frontend (Node.js + Build)
