@@ -54,4 +54,17 @@ public class AsistenciaDTO {
         private String horasTrabajadas;
         private String estado;
     }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AusenciaDTO {
+        private Integer empleadoId;
+        private String nombre;
+        private String apellido;
+        private LocalDate fecha;
+        private Integer turnoId;
+        private String turnoNombre;
+        private String estado;
+    }
 }

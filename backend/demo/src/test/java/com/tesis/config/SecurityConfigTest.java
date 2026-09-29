@@ -72,4 +72,25 @@ class SecurityConfigTest {
                     .andExpect(status().isOk())
                     .andExpect(content().json("[]"));
         }
+
+        @Test
+        void consultaHistoricoConFiltrosOpcionales() throws Exception {
+            mockMvc.perform(get("/api/asistencias/historico")
+                            .param("desde", "2026-09-01")
+                            .param("hasta", "2026-09-29")
+                            .param("estado", "tardanza")
+                            .with(user("admin").roles("ADMINISTRADOR")))
+                    .andExpect(status().isOk())
+                    .andExpect(content().json("[]"));
+        }
+
+        @Test
+        void consultaAusenciasConRangoDeFechas() throws Exception {
+            mockMvc.perform(get("/api/asistencias/ausencias")
+                            .param("desde", "2026-09-01")
+                            .param("hasta", "2026-09-29")
+                            .with(user("admin").roles("ADMINISTRADOR")))
+                    .andExpect(status().isOk())
+                    .andExpect(content().json("[]"));
+        }
 }

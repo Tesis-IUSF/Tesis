@@ -42,6 +42,8 @@ Sustitución de las planillas impresas tradicionales.
 - `POST /api/empleados/{id}/carnet` emite un carnet PDF tamaño tarjeta con un QR firmado. Solo los roles `Administrador` y `Director` pueden emitirlo.
 - `POST /api/asistencias/qr` recibe `{"qrToken":"..."}` y solo admite usuarios con rol `Escaner`. El token no contiene datos personales, tiene vigencia predeterminada de 365 días y se revoca al emitir un carnet nuevo.
 - `GET /api/asistencias/hoy` devuelve empleados con asistencia registrada hoy, sus horas de entrada/salida y duración trabajada en minutos y formato `H:mm`. Si aún no han marcado salida, la duración se calcula hasta la hora actual del servidor.
+- `GET /api/asistencias/historico?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` consulta el histórico. Admite filtros opcionales `empleadoId`, `departamentoId`, `turnoId` y `estado` (por ejemplo, `tardanza`); el rango máximo es de 366 días.
+- `GET /api/asistencias/ausencias?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` busca faltas en fechas pasadas o hasta hoy, con filtros opcionales `empleadoId`, `departamentoId` y `turnoId`. Solo considera empleados activos con asignación vigente cuyo turno aplique ese día y sin registro de asistencia; días futuros y días libres no se cuentan.
 - La vigencia se configura con `app.qr.expiration-days`; el nombre impreso de la institución con `app.institucion.nombre`.
 - Antes de desplegar en producción, aplicar una vez `backend/demo/src/main/resources/db/manual/V20260929__create_credenciales_qr.sql`; el perfil de producción valida el esquema y no crea tablas.
 

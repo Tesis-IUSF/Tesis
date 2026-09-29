@@ -2,6 +2,7 @@ package com.tesis.controller;
 
 import com.tesis.dto.AsistenciaDTO.AsistenciaResponseDTO;
 import com.tesis.dto.AsistenciaDTO.AsistenciaHoyDTO;
+import com.tesis.dto.AsistenciaDTO.AusenciaDTO;
 import com.tesis.dto.AsistenciaDTO.EscaneoQrRequestDTO;
 import com.tesis.service.AsistenciaService;
 import jakarta.validation.Valid;
@@ -38,6 +39,28 @@ public class AsistenciaController {
     @GetMapping("/hoy")
     public List<AsistenciaHoyDTO> listarHoy() {
         return asistenciaService.listarHoy();
+    }
+
+    @GetMapping("/historico")
+    public List<AsistenciaResponseDTO> buscarHistorico(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) Integer empleadoId,
+            @RequestParam(required = false) Integer departamentoId,
+            @RequestParam(required = false) Integer turnoId,
+            @RequestParam(required = false) String estado) {
+        return asistenciaService.buscarHistorico(desde, hasta, empleadoId,
+                departamentoId, turnoId, estado);
+    }
+
+    @GetMapping("/ausencias")
+    public List<AusenciaDTO> listarAusencias(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) Integer empleadoId,
+            @RequestParam(required = false) Integer departamentoId,
+            @RequestParam(required = false) Integer turnoId) {
+        return asistenciaService.listarAusencias(desde, hasta, empleadoId, departamentoId, turnoId);
     }
 
     @GetMapping("/empleado/{empleadoId}")

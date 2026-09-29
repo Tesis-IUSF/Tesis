@@ -2,6 +2,7 @@ package com.tesis.service;
 
 import com.tesis.dto.AsistenciaDTO.AsistenciaResponseDTO;
 import com.tesis.dto.AsistenciaDTO.AsistenciaHoyDTO;
+import com.tesis.dto.AsistenciaDTO.AusenciaDTO;
 import com.tesis.entity.AsignacionTurno;
 import com.tesis.entity.Asistencia;
 import com.tesis.entity.CredencialQr;
@@ -23,11 +24,18 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @Transactional
 public class AsistenciaService {
+
+    private static final long MAX_REPORT_DAYS = 366;
+    private static final Set<String> ESTADOS_ASISTENCIA = Set.of(
+            "presente", "tardanza", "salida_anticipada", "ausente", "permiso", "feriado", "libre");
 
     private final AsistenciaRepository asistenciaRepository;
     private final AsignacionTurnoRepository asignacionTurnoRepository;
@@ -138,6 +146,112 @@ public class AsistenciaService {
                         empleadoId, desde, hasta).stream()
                 .map(asistencia -> toResponse(asistencia, null))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AsistenciaResponseDTO> buscarHistorico(LocalDate desde,
+                                                       LocalDate hasta,
+                                                       Integer empleadoId,
+                                                       Integer departamentoId,
+                                                       Integer turnoId,
+                                                       String estado) {
+        validarRangoFechas(desde, hasta);
+        String estadoNormalizado = estado == null || estado.isBlank() ? null : estado.trim();
+        if (estadoNormalizado != null
+            && !ESTADOS_ASISTENCIA.contains(estadoNormalizado.toLowerCase())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "El estado de asistencia no es válido");
+        }
+        return asistenciaRepository.buscarHistorico(desde, hasta, empleadoId,
+                        departamentoId, turnoId,
+                        estadoNormalizado == null ? null : estadoNormalizado.toLowerCase()).stream()
+                .map(asistencia -> toResponse(asistencia, null))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AusenciaDTO> listarAusencias(LocalDate desde,
+                                              LocalDate hasta,
+                                              Integer empleadoId,
+                                              Integer departamentoId,
+                                              Integer turnoId) {
+        validarRangoFechas(desde, hasta);
+        LocalDate fechaFinal = hasta.isAfter(LocalDate.now()) ? LocalDate.now() : hasta;
+        if (desde.isAfter(fechaFinal)) {
+            return List.of();
+        }
+
+        List<AsignacionTurno> asignaciones = asignacionTurnoRepository
+                .buscarAsignacionesActivasEnRango(desde, fechaFinal).stream()
+                .filter(asignacion -> empleadoId == null
+                        || empleadoId.equals(asignacion.getPersonal().getId()))
+                .filter(asignacion -> departamentoId == null
+                        || (asignacion.getPersonal().getDepartamento() != null
+                        && departamentoId.equals(asignacion.getPersonal().getDepartamento().getId())))
+                .filter(asignacion -> turnoId == null || turnoId.equals(asignacion.getTurno().getId()))
+                .toList();
+        List<Asistencia> asistencias = asistenciaRepository.findAllByFechaBetween(desde, fechaFinal);
+        Set<String> asistenciaRegistrada = new HashSet<>();
+        for (Asistencia asistencia : asistencias) {
+            asistenciaRegistrada.add(claveAsistencia(asistencia.getPersonal().getId(), asistencia.getFecha()));
+        }
+
+        List<AusenciaDTO> ausencias = new ArrayList<>();
+        for (Asistencia asistencia : asistencias) {
+            Empleado empleado = asistencia.getPersonal();
+            Turno turno = asistencia.getTurno();
+            if ("ausente".equalsIgnoreCase(asistencia.getEstado())
+                    && (empleadoId == null || empleadoId.equals(empleado.getId()))
+                    && (departamentoId == null || (empleado.getDepartamento() != null
+                    && departamentoId.equals(empleado.getDepartamento().getId())))
+                    && (turnoId == null || (turno != null && turnoId.equals(turno.getId())))) {
+                ausencias.add(new AusenciaDTO(empleado.getId(), empleado.getNombre(), empleado.getApellido(),
+                        asistencia.getFecha(), turno == null ? null : turno.getId(),
+                        turno == null ? null : turno.getNombre(), "ausente"));
+            }
+        }
+        for (LocalDate fecha = desde; !fecha.isAfter(fechaFinal); fecha = fecha.plusDays(1)) {
+            Set<Integer> empleadosProcesados = new HashSet<>();
+            for (AsignacionTurno asignacion : asignaciones) {
+                if (!asignacion.getFechaDesde().isAfter(fecha)
+                        && (asignacion.getFechaHasta() == null || !asignacion.getFechaHasta().isBefore(fecha))) {
+                    Integer id = asignacion.getPersonal().getId();
+                    if (empleadosProcesados.add(id)
+                            && turnoAplicaHoy(asignacion.getTurno(), fecha.getDayOfWeek())
+                            && !asistenciaRegistrada.contains(claveAsistencia(id, fecha))) {
+                        Empleado empleado = asignacion.getPersonal();
+                        Turno turno = asignacion.getTurno();
+                        ausencias.add(new AusenciaDTO(id, empleado.getNombre(), empleado.getApellido(),
+                                fecha, turno.getId(), turno.getNombre(), "ausente"));
+                    }
+                }
+            }
+        }
+        return ausencias.stream()
+                .sorted((primera, segunda) -> {
+                    int porFecha = segunda.getFecha().compareTo(primera.getFecha());
+                    if (porFecha != 0) {
+                        return porFecha;
+                    }
+                    int porApellido = primera.getApellido().compareToIgnoreCase(segunda.getApellido());
+                    return porApellido != 0 ? porApellido : primera.getNombre().compareToIgnoreCase(segunda.getNombre());
+                })
+                .toList();
+    }
+
+    private void validarRangoFechas(LocalDate desde, LocalDate hasta) {
+        if (desde == null || hasta == null || desde.isAfter(hasta)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El rango de fechas es inválido: desde debe ser anterior o igual a hasta");
+        }
+        if (ChronoUnit.DAYS.between(desde, hasta) > MAX_REPORT_DAYS) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El rango máximo permitido para el reporte es de 366 días");
+        }
+    }
+
+    private String claveAsistencia(Integer empleadoId, LocalDate fecha) {
+        return empleadoId + ":" + fecha;
     }
 
     private AsistenciaHoyDTO toAsistenciaHoy(Asistencia asistencia, LocalDateTime ahora) {

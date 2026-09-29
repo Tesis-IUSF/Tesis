@@ -83,6 +83,10 @@ class AsistenciaRepositoryTest {
         assertEquals("Ana", asistenciaRepository
                 .findAllByFechaWithPersonalOrderByHoraEntrada(hoy).getFirst()
                 .getPersonal().getNombre());
+        assertEquals(1, asistenciaRepository.buscarHistorico(
+                hoy, hoy, empleado.getId(), null, turno.getId(), "TARDANZA").size());
+        assertEquals(1, asignacionTurnoRepository
+                .buscarAsignacionesActivasEnRango(hoy, hoy).size());
     }
 
     @Test

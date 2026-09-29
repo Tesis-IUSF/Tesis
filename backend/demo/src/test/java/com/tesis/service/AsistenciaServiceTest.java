@@ -2,6 +2,7 @@ package com.tesis.service;
 
 import com.tesis.dto.AsistenciaDTO.AsistenciaResponseDTO;
 import com.tesis.dto.AsistenciaDTO.AsistenciaHoyDTO;
+import com.tesis.dto.AsistenciaDTO.AusenciaDTO;
 import com.tesis.entity.AsignacionTurno;
 import com.tesis.entity.Asistencia;
 import com.tesis.entity.CredencialQr;
@@ -199,6 +200,129 @@ class AsistenciaServiceTest {
 
                 assertEquals("8:30", respuesta.getHorasTrabajadas());
                 assertEquals(510, respuesta.getMinutosTrabajados());
+        }
+
+            @Test
+            void historicoAplicaFiltrosYNormalizaEstado() {
+                when(asistenciaRepository.buscarHistorico(LocalDate.of(2026, 9, 1),
+                        LocalDate.of(2026, 9, 29), 7, 3, 2, "tardanza"))
+                        .thenReturn(List.of());
+
+                List<AsistenciaResponseDTO> respuesta = asistenciaService.buscarHistorico(
+                        LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 29), 7, 3, 2, " TARDANZA ");
+
+                assertEquals(List.of(), respuesta);
+                verify(asistenciaRepository).buscarHistorico(LocalDate.of(2026, 9, 1),
+                        LocalDate.of(2026, 9, 29), 7, 3, 2, "tardanza");
+            }
+
+            @Test
+            void rechazaHistoricoMayorAUnAnio() {
+                ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
+                        () -> asistenciaService.buscarHistorico(LocalDate.now().minusDays(367),
+                                LocalDate.now(), null, null, null, null));
+
+                assertEquals(HttpStatus.BAD_REQUEST, excepcion.getStatusCode());
+            }
+
+            @Test
+            void listaAusenciasSoloEnDiasLaborablesSinAsistencia() {
+                LocalDate hoy = LocalDate.now();
+                Empleado empleado = empleadoActivo();
+                Turno turno = turnoVigente();
+                AsignacionTurno asignacion = asignacion(turno);
+                asignacion.setPersonal(empleado);
+                asignacion.setFechaDesde(hoy.minusDays(2));
+                when(asignacionTurnoRepository.buscarAsignacionesActivasEnRango(hoy.minusDays(2), hoy))
+                        .thenReturn(List.of(asignacion));
+                when(asistenciaRepository.findAllByFechaBetween(hoy.minusDays(2), hoy))
+                        .thenReturn(List.of());
+
+                List<AusenciaDTO> ausencias = asistenciaService.listarAusencias(
+                        hoy.minusDays(2), hoy, null, null, null);
+
+                assertEquals(3, ausencias.size());
+                assertEquals("ausente", ausencias.getFirst().getEstado());
+                assertEquals(7, ausencias.getFirst().getEmpleadoId());
+            }
+
+            @Test
+            void asistenciaExistenteEvitaFalsaAusencia() {
+                LocalDate hoy = LocalDate.now();
+                Empleado empleado = empleadoActivo();
+                Turno turno = turnoVigente();
+                AsignacionTurno asignacion = asignacion(turno);
+                asignacion.setPersonal(empleado);
+                asignacion.setFechaDesde(hoy);
+                Asistencia asistencia = asistenciaExistente(empleado, turno);
+                when(asignacionTurnoRepository.buscarAsignacionesActivasEnRango(hoy, hoy))
+                        .thenReturn(List.of(asignacion));
+                when(asistenciaRepository.findAllByFechaBetween(hoy, hoy)).thenReturn(List.of(asistencia));
+
+                List<AusenciaDTO> ausencias = asistenciaService.listarAusencias(hoy, hoy, null, null, null);
+
+                assertEquals(List.of(), ausencias);
+            }
+
+            @Test
+            void noListaAusenciasParaFechasFuturas() {
+                LocalDate manana = LocalDate.now().plusDays(1);
+
+                List<AusenciaDTO> ausencias = asistenciaService.listarAusencias(
+                        manana, manana.plusDays(1), null, null, null);
+
+                assertEquals(List.of(), ausencias);
+                verify(asignacionTurnoRepository, never())
+                        .buscarAsignacionesActivasEnRango(any(LocalDate.class), any(LocalDate.class));
+            }
+
+        @Test
+        void noGeneraAusenciaEnDiaLibreDelTurno() {
+                LocalDate hoy = LocalDate.now();
+                Empleado empleado = empleadoActivo();
+                Turno turno = turnoVigente();
+                turno.setLunes(false);
+                turno.setMartes(false);
+                turno.setMiercoles(false);
+                turno.setJueves(false);
+                turno.setViernes(false);
+                turno.setSabado(false);
+                turno.setDomingo(false);
+                AsignacionTurno asignacion = asignacion(turno);
+                asignacion.setPersonal(empleado);
+                asignacion.setFechaDesde(hoy);
+                when(asignacionTurnoRepository.buscarAsignacionesActivasEnRango(hoy, hoy))
+                                .thenReturn(List.of(asignacion));
+                when(asistenciaRepository.findAllByFechaBetween(hoy, hoy)).thenReturn(List.of());
+
+                List<AusenciaDTO> ausencias = asistenciaService.listarAusencias(hoy, hoy, null, null, null);
+
+                assertEquals(List.of(), ausencias);
+        }
+
+        @Test
+        void rechazaEstadoDeFiltroNoReconocido() {
+                ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
+                                () -> asistenciaService.buscarHistorico(LocalDate.now(), LocalDate.now(),
+                                                null, null, null, "llegó tarde"));
+
+                assertEquals(HttpStatus.BAD_REQUEST, excepcion.getStatusCode());
+        }
+
+        @Test
+        void incluyeAusenciaRegistradaExplicitamente() {
+                LocalDate hoy = LocalDate.now();
+                Asistencia asistencia = asistenciaExistente(empleadoActivo(), turnoVigente());
+                asistencia.setEstado("ausente");
+                when(asignacionTurnoRepository.buscarAsignacionesActivasEnRango(hoy, hoy))
+                        .thenReturn(List.of());
+                when(asistenciaRepository.findAllByFechaBetween(hoy, hoy)).thenReturn(List.of(asistencia));
+
+                List<AusenciaDTO> ausencias = asistenciaService.listarAusencias(hoy, hoy, null, null, null);
+
+                assertEquals(1, ausencias.size());
+                assertEquals("ausente", ausencias.getFirst().getEstado());
+                assertEquals("Ana", ausencias.getFirst().getNombre());
         }
 
     private Empleado empleadoActivo() {
