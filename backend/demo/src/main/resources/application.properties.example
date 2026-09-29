@@ -8,7 +8,6 @@ spring.application.name=sitio-web
 # ============================================================
 # SERVIDOR (Configuración común)
 # ============================================================
-server.servlet.context-path=/api
 server.servlet.encoding.charset=UTF-8
 server.servlet.encoding.enabled=true
 

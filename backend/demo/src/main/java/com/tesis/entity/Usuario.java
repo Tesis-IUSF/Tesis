@@ -1,7 +1,5 @@
 package com.tesis.entity;
 
-import com.tesis.entity.TipoUsuario;
-import com.tesis.entity.Roles;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -38,14 +36,17 @@ public class Usuario {
     @JoinColumn(name = "rol_id", nullable = false, foreignKey = @ForeignKey(name = "fk_usuario_rol"))
     private Roles rol;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = TipoUsuarioConverter.class)
     @Column(name = "tipo_usuario", length = 20, nullable = false, columnDefinition = "ENUM('personal','estudiante','representante','visitante') DEFAULT 'personal'")
+        @Builder.Default
     private TipoUsuario tipoUsuario = TipoUsuario.PERSONAL;
 
     @Column(name = "activo", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 1")
+        @Builder.Default
     private Boolean activo = true;
 
     @Column(name = "email_verificado", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+        @Builder.Default
     private Boolean emailVerificado = false;
 
     @Column(name = "ultimo_acceso")
