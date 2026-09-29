@@ -5,6 +5,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Instant;
+import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -37,6 +40,41 @@ class JwtProviderTest {
         JwtProvider otherProvider = providerWithSecret("another_test_signing_secret_more_than_32_bytes");
 
         assertFalse(otherProvider.esTokenValido(token));
+    }
+
+    @Test
+    void tokenQrFirmadoContieneEmpleadoYCredencial() {
+        String credencialId = UUID.randomUUID().toString();
+        String token = jwtProvider.generarTokenQr(12, credencialId, Instant.now().plusSeconds(3600));
+
+        JwtProvider.QrClaims claims = jwtProvider.validarTokenQr(token);
+
+        assertEquals(12, claims.empleadoId());
+        assertEquals(credencialId, claims.credencialId());
+    }
+
+    @Test
+    void tokenDeSesionNoSeAceptaComoQr() {
+        String token = jwtProvider.generarToken(12, "ana@example.com", "ana", "Escaner");
+
+        assertThrows(RuntimeException.class, () -> jwtProvider.validarTokenQr(token));
+    }
+
+    @Test
+    void rechazaQrFirmadoConOtraClave() {
+        String token = jwtProvider.generarTokenQr(12, UUID.randomUUID().toString(),
+                Instant.now().plusSeconds(3600));
+        JwtProvider otherProvider = providerWithSecret("another_test_signing_secret_more_than_32_bytes");
+
+        assertThrows(RuntimeException.class, () -> otherProvider.validarTokenQr(token));
+    }
+
+    @Test
+    void rechazaQrVencido() {
+        String token = jwtProvider.generarTokenQr(12, UUID.randomUUID().toString(),
+                Instant.now().minusSeconds(60));
+
+        assertThrows(RuntimeException.class, () -> jwtProvider.validarTokenQr(token));
     }
 
     @Test
