@@ -1,39 +1,16 @@
-# ==========================================
-# Stage 1: Builder
-# ==========================================
-FROM node:18-alpine AS builder
-
-# Establecer el directorio de trabajo
+FROM node:20-alpine AS dev
 WORKDIR /app
-
-# Copiar los archivos de dependencias
-COPY package.json package-lock.json* ./
-
-# Instalar las dependencias
-RUN npm install
-
-# Copiar el resto del código fuente
+COPY package.json package-lock.json ./
+RUN npm ci
 COPY . .
+EXPOSE 5173
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
-# Compilar el frontend (generará la carpeta dist)
+FROM dev AS builder
 RUN npm run build
 
-# ==========================================
-# Stage 2: Runtime
-# ==========================================
-FROM nginx:alpine
-
-# Reemplazar la configuración por defecto de Nginx por la nuestra
+FROM nginx:alpine AS production
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Crear el directorio raíz personalizado
-WORKDIR /app/dist
-
-# Copiar los archivos compilados desde el stage 1
 COPY --from=builder /app/dist /app/dist
-
-# Exponer el puerto 80
 EXPOSE 80
-
-# Iniciar Nginx
 CMD ["nginx", "-g", "daemon off;"]

@@ -65,6 +65,7 @@ services:
   frontend:
     build: 
       context: ./frontend
+      target: dev
     container_name: dev_frontend
     ports:
       - "5173:5173" # Cambiado a 5173 para el servidor de desarrollo de Vite
