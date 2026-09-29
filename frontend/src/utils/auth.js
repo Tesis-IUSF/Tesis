@@ -20,6 +20,17 @@ export function hasRole(allowedRoles) {
   return allowedRoles.includes(rol);
 }
 
+export function normalizarRol(rol) {
+  const normalized = String(rol || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+
+  return normalized.startsWith("ROLE_") ? normalized : `ROLE_${normalized}`;
+}
+
 export function logout() {
   localStorage.removeItem("token");
   localStorage.removeItem("rol");

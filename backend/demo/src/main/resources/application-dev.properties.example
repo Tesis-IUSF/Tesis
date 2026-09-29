@@ -23,9 +23,14 @@ spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
 
 # Seguridad y Autenticación
-jwt.secret=${JWT_SECRET}
-jwt.expiration=86400000
+app.jwt.secret=${JWT_SECRET}
+app.jwt.expiration=86400000
 jwt.refreshExpiration=604800000
+
+# Cuenta de desarrollo creada automáticamente si no existe
+app.seed.admin.email=${SEED_ADMIN_EMAIL:admin.demo@asansa.local}
+app.seed.admin.username=${SEED_ADMIN_USERNAME:admin.demo}
+app.seed.admin.password=${SEED_ADMIN_PASSWORD:AsansaDemo2026!}
 
 # Logging detallado para depurar
 logging.level.root=INFO

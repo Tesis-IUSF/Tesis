@@ -20,8 +20,8 @@ spring.jpa.hibernate.ddl-auto=validate
 spring.jpa.show-sql=false
 
 # Clave JWT de Producción
-jwt.secret=${JWT_SECRET}
-jwt.expiration=3600000
+app.jwt.secret=${JWT_SECRET}
+app.jwt.expiration=3600000
 jwt.refreshExpiration=604800000
 
 # Logging restringido

@@ -59,7 +59,8 @@ class AuthServiceTest {
 
         when(usuarioRepository.findByEmail("ana@example.com")).thenReturn(Optional.of(usuario));
         when(passwordEncoder.matches("clave", "hash")).thenReturn(true);
-        when(jwtProvider.generarToken(7, "ana@example.com", "ana")).thenReturn("jwt-de-prueba");
+        when(jwtProvider.generarToken(7, "ana@example.com", "ana", "Administrativo"))
+            .thenReturn("jwt-de-prueba");
 
         AuthDTO.LoginResponse respuesta = authService.login(solicitud);
 
@@ -93,7 +94,7 @@ class AuthServiceTest {
                 .build();
         when(usuarioRepository.findByEmail("ausente@example.com")).thenReturn(Optional.empty());
 
-        assertThrows(UsuarioNotFoundException.class, () -> authService.login(solicitud));
+        assertThrows(AuthenticationException.class, () -> authService.login(solicitud));
 
         verify(passwordEncoder, never()).matches(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
     }
