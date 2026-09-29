@@ -78,6 +78,11 @@ class AsistenciaRepositoryTest {
         assertEquals(asistencia.getId(), guardada.getId());
         assertEquals("tardanza", guardada.getEstado());
         assertTrue(guardada.getCreadoEn() != null);
+        assertEquals(1, asistenciaRepository
+                .findAllByFechaWithPersonalOrderByHoraEntrada(hoy).size());
+        assertEquals("Ana", asistenciaRepository
+                .findAllByFechaWithPersonalOrderByHoraEntrada(hoy).getFirst()
+                .getPersonal().getNombre());
     }
 
     @Test

@@ -39,4 +39,19 @@ public class AsistenciaDTO {
         private String tipoRegistro;
         private LocalDateTime creadoEn;
     }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AsistenciaHoyDTO {
+        private Integer asistenciaId;
+        private Integer empleadoId;
+        private String nombre;
+        private String apellido;
+        private LocalTime horaEntrada;
+        private LocalTime horaSalida;
+        private Integer minutosTrabajados;
+        private String horasTrabajadas;
+        private String estado;
+    }
 }

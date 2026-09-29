@@ -13,7 +13,9 @@ import org.springframework.web.context.WebApplicationContext;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -61,5 +63,13 @@ class SecurityConfigTest {
             mockMvc.perform(post("/api/empleados/999/carnet")
                             .with(user("director").roles("DIRECTOR")))
                     .andExpect(status().isNotFound());
+        }
+
+        @Test
+        void consultaAsistenciasDeHoyDevuelveListaJson() throws Exception {
+            mockMvc.perform(get("/api/asistencias/hoy")
+                            .with(user("admin").roles("ADMINISTRADOR")))
+                    .andExpect(status().isOk())
+                    .andExpect(content().json("[]"));
         }
 }

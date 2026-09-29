@@ -1,6 +1,7 @@
 package com.tesis.controller;
 
 import com.tesis.dto.AsistenciaDTO.AsistenciaResponseDTO;
+import com.tesis.dto.AsistenciaDTO.AsistenciaHoyDTO;
 import com.tesis.dto.AsistenciaDTO.EscaneoQrRequestDTO;
 import com.tesis.service.AsistenciaService;
 import jakarta.validation.Valid;
@@ -32,6 +33,11 @@ public class AsistenciaController {
     @ResponseStatus(HttpStatus.CREATED)
     public AsistenciaResponseDTO registrarEscaneo(@Valid @RequestBody EscaneoQrRequestDTO request) {
         return asistenciaService.registrarEscaneo(request.getQrToken());
+    }
+
+    @GetMapping("/hoy")
+    public List<AsistenciaHoyDTO> listarHoy() {
+        return asistenciaService.listarHoy();
     }
 
     @GetMapping("/empleado/{empleadoId}")

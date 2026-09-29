@@ -1,6 +1,7 @@
 package com.tesis.service;
 
 import com.tesis.dto.AsistenciaDTO.AsistenciaResponseDTO;
+import com.tesis.dto.AsistenciaDTO.AsistenciaHoyDTO;
 import com.tesis.entity.AsignacionTurno;
 import com.tesis.entity.Asistencia;
 import com.tesis.entity.CredencialQr;
@@ -114,6 +115,15 @@ public class AsistenciaService {
     }
 
     @Transactional(readOnly = true)
+    public List<AsistenciaHoyDTO> listarHoy() {
+        LocalDateTime ahora = LocalDateTime.now();
+        return asistenciaRepository.findAllByFechaWithPersonalOrderByHoraEntrada(ahora.toLocalDate())
+                .stream()
+                .map(asistencia -> toAsistenciaHoy(asistencia, ahora))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<AsistenciaResponseDTO> listarPorEmpleado(Integer empleadoId,
                                                          LocalDate desde,
                                                          LocalDate hasta) {
@@ -128,6 +138,35 @@ public class AsistenciaService {
                         empleadoId, desde, hasta).stream()
                 .map(asistencia -> toResponse(asistencia, null))
                 .toList();
+    }
+
+    private AsistenciaHoyDTO toAsistenciaHoy(Asistencia asistencia, LocalDateTime ahora) {
+        LocalTime horaEntrada = asistencia.getHoraEntrada();
+        Integer minutosTrabajados = null;
+        String horasTrabajadas = null;
+        if (horaEntrada != null) {
+            LocalDateTime inicio = LocalDateTime.of(asistencia.getFecha(), horaEntrada);
+            LocalDateTime fin = asistencia.getHoraSalida() == null
+                    ? ahora
+                    : LocalDateTime.of(asistencia.getFecha(), asistencia.getHoraSalida());
+            if (asistencia.getHoraSalida() != null && fin.isBefore(inicio)) {
+                fin = fin.plusDays(1);
+            }
+            long minutos = Math.max(0, Duration.between(inicio, fin).toMinutes());
+            minutosTrabajados = (int) Math.min(Integer.MAX_VALUE, minutos);
+            horasTrabajadas = String.format("%d:%02d", minutos / 60, minutos % 60);
+        }
+
+        return new AsistenciaHoyDTO(
+                asistencia.getId(),
+                asistencia.getPersonal().getId(),
+                asistencia.getPersonal().getNombre(),
+                asistencia.getPersonal().getApellido(),
+                horaEntrada,
+                asistencia.getHoraSalida(),
+                minutosTrabajados,
+                horasTrabajadas,
+                asistencia.getEstado());
     }
 
     private Asistencia nuevaAsistencia(Empleado empleado, Turno turno, LocalDate fecha) {

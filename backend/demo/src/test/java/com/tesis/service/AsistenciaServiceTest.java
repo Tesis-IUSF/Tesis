@@ -1,6 +1,7 @@
 package com.tesis.service;
 
 import com.tesis.dto.AsistenciaDTO.AsistenciaResponseDTO;
+import com.tesis.dto.AsistenciaDTO.AsistenciaHoyDTO;
 import com.tesis.entity.AsignacionTurno;
 import com.tesis.entity.Asistencia;
 import com.tesis.entity.CredencialQr;
@@ -165,6 +166,40 @@ class AsistenciaServiceTest {
         assertEquals(HttpStatus.UNAUTHORIZED, excepcion.getStatusCode());
         verify(asistenciaRepository, never()).save(any(Asistencia.class));
     }
+
+        @Test
+        void listarHoyCalculaDuracionYConservaSalidaNula() {
+                Empleado empleado = empleadoActivo();
+                Asistencia asistencia = asistenciaExistente(empleado, turnoVigente());
+                asistencia.setHoraEntrada(LocalTime.now().minusHours(2).minusMinutes(15));
+                asistencia.setHoraSalida(null);
+                when(asistenciaRepository.findAllByFechaWithPersonalOrderByHoraEntrada(LocalDate.now()))
+                                .thenReturn(List.of(asistencia));
+
+                List<AsistenciaHoyDTO> respuesta = asistenciaService.listarHoy();
+
+                assertEquals(1, respuesta.size());
+                assertEquals("Ana", respuesta.get(0).getNombre());
+                assertEquals("Pérez", respuesta.get(0).getApellido());
+                assertEquals(null, respuesta.get(0).getHoraSalida());
+                assertEquals("2:15", respuesta.get(0).getHorasTrabajadas());
+                assertEquals(135, respuesta.get(0).getMinutosTrabajados());
+        }
+
+        @Test
+        void listarHoyCalculaHorasConSalidaRegistrada() {
+                Empleado empleado = empleadoActivo();
+                Asistencia asistencia = asistenciaExistente(empleado, turnoVigente());
+                asistencia.setHoraEntrada(LocalTime.of(8, 0));
+                asistencia.setHoraSalida(LocalTime.of(16, 30));
+                when(asistenciaRepository.findAllByFechaWithPersonalOrderByHoraEntrada(LocalDate.now()))
+                                .thenReturn(List.of(asistencia));
+
+                AsistenciaHoyDTO respuesta = asistenciaService.listarHoy().getFirst();
+
+                assertEquals("8:30", respuesta.getHorasTrabajadas());
+                assertEquals(510, respuesta.getMinutosTrabajados());
+        }
 
     private Empleado empleadoActivo() {
         Empleado empleado = new Empleado();
