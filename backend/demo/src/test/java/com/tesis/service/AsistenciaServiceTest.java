@@ -3,11 +3,14 @@ package com.tesis.service;
 import com.tesis.dto.AsistenciaDTO.AsistenciaResponseDTO;
 import com.tesis.entity.AsignacionTurno;
 import com.tesis.entity.Asistencia;
+import com.tesis.entity.CredencialQr;
 import com.tesis.entity.Empleado;
 import com.tesis.entity.Turno;
 import com.tesis.repository.AsignacionTurnoRepository;
 import com.tesis.repository.AsistenciaRepository;
+import com.tesis.repository.CredencialQrRepository;
 import com.tesis.repository.EmpleadoRepository;
+import com.tesis.security.JwtProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,18 +22,24 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AsistenciaServiceTest {
+
+        private static final String QR_TOKEN = "signed-qr-token";
+        private static final String QR_CREDENTIAL_ID = UUID.randomUUID().toString();
 
     @Mock
     private AsistenciaRepository asistenciaRepository;
@@ -41,18 +50,26 @@ class AsistenciaServiceTest {
     @Mock
     private EmpleadoRepository empleadoRepository;
 
+        @Mock
+        private CredencialQrRepository credencialQrRepository;
+
+        @Mock
+        private JwtProvider jwtProvider;
+
     private AsistenciaService asistenciaService;
 
     @BeforeEach
     void setUp() {
         asistenciaService = new AsistenciaService(
-                asistenciaRepository, asignacionTurnoRepository, empleadoRepository);
+                asistenciaRepository, asignacionTurnoRepository, empleadoRepository,
+                credencialQrRepository, jwtProvider);
     }
 
     @Test
     void primerEscaneoRegistraEntradaYTardanza() {
         Empleado empleado = empleadoActivo();
         Turno turno = turnoVigente();
+        stubCredencialQr();
         when(empleadoRepository.findByIdForUpdate(7)).thenReturn(Optional.of(empleado));
         when(asignacionTurnoRepository.buscarVigentes(7, LocalDate.now()))
                 .thenReturn(List.of(asignacion(turno)));
@@ -61,7 +78,7 @@ class AsistenciaServiceTest {
         when(asistenciaRepository.save(any(Asistencia.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        AsistenciaResponseDTO respuesta = asistenciaService.registrarEscaneo(7);
+        AsistenciaResponseDTO respuesta = asistenciaService.registrarEscaneo(QR_TOKEN);
 
         assertEquals("entrada", respuesta.getTipoRegistro());
         assertEquals("tardanza", respuesta.getEstado());
@@ -72,6 +89,7 @@ class AsistenciaServiceTest {
     void segundoEscaneoRegistraSalidaSinCambiarEntrada() {
         Empleado empleado = empleadoActivo();
         Turno turno = turnoVigente();
+        stubCredencialQr();
         Asistencia asistencia = asistenciaExistente(empleado, turno);
         LocalTime entrada = LocalTime.now().minusMinutes(1);
         asistencia.setHoraEntrada(entrada);
@@ -83,7 +101,7 @@ class AsistenciaServiceTest {
         when(asistenciaRepository.save(any(Asistencia.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        AsistenciaResponseDTO respuesta = asistenciaService.registrarEscaneo(7);
+        AsistenciaResponseDTO respuesta = asistenciaService.registrarEscaneo(QR_TOKEN);
 
         assertEquals("salida", respuesta.getTipoRegistro());
         assertEquals(entrada, respuesta.getHoraEntrada());
@@ -94,6 +112,7 @@ class AsistenciaServiceTest {
     void tercerEscaneoSeRechazaSinModificarAsistencia() {
         Empleado empleado = empleadoActivo();
         Turno turno = turnoVigente();
+        stubCredencialQr();
         Asistencia asistencia = asistenciaExistente(empleado, turno);
         asistencia.setHoraEntrada(LocalTime.now().minusHours(1));
         asistencia.setHoraSalida(LocalTime.now().minusMinutes(1));
@@ -104,7 +123,7 @@ class AsistenciaServiceTest {
                 .thenReturn(Optional.of(asistencia));
 
         ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
-                () -> asistenciaService.registrarEscaneo(7));
+                () -> asistenciaService.registrarEscaneo(QR_TOKEN));
 
         assertEquals(HttpStatus.CONFLICT, excepcion.getStatusCode());
         verify(asistenciaRepository, never()).save(any(Asistencia.class));
@@ -114,6 +133,7 @@ class AsistenciaServiceTest {
     void salidaAntesDelInicioDelTurnoSeRechaza() {
         Empleado empleado = empleadoActivo();
         Turno turno = turnoVigente();
+        stubCredencialQr();
         turno.setHoraEntrada(LocalTime.now().plusMinutes(5));
         Asistencia asistencia = asistenciaExistente(empleado, turno);
         asistencia.setHoraEntrada(LocalTime.now().minusMinutes(1));
@@ -124,9 +144,25 @@ class AsistenciaServiceTest {
                 .thenReturn(Optional.of(asistencia));
 
         ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
-                () -> asistenciaService.registrarEscaneo(7));
+                () -> asistenciaService.registrarEscaneo(QR_TOKEN));
 
         assertEquals(HttpStatus.CONFLICT, excepcion.getStatusCode());
+        verify(asistenciaRepository, never()).save(any(Asistencia.class));
+    }
+
+    @Test
+    void credencialRevocadaNoPuedeRegistrarAsistencia() {
+        when(jwtProvider.validarTokenQr(QR_TOKEN)).thenReturn(new JwtProvider.QrClaims(
+                7, QR_CREDENTIAL_ID, Instant.now().plusSeconds(3600)));
+        when(empleadoRepository.findByIdForUpdate(7)).thenReturn(Optional.of(empleadoActivo()));
+        when(credencialQrRepository.findByIdAndEmpleado_IdAndActivaTrueAndExpiraEnAfter(
+                eq(QR_CREDENTIAL_ID), eq(7), any(LocalDateTime.class)))
+                .thenReturn(Optional.empty());
+
+        ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
+                () -> asistenciaService.registrarEscaneo(QR_TOKEN));
+
+        assertEquals(HttpStatus.UNAUTHORIZED, excepcion.getStatusCode());
         verify(asistenciaRepository, never()).save(any(Asistencia.class));
     }
 
@@ -137,6 +173,18 @@ class AsistenciaServiceTest {
         empleado.setApellido("Pérez");
         empleado.setActivo(true);
         return empleado;
+    }
+
+    private void stubCredencialQr() {
+        when(jwtProvider.validarTokenQr(QR_TOKEN)).thenReturn(new JwtProvider.QrClaims(
+                7, QR_CREDENTIAL_ID, Instant.now().plusSeconds(3600)));
+        CredencialQr credencial = new CredencialQr();
+        credencial.setId(QR_CREDENTIAL_ID);
+        credencial.setActiva(true);
+        credencial.setExpiraEn(LocalDateTime.now().plusHours(1));
+        when(credencialQrRepository.findByIdAndEmpleado_IdAndActivaTrueAndExpiraEnAfter(
+                eq(QR_CREDENTIAL_ID), eq(7), any(LocalDateTime.class)))
+                .thenReturn(Optional.of(credencial));
     }
 
     private Turno turnoVigente() {

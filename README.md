@@ -37,6 +37,15 @@ Sustitución de las planillas impresas tradicionales.
 - **Directorio:** Gestión de fichas técnicas de empleados (cédula, nombre, cargo: obrero/cocina/docente/vigilante/administrativo y turno).
 - **Control de Asistencia:** Marcaje digital diario de entrada y salida protegido con la hora exacta del servidor, evitando marcajes duplicados y permitiendo agregar observaciones por incidencias.
 
+#### Carnet QR de empleados
+
+- `POST /api/empleados/{id}/carnet` emite un carnet PDF tamaño tarjeta con un QR firmado. Solo los roles `Administrador` y `Director` pueden emitirlo.
+- `POST /api/asistencias/qr` recibe `{"qrToken":"..."}` y solo admite usuarios con rol `Escaner`. El token no contiene datos personales, tiene vigencia predeterminada de 365 días y se revoca al emitir un carnet nuevo.
+- La vigencia se configura con `app.qr.expiration-days`; el nombre impreso de la institución con `app.institucion.nombre`.
+- Antes de desplegar en producción, aplicar una vez `backend/demo/src/main/resources/db/manual/V20260929__create_credenciales_qr.sql`; el perfil de producción valida el esquema y no crea tablas.
+
+El QR impreso es estático: una fotografía del carnet contiene el mismo token y no puede distinguirse criptográficamente del carnet original. La firma evita crear o modificar credenciales, y la revocación invalida carnets reemplazados; para verificar que la persona presente sea el titular hace falta un control adicional en el puesto de escaneo.
+
 ### 📢 4. Blog y Portal Público (`SW-5: Blog`)
 Centro de información oficial del plantel hacia la comunidad.
 - **Tablón de Anuncios:** Publicación de noticias, eventos y avisos urgentes organizados por fecha.

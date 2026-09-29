@@ -1,7 +1,7 @@
 package com.tesis.dto;
 
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,9 +16,9 @@ public class AsistenciaDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class EscaneoQrRequestDTO {
-        @NotNull
-        @Positive
-        private Integer empleadoId;
+        @NotBlank
+        @Size(max = 2048)
+        private String qrToken;
     }
 
     @Data

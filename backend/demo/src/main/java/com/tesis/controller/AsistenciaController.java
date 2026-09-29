@@ -31,7 +31,7 @@ public class AsistenciaController {
     @PostMapping("/qr")
     @ResponseStatus(HttpStatus.CREATED)
     public AsistenciaResponseDTO registrarEscaneo(@Valid @RequestBody EscaneoQrRequestDTO request) {
-        return asistenciaService.registrarEscaneo(request.getEmpleadoId());
+        return asistenciaService.registrarEscaneo(request.getQrToken());
     }
 
     @GetMapping("/empleado/{empleadoId}")

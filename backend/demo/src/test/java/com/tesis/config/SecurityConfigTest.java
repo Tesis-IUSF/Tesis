@@ -36,7 +36,7 @@ class SecurityConfigTest {
         mockMvc.perform(post("/api/asistencias/qr")
                         .with(user("admin").roles("ADMINISTRADOR"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"empleadoId\":1}"))
+                        .content("{\"qrToken\":\"test\"}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -45,7 +45,21 @@ class SecurityConfigTest {
         mockMvc.perform(post("/api/asistencias/qr")
                         .with(user("escaner").roles("ESCANER"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"empleadoId\":1}"))
-                .andExpect(status().isNotFound());
+                        .content("{\"qrToken\":\"test\"}"))
+                    .andExpect(status().isUnauthorized());
     }
+
+        @Test
+        void rechazaEmisionDeCarnetParaRolEscaner() throws Exception {
+            mockMvc.perform(post("/api/empleados/1/carnet")
+                            .with(user("escaner").roles("ESCANER")))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        void soloRolesAdministrativosPuedenSolicitarCarnet() throws Exception {
+            mockMvc.perform(post("/api/empleados/999/carnet")
+                            .with(user("director").roles("DIRECTOR")))
+                    .andExpect(status().isNotFound());
+        }
 }

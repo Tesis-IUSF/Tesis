@@ -2,6 +2,7 @@ package com.tesis.repository;
 
 import com.tesis.entity.AsignacionTurno;
 import com.tesis.entity.Asistencia;
+import com.tesis.entity.CredencialQr;
 import com.tesis.entity.Empleado;
 import com.tesis.entity.Turno;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
@@ -32,6 +34,12 @@ class AsistenciaRepositoryTest {
 
     @Autowired
     private AsistenciaRepository asistenciaRepository;
+
+    @Autowired
+    private CredencialQrRepository credencialQrRepository;
+
+    @Autowired
+    private com.tesis.service.CarnetService carnetService;
 
     @Test
     void persisteAsistenciaYEncuentraTurnoVigente() {
@@ -70,5 +78,27 @@ class AsistenciaRepositoryTest {
         assertEquals(asistencia.getId(), guardada.getId());
         assertEquals("tardanza", guardada.getEstado());
         assertTrue(guardada.getCreadoEn() != null);
+    }
+
+    @Test
+    void generaPdfYRevocaCredencialAnteriorAlReemitirCarnet() {
+        Empleado empleado = new Empleado();
+        empleado.setNombre("Ana");
+        empleado.setApellido("Pérez");
+        empleado.setCedula("CARNET-TEST-01");
+        empleado.setActivo(true);
+        empleado = empleadoRepository.saveAndFlush(empleado);
+
+        byte[] primerCarnet = carnetService.generarCarnet(empleado.getId());
+        CredencialQr credencialAnterior = credencialQrRepository
+                .findByEmpleado_IdAndActivaTrue(empleado.getId()).getFirst();
+        byte[] carnetReemitido = carnetService.generarCarnet(empleado.getId());
+
+        assertEquals("%PDF-", new String(primerCarnet, 0, 5));
+        assertEquals("%PDF-", new String(carnetReemitido, 0, 5));
+        assertFalse(credencialQrRepository.findById(credencialAnterior.getId())
+                .orElseThrow().getActiva());
+        assertEquals(1, credencialQrRepository
+                .findByEmpleado_IdAndActivaTrue(empleado.getId()).size());
     }
 }

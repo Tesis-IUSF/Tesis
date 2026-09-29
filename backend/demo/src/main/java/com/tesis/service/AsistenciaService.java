@@ -3,11 +3,14 @@ package com.tesis.service;
 import com.tesis.dto.AsistenciaDTO.AsistenciaResponseDTO;
 import com.tesis.entity.AsignacionTurno;
 import com.tesis.entity.Asistencia;
+import com.tesis.entity.CredencialQr;
 import com.tesis.entity.Empleado;
 import com.tesis.entity.Turno;
 import com.tesis.repository.AsignacionTurnoRepository;
 import com.tesis.repository.AsistenciaRepository;
+import com.tesis.repository.CredencialQrRepository;
 import com.tesis.repository.EmpleadoRepository;
+import com.tesis.security.JwtProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,18 +31,42 @@ public class AsistenciaService {
     private final AsistenciaRepository asistenciaRepository;
     private final AsignacionTurnoRepository asignacionTurnoRepository;
     private final EmpleadoRepository empleadoRepository;
+    private final CredencialQrRepository credencialQrRepository;
+    private final JwtProvider jwtProvider;
 
     public AsistenciaService(AsistenciaRepository asistenciaRepository,
                              AsignacionTurnoRepository asignacionTurnoRepository,
-                             EmpleadoRepository empleadoRepository) {
+                             EmpleadoRepository empleadoRepository,
+                             CredencialQrRepository credencialQrRepository,
+                             JwtProvider jwtProvider) {
         this.asistenciaRepository = asistenciaRepository;
         this.asignacionTurnoRepository = asignacionTurnoRepository;
         this.empleadoRepository = empleadoRepository;
+        this.credencialQrRepository = credencialQrRepository;
+        this.jwtProvider = jwtProvider;
     }
 
-    public AsistenciaResponseDTO registrarEscaneo(Integer empleadoId) {
+    public AsistenciaResponseDTO registrarEscaneo(String qrToken) {
+        JwtProvider.QrClaims qrClaims;
+        try {
+            qrClaims = jwtProvider.validarTokenQr(qrToken);
+        } catch (RuntimeException exception) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "QR inválido o vencido", exception);
+        }
+
+        Integer empleadoId = qrClaims.empleadoId();
         Empleado empleado = empleadoRepository.findByIdForUpdate(empleadoId).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.NOT_FOUND, "Empleado no encontrado"));
+        CredencialQr credencial = credencialQrRepository
+                .findByIdAndEmpleado_IdAndActivaTrueAndExpiraEnAfter(
+                        qrClaims.credencialId(), empleadoId, LocalDateTime.now())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                        "QR revocado o vencido"));
+        if (credencial.getExpiraEn().isBefore(LocalDateTime.ofInstant(
+                qrClaims.expiracion(), java.time.ZoneId.systemDefault()).minusSeconds(1))) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "QR inválido o vencido");
+        }
         if (!Boolean.TRUE.equals(empleado.getActivo())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "El empleado está inactivo");
         }
