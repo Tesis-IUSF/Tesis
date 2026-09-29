@@ -2,39 +2,44 @@ package com.tesis.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 @Component
 @Slf4j
 public class JwtProvider {
 
-    @Value("${app.jwt.secret:tu_clave_secreta_super_segura_minimo_32_caracteres}")
+    @Value("${app.jwt.secret}")
     private String jwtSecret;
 
     @Value("${app.jwt.expiration:86400000}")
     private long jwtExpiration; // 24 horas en milisegundos
 
+    @PostConstruct
+    void validateConfiguration() {
+        signingKey();
+    }
+
     /**
      * Genera un token JWT para un usuario
      */
-    public String generarToken(Integer usuarioId, String email, String nombreUsuario) {
+    public String generarToken(Integer usuarioId, String email, String nombreUsuario, String rolNombre) {
         try {
-            SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
-            
             return Jwts.builder()
                     .subject(email)
                     .claim("usuarioId", usuarioId)
                     .claim("nombreUsuario", nombreUsuario)
+                    .claim("rolNombre", rolNombre)
                     .issuedAt(new Date())
                     .expiration(new Date(System.currentTimeMillis() + jwtExpiration))
-                    .signWith(key, SignatureAlgorithm.HS256)
+                    .signWith(signingKey())
                     .compact();
         } catch (Exception e) {
             log.error("Error generando token JWT", e);
@@ -47,12 +52,10 @@ public class JwtProvider {
      */
     public Claims validarToken(String token) {
         try {
-            SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
-            
             return Jwts.parser()
-                    .setSigningKey(key)
+                    .verifyWith(signingKey())
                     .build()
-                    .parseClaimsJws(token)
+                    .parseSignedClaims(token)
                     .getPayload();
         } catch (Exception e) {
             log.error("Error validando token JWT: {}", e.getMessage());
@@ -84,5 +87,12 @@ public class JwtProvider {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private SecretKey signingKey() {
+        if (jwtSecret == null || jwtSecret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("app.jwt.secret debe tener al menos 32 bytes");
+        }
+        return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
 }

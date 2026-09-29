@@ -65,13 +65,14 @@ services:
   frontend:
     build: 
       context: ./frontend
+      target: dev
     container_name: dev_frontend
     ports:
       - "5173:5173" # Cambiado a 5173 para el servidor de desarrollo de Vite
     env_file:
       - .env
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:8080/api}
+      VITE_PROXY_TARGET: http://backend:8080
     depends_on:
       - backend
 

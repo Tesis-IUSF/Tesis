@@ -42,7 +42,7 @@ public class AuthService {
 
         // Buscar el usuario por email
         Usuario usuario = usuarioRepository.findByEmail(loginRequest.getEmail())
-                .orElseThrow(() -> new UsuarioNotFoundException("Usuario no encontrado con email: " + loginRequest.getEmail()));
+            .orElseThrow(() -> new AuthenticationException("Email o contraseña incorrectos"));
 
         // Verificar que el usuario esté activo
         if (!usuario.getActivo()) {
@@ -88,7 +88,8 @@ public class AuthService {
         return jwtProvider.generarToken(
                 usuario.getId(),
                 usuario.getEmail(),
-                usuario.getNombreUsuario()
+            usuario.getNombreUsuario(),
+                usuario.getRol() == null ? null : usuario.getRol().getNombreRol()
         );
     }
 

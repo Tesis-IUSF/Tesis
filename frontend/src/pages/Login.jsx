@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROLES } from "../constants/roles";
+import api from "../utils/api";
+import { normalizarRol } from "../utils/auth";
 import "./Login.css";
 
 function Login() {
-  const [usuario, setUsuario] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
   const navigate = useNavigate();
 
   const iniciarSesion = async () => {
-    if (!usuario.trim() || !password.trim()) {
+    if (!email.trim() || !password) {
       setError("Por favor completa todos los campos.");
       return;
     }
@@ -19,27 +21,27 @@ function Login() {
     setError("");
 
     try {
-      // TODO: reemplazar por fetch real a /api/auth/login cuando el backend esté listo (SW-30/SW-32)
-      console.log("Login simulado con:", usuario);
+      const { data } = await api.post("/auth/login", {
+        email: email.trim(),
+        password,
+      });
 
-      // Simulación temporal — borrar cuando conectemos el backend real
-      const dataSimulada = {
-        token: "token-simulado",
-        rol: ROLES.ADMIN,
-        nombre: usuario,
-      };
+      if (!data.token) {
+        throw new Error("La respuesta de autenticación no incluyó un token.");
+      }
 
-      localStorage.setItem("token", dataSimulada.token);
-      localStorage.setItem("rol", dataSimulada.rol);
-      localStorage.setItem("nombre", dataSimulada.nombre);
+      const rol = normalizarRol(data.rolNombre);
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("rol", rol);
+      localStorage.setItem("nombre", data.nombreUsuario || data.email || email.trim());
 
-      if (dataSimulada.rol === ROLES.ESCANER) {
+      if (rol === ROLES.ESCANER) {
         navigate("/escaner");
       } else {
         navigate("/dashboard");
       }
     } catch (err) {
-      if (err.response?.status === 401 || err.response?.status === 403) {
+      if ([401, 403, 404].includes(err.response?.status)) {
         setError("Usuario o contraseña incorrectos.");
       } else {
         setError("No se pudo conectar con el servidor. Intenta de nuevo.");
@@ -88,16 +90,17 @@ function Login() {
             )}
 
             <div className="login-field">
-              <label htmlFor="usuario">Usuario</label>
+              <label htmlFor="email">Correo electrónico</label>
               <input
-                type="text"
-                id="usuario"
-                name="usuario"
-                placeholder="Tu nombre de usuario"
+                type="email"
+                id="email"
+                name="email"
+                placeholder="tu@correo.com"
                 required
                 autoFocus
-                value={usuario}
-                onChange={(e) => setUsuario(e.target.value)}
+                autoComplete="username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
 
@@ -109,6 +112,7 @@ function Login() {
                 name="password"
                 placeholder="Tu contraseña"
                 required
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -119,6 +123,7 @@ function Login() {
               className="login-btn"
               onClick={iniciarSesion}
               aria-busy={cargando}
+              disabled={cargando}
             >
               {cargando ? "Ingresando..." : "Iniciar sesión"}
             </button>
