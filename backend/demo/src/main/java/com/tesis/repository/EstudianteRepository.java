@@ -12,6 +12,8 @@ public interface EstudianteRepository extends JpaRepository<Estudiante, Integer>
 
     boolean existsByCedula(String cedula);
 
+    boolean existsByUsuario_Id(Integer usuarioId);
+
     List<Estudiante> findByActivoTrue();
 
     long countBySexo(String sexo);
