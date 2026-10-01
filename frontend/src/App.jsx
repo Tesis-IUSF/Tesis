@@ -3,6 +3,8 @@ import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NoAutorizado from "./pages/NoAutorizado";
 import { ROLES } from "./constants/roles";
+import Dashboard from "./pages/Dashboard";
+import Empleados from "./pages/Empleados";
 
 function App() {
   return (
@@ -19,7 +21,8 @@ function App() {
             />
           }
         >
-          <Route path="/dashboard" element={<div>Dashboard (pendiente)</div>} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/empleados" element={<Empleados />} />
         </Route>
 
         {/* Ruta exclusiva para ESCANER */}
