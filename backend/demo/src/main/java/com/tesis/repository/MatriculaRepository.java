@@ -2,8 +2,11 @@ package com.tesis.repository;
 
 import com.tesis.entity.Matricula;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,7 +19,20 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
         List<Matricula> findByEstudiante_IdAndEstadoMatriculaAndAnioEscolar(
             Integer estudianteId, String estadoMatricula, Short anioEscolar);
 
-        List<Matricula> findByEstadoMatricula(String estadoMatricula);
+    @EntityGraph(attributePaths = {"estudiante", "seccion.grado.nivelEducativo"})
+    List<Matricula> findByEstadoMatricula(String estadoMatricula);
+
+    @EntityGraph(attributePaths = {"estudiante", "seccion.grado.nivelEducativo"})
+    Page<Matricula> findByEstadoMatricula(String estadoMatricula, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"estudiante", "seccion.grado.nivelEducativo"})
+    List<Matricula> findByEstadoMatriculaOrderByFechaSolicitudAsc(String estadoMatricula);
+
+    @EntityGraph(attributePaths = {"estudiante", "seccion.grado.nivelEducativo"})
+    Page<Matricula> findByEstadoMatriculaOrderByFechaSolicitudAsc(String estadoMatricula, Pageable pageable);
+
+            java.util.Optional<Matricula> findByEstudiante_IdAndAnioEscolarAndSeccion_Id(
+                    Integer estudianteId, Short anioEscolar, Integer seccionId);
 
     List<Matricula> findByAnioEscolarAndEstadoMatricula(Short anioEscolar, String estadoMatricula);
 

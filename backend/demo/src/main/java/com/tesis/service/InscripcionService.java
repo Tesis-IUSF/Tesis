@@ -12,6 +12,8 @@ import com.tesis.repository.ChecklistMatriculaRepository;
 import com.tesis.repository.MatriculaRepository;
 import com.tesis.repository.RequisitoMatriculaRepository;
 import com.tesis.repository.UsuarioRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,11 +51,20 @@ public class InscripcionService {
     }
 
     @Transactional(readOnly = true)
-    public List<InscripcionResponseDTO> listarPreinscritas() {
-        return matriculaRepository.findByEstadoMatricula(PREINSCRITO).stream()
-                .map(matricula -> toResponse(matricula, checklistRepository
-                        .findByMatricula_Id(matricula.getId())))
-                .toList();
+    public Page<InscripcionResponseDTO> listarPreinscritas(Pageable pageable) {
+        return toResponses(matriculaRepository.findByEstadoMatricula(PREINSCRITO, pageable));
+    }
+
+            @Transactional(readOnly = true)
+    public Page<InscripcionResponseDTO> listarEnProceso(Pageable pageable) {
+        return toResponses(matriculaRepository.findByEstadoMatriculaOrderByFechaSolicitudAsc(EN_PROCESO, pageable));
+    }
+
+    @Transactional(readOnly = true)
+    public InscripcionResponseDTO obtenerSeguimiento(Integer matriculaId) {
+        Matricula matricula = matriculaRepository.findById(matriculaId).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Matrícula no encontrada"));
+        return toResponse(matricula, checklistRepository.findByMatricula_Id(matriculaId));
     }
 
     public InscripcionResponseDTO prepararChecklist(Integer matriculaId) {
@@ -66,7 +77,8 @@ public class InscripcionService {
 
     public InscripcionResponseDTO actualizarRequisito(Integer matriculaId,
                                                        Integer requisitoId,
-                                                       ChecklistUpdateRequestDTO request) {
+                                                       ChecklistUpdateRequestDTO request,
+                                                       String verificadoPorEmail) {
         if (request.getCumplido() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Debe indicar si el requisito está cumplido");
@@ -85,7 +97,7 @@ public class InscripcionService {
         item.setArchivoUrl(request.getArchivoUrl());
         if (Boolean.TRUE.equals(request.getCumplido())) {
             item.setFechaVerificacion(LocalDateTime.now());
-            item.setVerificadoPor(buscarVerificador(request.getVerificadoPorId()));
+            item.setVerificadoPor(buscarUsuarioAutenticado(verificadoPorEmail));
         } else {
             item.setFechaVerificacion(null);
             item.setVerificadoPor(null);
@@ -179,13 +191,12 @@ public class InscripcionService {
         }
     }
 
-    private Usuario buscarVerificador(Integer usuarioId) {
-        if (usuarioId == null) {
-            return null;
+    private Usuario buscarUsuarioAutenticado(String email) {
+        if (email == null || email.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario autenticado no identificado");
         }
-        return usuarioRepository.findById(usuarioId).orElseThrow(() ->
-                new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Usuario verificador no encontrado"));
+        return usuarioRepository.findByEmail(email).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario autenticado no encontrado"));
     }
 
     private InscripcionResponseDTO toResponse(Matricula matricula,
@@ -225,5 +236,17 @@ public class InscripcionService {
                 totalObligatorios,
                 obligatoriosCumplidos,
                 items);
+    }
+
+    private Page<InscripcionResponseDTO> toResponses(Page<Matricula> pagina) {
+        List<Matricula> matriculas = pagina.getContent();
+        if (matriculas.isEmpty()) {
+            return pagina.map(matricula -> toResponse(matricula, List.of()));
+        }
+        Map<Integer, List<ChecklistMatricula>> checklistPorMatricula = checklistRepository
+                .findByMatricula_IdIn(matriculas.stream().map(Matricula::getId).toList()).stream()
+                .collect(Collectors.groupingBy(item -> item.getMatricula().getId()));
+        return pagina.map(matricula -> toResponse(matricula,
+            checklistPorMatricula.getOrDefault(matricula.getId(), List.of())));
     }
 }
