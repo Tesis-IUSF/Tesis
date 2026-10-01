@@ -4,8 +4,13 @@ import com.tesis.dto.RetiroDTO.HistorialRetirosResponseDTO;
 import com.tesis.dto.RetiroDTO.RetiroRequestDTO;
 import com.tesis.dto.RetiroDTO.RetiroResponseDTO;
 import com.tesis.service.RetiroService;
+import com.tesis.service.ConstanciaService;
 import jakarta.validation.Valid;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,9 +26,11 @@ import java.security.Principal;
 public class RetiroController {
 
     private final RetiroService retiroService;
+    private final ConstanciaService constanciaService;
 
-    public RetiroController(RetiroService retiroService) {
+    public RetiroController(RetiroService retiroService, ConstanciaService constanciaService) {
         this.retiroService = retiroService;
+        this.constanciaService = constanciaService;
     }
 
     @PostMapping
@@ -37,5 +44,16 @@ public class RetiroController {
     @GetMapping
     public HistorialRetirosResponseDTO obtenerHistorial(@PathVariable Integer matriculaId) {
         return retiroService.obtenerHistorial(matriculaId);
+    }
+
+    @GetMapping(value = "/{retiroId}/constancia-retiro", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> generarConstanciaRetiro(@PathVariable Integer matriculaId,
+                                                           @PathVariable Integer retiroId) {
+        byte[] pdf = constanciaService.generarConstanciaRetiro(matriculaId, retiroId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename("constancia-retiro-" + retiroId + ".pdf").build().toString())
+                .body(pdf);
     }
 }
