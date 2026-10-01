@@ -14,7 +14,9 @@ import org.openpdf.text.Paragraph;
 import org.openpdf.text.Phrase;
 import org.openpdf.text.Rectangle;
 import org.openpdf.text.pdf.PdfPCell;
+import org.openpdf.text.pdf.PdfCopy;
 import org.openpdf.text.pdf.PdfPTable;
+import org.openpdf.text.pdf.PdfReader;
 import org.openpdf.text.pdf.PdfWriter;
 import com.tesis.entity.Empleado;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,6 +24,7 @@ import org.springframework.stereotype.Component;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
+import java.util.List;
 import java.util.EnumMap;
 import java.util.Map;
 
@@ -83,6 +86,30 @@ public class CarnetPdfGenerator {
             return output.toByteArray();
         } catch (Exception exception) {
             throw new IllegalStateException("No se pudo generar el carnet PDF", exception);
+        }
+    }
+
+    public byte[] unirCarnets(List<byte[]> carnets) {
+        if (carnets == null || carnets.isEmpty()) {
+            throw new IllegalArgumentException("Debe incluir al menos un carnet PDF");
+        }
+        try {
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            Document document = new Document();
+            PdfCopy copy = new PdfCopy(document, output);
+            document.open();
+            for (byte[] carnet : carnets) {
+                PdfReader reader = new PdfReader(carnet);
+                for (int page = 1; page <= reader.getNumberOfPages(); page++) {
+                    copy.addPage(copy.getImportedPage(reader, page));
+                }
+                reader.close();
+            }
+            document.close();
+            copy.close();
+            return output.toByteArray();
+        } catch (Exception exception) {
+            throw new IllegalStateException("No se pudieron unir los carnets PDF", exception);
         }
     }
 
