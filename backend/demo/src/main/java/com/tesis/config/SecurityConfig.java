@@ -29,6 +29,8 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.POST, "/api/asistencias/qr").hasRole("ESCANER")
             .requestMatchers(HttpMethod.POST, "/api/empleados/*/carnet")
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
+            .requestMatchers("/api/matriculas/**")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR", "ADMINISTRATIVO")
             .anyRequest().authenticated())
         .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(
             (request, response, exception) -> response.sendError(

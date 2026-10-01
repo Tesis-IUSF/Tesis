@@ -8,7 +8,9 @@ import com.tesis.entity.Grado;
 import com.tesis.entity.Matricula;
 import com.tesis.entity.NivelEducativo;
 import com.tesis.entity.RequisitoMatricula;
+import com.tesis.entity.Roles;
 import com.tesis.entity.Seccion;
+import com.tesis.entity.Usuario;
 import com.tesis.repository.ChecklistMatriculaRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
@@ -42,6 +44,7 @@ class InscripcionServiceTest {
 
     @Test
     void inicializaChecklistYFormalizaCuandoTodosLosObligatoriosEstanCumplidos() {
+                crearVerificador();
         NivelEducativo nivel = crearNivel();
         RequisitoMatricula requisitoNivelObligatorio = crearRequisito(
                 "Partida de nacimiento", true, nivel);
@@ -79,6 +82,9 @@ class InscripcionServiceTest {
         assertNotNull(formalizada.getFechaFormalizacion());
         assertEquals(2, formalizada.getRequisitosObligatoriosCumplidos());
         assertEquals(2, formalizada.getRequisitosObligatorios());
+        assertNotNull(formalizada.getChecklist().stream()
+                .filter(item -> requisitoNivelObligatorio.getId().equals(item.getRequisitoId()))
+                .findFirst().orElseThrow().getVerificadoPorId());
         assertFalse(formalizada.getChecklist().stream()
                 .filter(item -> "Autorización opcional".equals(item.getNombreRequisito()))
                 .findFirst().orElseThrow().getCumplido());
@@ -86,9 +92,23 @@ class InscripcionServiceTest {
 
     private void marcarCumplido(Integer matriculaId, Integer requisitoId) {
         ChecklistUpdateRequestDTO request = new ChecklistUpdateRequestDTO(
-                true, null, "Verificado", null);
-        inscripcionService.actualizarRequisito(matriculaId, requisitoId, request);
+                                true, "Verificado", null);
+                inscripcionService.actualizarRequisito(matriculaId, requisitoId, request, "verificador@test.local");
     }
+
+        private void crearVerificador() {
+                Roles rol = new Roles();
+                rol.setNombreRol("Administrador");
+                entityManager.persist(rol);
+
+                Usuario usuario = new Usuario();
+                usuario.setNombreUsuario("verificador");
+                usuario.setEmail("verificador@test.local");
+                usuario.setPasswordHash("hash");
+                usuario.setRol(rol);
+                entityManager.persist(usuario);
+                entityManager.flush();
+        }
 
     private NivelEducativo crearNivel() {
         NivelEducativo nivel = new NivelEducativo();
