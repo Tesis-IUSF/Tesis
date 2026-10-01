@@ -13,11 +13,13 @@ import com.tesis.repository.AsistenciaRepository;
 import com.tesis.repository.CredencialQrRepository;
 import com.tesis.repository.EmpleadoRepository;
 import com.tesis.security.JwtProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -42,17 +44,30 @@ public class AsistenciaService {
     private final EmpleadoRepository empleadoRepository;
     private final CredencialQrRepository credencialQrRepository;
     private final JwtProvider jwtProvider;
+    private final Clock clock;
 
+    @Autowired
     public AsistenciaService(AsistenciaRepository asistenciaRepository,
                              AsignacionTurnoRepository asignacionTurnoRepository,
                              EmpleadoRepository empleadoRepository,
                              CredencialQrRepository credencialQrRepository,
                              JwtProvider jwtProvider) {
+        this(asistenciaRepository, asignacionTurnoRepository, empleadoRepository,
+                credencialQrRepository, jwtProvider, Clock.systemDefaultZone());
+    }
+
+    AsistenciaService(AsistenciaRepository asistenciaRepository,
+                      AsignacionTurnoRepository asignacionTurnoRepository,
+                      EmpleadoRepository empleadoRepository,
+                      CredencialQrRepository credencialQrRepository,
+                      JwtProvider jwtProvider,
+                      Clock clock) {
         this.asistenciaRepository = asistenciaRepository;
         this.asignacionTurnoRepository = asignacionTurnoRepository;
         this.empleadoRepository = empleadoRepository;
         this.credencialQrRepository = credencialQrRepository;
         this.jwtProvider = jwtProvider;
+        this.clock = clock;
     }
 
     public AsistenciaResponseDTO registrarEscaneo(String qrToken) {
@@ -69,7 +84,7 @@ public class AsistenciaService {
                 new ResponseStatusException(HttpStatus.NOT_FOUND, "Empleado no encontrado"));
         CredencialQr credencial = credencialQrRepository
                 .findByIdAndEmpleado_IdAndActivaTrueAndExpiraEnAfter(
-                        qrClaims.credencialId(), empleadoId, LocalDateTime.now())
+                        qrClaims.credencialId(), empleadoId, LocalDateTime.now(clock))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
                         "QR revocado o vencido"));
         if (credencial.getExpiraEn().isBefore(LocalDateTime.ofInstant(
@@ -80,7 +95,7 @@ public class AsistenciaService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "El empleado está inactivo");
         }
 
-        LocalDateTime ahora = LocalDateTime.now();
+        LocalDateTime ahora = LocalDateTime.now(clock);
         LocalDate fecha = ahora.toLocalDate();
         AsignacionTurno asignacion = asignacionTurnoRepository.buscarVigentes(empleadoId, fecha)
                 .stream().findFirst().orElseThrow(() -> new ResponseStatusException(
@@ -124,7 +139,7 @@ public class AsistenciaService {
 
     @Transactional(readOnly = true)
     public List<AsistenciaHoyDTO> listarHoy() {
-        LocalDateTime ahora = LocalDateTime.now();
+        LocalDateTime ahora = LocalDateTime.now(clock);
         return asistenciaRepository.findAllByFechaWithPersonalOrderByHoraEntrada(ahora.toLocalDate())
                 .stream()
                 .map(asistencia -> toAsistenciaHoy(asistencia, ahora))
@@ -176,7 +191,8 @@ public class AsistenciaService {
                                               Integer departamentoId,
                                               Integer turnoId) {
         validarRangoFechas(desde, hasta);
-        LocalDate fechaFinal = hasta.isAfter(LocalDate.now()) ? LocalDate.now() : hasta;
+        LocalDate hoy = LocalDate.now(clock);
+        LocalDate fechaFinal = hasta.isAfter(hoy) ? hoy : hasta;
         if (desde.isAfter(fechaFinal)) {
             return List.of();
         }
@@ -259,7 +275,11 @@ public class AsistenciaService {
         Integer minutosTrabajados = null;
         String horasTrabajadas = null;
         if (horaEntrada != null) {
-            LocalDateTime inicio = LocalDateTime.of(asistencia.getFecha(), horaEntrada);
+            LocalDate fechaEntrada = asistencia.getFecha();
+            if (asistencia.getHoraSalida() == null && horaEntrada.isAfter(ahora.toLocalTime())) {
+                fechaEntrada = fechaEntrada.minusDays(1);
+            }
+            LocalDateTime inicio = LocalDateTime.of(fechaEntrada, horaEntrada);
             LocalDateTime fin = asistencia.getHoraSalida() == null
                     ? ahora
                     : LocalDateTime.of(asistencia.getFecha(), asistencia.getHoraSalida());

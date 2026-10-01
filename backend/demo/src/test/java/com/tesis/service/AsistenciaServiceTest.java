@@ -21,10 +21,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -58,13 +60,16 @@ class AsistenciaServiceTest {
         @Mock
         private JwtProvider jwtProvider;
 
-    private AsistenciaService asistenciaService;
+        private AsistenciaService asistenciaService;
+        private Clock clock;
 
     @BeforeEach
     void setUp() {
+        ZoneId zone = ZoneId.systemDefault();
+        clock = Clock.fixed(LocalDate.now().atTime(1, 0).atZone(zone).toInstant(), zone);
         asistenciaService = new AsistenciaService(
                 asistenciaRepository, asignacionTurnoRepository, empleadoRepository,
-                credencialQrRepository, jwtProvider);
+                credencialQrRepository, jwtProvider, clock);
     }
 
     @Test
@@ -93,7 +98,7 @@ class AsistenciaServiceTest {
         Turno turno = turnoVigente();
         stubCredencialQr();
         Asistencia asistencia = asistenciaExistente(empleado, turno);
-        LocalTime entrada = LocalTime.now().minusMinutes(1);
+        LocalTime entrada = LocalTime.now(clock).minusMinutes(1);
         asistencia.setHoraEntrada(entrada);
         when(empleadoRepository.findByIdForUpdate(7)).thenReturn(Optional.of(empleado));
         when(asignacionTurnoRepository.buscarVigentes(7, LocalDate.now()))
@@ -116,8 +121,8 @@ class AsistenciaServiceTest {
         Turno turno = turnoVigente();
         stubCredencialQr();
         Asistencia asistencia = asistenciaExistente(empleado, turno);
-        asistencia.setHoraEntrada(LocalTime.now().minusHours(1));
-        asistencia.setHoraSalida(LocalTime.now().minusMinutes(1));
+        asistencia.setHoraEntrada(LocalTime.now(clock).minusHours(1));
+        asistencia.setHoraSalida(LocalTime.now(clock).minusMinutes(1));
         when(empleadoRepository.findByIdForUpdate(7)).thenReturn(Optional.of(empleado));
         when(asignacionTurnoRepository.buscarVigentes(7, LocalDate.now()))
                 .thenReturn(List.of(asignacion(turno)));
@@ -136,9 +141,9 @@ class AsistenciaServiceTest {
         Empleado empleado = empleadoActivo();
         Turno turno = turnoVigente();
         stubCredencialQr();
-        turno.setHoraEntrada(LocalTime.now().plusMinutes(5));
+        turno.setHoraEntrada(LocalTime.now(clock).plusMinutes(5));
         Asistencia asistencia = asistenciaExistente(empleado, turno);
-        asistencia.setHoraEntrada(LocalTime.now().minusMinutes(1));
+        asistencia.setHoraEntrada(LocalTime.now(clock).minusMinutes(1));
         when(empleadoRepository.findByIdForUpdate(7)).thenReturn(Optional.of(empleado));
         when(asignacionTurnoRepository.buscarVigentes(7, LocalDate.now()))
                 .thenReturn(List.of(asignacion(turno)));
@@ -172,7 +177,7 @@ class AsistenciaServiceTest {
         void listarHoyCalculaDuracionYConservaSalidaNula() {
                 Empleado empleado = empleadoActivo();
                 Asistencia asistencia = asistenciaExistente(empleado, turnoVigente());
-                asistencia.setHoraEntrada(LocalTime.now().minusHours(2).minusMinutes(15));
+                asistencia.setHoraEntrada(LocalTime.now(clock).minusHours(2).minusMinutes(15));
                 asistencia.setHoraSalida(null);
                 when(asistenciaRepository.findAllByFechaWithPersonalOrderByHoraEntrada(LocalDate.now()))
                                 .thenReturn(List.of(asistencia));
@@ -336,11 +341,11 @@ class AsistenciaServiceTest {
 
     private void stubCredencialQr() {
         when(jwtProvider.validarTokenQr(QR_TOKEN)).thenReturn(new JwtProvider.QrClaims(
-                7, QR_CREDENTIAL_ID, Instant.now().plusSeconds(3600)));
+                7, QR_CREDENTIAL_ID, Instant.now(clock).plusSeconds(3600)));
         CredencialQr credencial = new CredencialQr();
         credencial.setId(QR_CREDENTIAL_ID);
         credencial.setActiva(true);
-        credencial.setExpiraEn(LocalDateTime.now().plusHours(1));
+        credencial.setExpiraEn(LocalDateTime.now(clock).plusHours(1));
         when(credencialQrRepository.findByIdAndEmpleado_IdAndActivaTrueAndExpiraEnAfter(
                 eq(QR_CREDENTIAL_ID), eq(7), any(LocalDateTime.class)))
                 .thenReturn(Optional.of(credencial));
@@ -350,8 +355,8 @@ class AsistenciaServiceTest {
         Turno turno = new Turno();
         turno.setId(2);
         turno.setNombre("Diurno");
-        turno.setHoraEntrada(LocalTime.now().minusHours(1));
-        turno.setHoraSalida(LocalTime.now().plusHours(1));
+        turno.setHoraEntrada(LocalTime.now(clock).minusHours(1));
+        turno.setHoraSalida(LocalTime.now(clock).plusHours(1));
         turno.setToleranciaMin((short) 0);
         turno.setActivo(true);
         turno.setLunes(true);
@@ -381,7 +386,7 @@ class AsistenciaServiceTest {
         asistencia.setMinutosTardanza((short) 0);
         asistencia.setMinutosExtra((short) 0);
         asistencia.setCorregido(false);
-        asistencia.setCreadoEn(LocalDateTime.now());
+        asistencia.setCreadoEn(LocalDateTime.now(clock));
         return asistencia;
     }
 }
