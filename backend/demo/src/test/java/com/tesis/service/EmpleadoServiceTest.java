@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -57,9 +59,10 @@ class EmpleadoServiceTest {
     @Test
     void listarDevuelveEmpleadosConDatosDeRelaciones() {
         Empleado empleado = empleadoExistente();
-        when(empleadoRepository.findAll()).thenReturn(List.of(empleado));
+        when(empleadoRepository.findAll(any(PageRequest.class)))
+            .thenReturn(new PageImpl<>(List.of(empleado), PageRequest.of(0, 25), 1));
 
-        List<EmpleadoResponseDTO> respuesta = empleadoService.listar();
+        List<EmpleadoResponseDTO> respuesta = empleadoService.listar(PageRequest.of(0, 25)).getContent();
 
         assertEquals(1, respuesta.size());
         assertEquals(empleado.getId(), respuesta.get(0).getId());
