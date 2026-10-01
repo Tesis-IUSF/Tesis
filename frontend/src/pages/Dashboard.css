@@ -1,0 +1,263 @@
+.dash-main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+}
+
+.eyebrow {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #7a8fa6;
+  margin: 0 0 0.3rem;
+}
+
+.dash-heading {
+  margin-bottom: 2rem;
+  animation: dashFadeUp 0.5s ease both;
+}
+
+.dash-heading h1 {
+  font-family: var(--font-titulos);
+  font-size: 2rem;
+  color: var(--cen-azul-oscuro);
+  margin: 0 0 0.25rem;
+  line-height: 1.2;
+}
+
+.dash-heading p {
+  color: #556a8f;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: var(--cen-blanco);
+  border-radius: 14px;
+  padding: 1.5rem 1.25rem;
+  box-shadow: 0 4px 16px rgba(74, 125, 181, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.25rem;
+  animation: dashFadeUp 0.5s ease both;
+  border-top: 4px solid var(--cen-azul-claro);
+  transition:
+    box-shadow 0.2s,
+    transform 0.2s;
+}
+
+.stat-card--azul {
+  border-top-color: var(--cen-azul);
+  animation-delay: 0.05s;
+}
+.stat-card--verde {
+  border-top-color: var(--cen-verde);
+  animation-delay: 0.12s;
+}
+.stat-card--dorado {
+  border-top-color: var(--cen-dorado);
+  animation-delay: 0.19s;
+}
+.stat-card--rojo {
+  border-top-color: var(--cen-rojo);
+}
+.stat-card--naranja {
+  border-top-color: var(--cen-naranja);
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(74, 125, 181, 0.14);
+}
+
+.stat-icon {
+  font-size: 1.75rem;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.stat-value {
+  font-family: var(--font-titulos);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--cen-azul-oscuro);
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.82rem;
+  color: #7a8fa6;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+
+.semana-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.stats-row--semana {
+  grid-template-columns: repeat(4, 1fr);
+  margin-bottom: 2rem;
+}
+
+.link-detalle-semana {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--cen-azul);
+  text-decoration: none;
+}
+
+.link-detalle-semana:hover {
+  text-decoration: underline;
+}
+
+.modules-title {
+  font-family: var(--font-titulos);
+  font-size: 1.1rem;
+  color: var(--cen-azul-oscuro);
+  margin: 0 0 1rem;
+  animation: dashFadeUp 0.5s 0.25s ease both;
+}
+
+.modules-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.module-card {
+  background: var(--cen-blanco);
+  border-radius: 14px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 16px rgba(74, 125, 181, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+  transition:
+    box-shadow 0.2s,
+    transform 0.2s,
+    border-color 0.2s;
+  animation: dashFadeUp 0.5s ease both;
+  border: 1.5px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.module-card:nth-child(1) {
+  animation-delay: 0.3s;
+}
+.module-card:nth-child(2) {
+  animation-delay: 0.37s;
+}
+.module-card:nth-child(3) {
+  animation-delay: 0.44s;
+}
+
+.module-card::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--cen-azul);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s ease;
+}
+
+.module-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px rgba(74, 125, 181, 0.13);
+  border-color: var(--cen-azul-claro);
+}
+
+.module-card:hover::before {
+  transform: scaleX(1);
+}
+
+.module-emoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.module-card h3 {
+  font-family: var(--font-titulos);
+  font-size: 1.05rem;
+  color: var(--cen-azul-oscuro);
+  margin: 0;
+}
+
+.module-card p {
+  font-size: 0.875rem;
+  color: #7a8fa6;
+  margin: 0;
+  flex: 1;
+}
+
+.module-link {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--cen-azul);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.module-link::after {
+  content: "→";
+  transition: transform 0.2s;
+}
+
+.module-card:hover .module-link::after {
+  transform: translateX(4px);
+}
+
+@keyframes dashFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 600px) {
+  .stats-row,
+  .modules-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-row--semana {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dash-heading h1 {
+    font-size: 1.5rem;
+  }
+
+  .dash-main {
+    padding: 1.25rem 1rem 2rem;
+  }
+}
