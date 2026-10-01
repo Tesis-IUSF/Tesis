@@ -1,13 +1,18 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import api from "../utils/api";
+import { useToast } from "../context/ToastContext";
+import { extractErrorMessage } from "../utils/errors";
+import ConfirmDialog from "../components/ConfirmDialog";
 import "./Empleados.css";
 
 function Empleados() {
+  const toast = useToast();
   const [empleados, setEmpleados] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
-  const [eliminandoId, setEliminandoId] = useState(null);
+  const [eliminando, setEliminando] = useState(false);
+  const [empleadoAEliminar, setEmpleadoAEliminar] = useState(null);
 
   const cargarEmpleados = async () => {
     setCargando(true);
@@ -16,7 +21,9 @@ function Empleados() {
       const { data } = await api.get("/empleados");
       setEmpleados(data);
     } catch (err) {
-      setError("No se pudo cargar la lista de empleados. Intenta de nuevo.");
+      setError(
+        extractErrorMessage(err, "No se pudo cargar la lista de empleados."),
+      );
     } finally {
       setCargando(false);
     }
@@ -26,22 +33,20 @@ function Empleados() {
     cargarEmpleados();
   }, []);
 
-  const handleEliminar = async (id, nombreCompleto) => {
-    if (
-      !window.confirm(
-        `¿Eliminar a ${nombreCompleto}? Esta acción no se puede deshacer.`,
-      )
-    ) {
-      return;
-    }
-    setEliminandoId(id);
+  const confirmarEliminar = async () => {
+    if (!empleadoAEliminar) return;
+    setEliminando(true);
     try {
-      await api.delete(`/empleados/${id}`);
-      setEmpleados((prev) => prev.filter((e) => e.id !== id));
+      await api.delete(`/empleados/${empleadoAEliminar.id}`);
+      setEmpleados((prev) => prev.filter((e) => e.id !== empleadoAEliminar.id));
+      toast.success(
+        `${empleadoAEliminar.nombre} ${empleadoAEliminar.apellido} fue eliminado correctamente.`,
+      );
+      setEmpleadoAEliminar(null);
     } catch (err) {
-      alert("No se pudo eliminar al empleado. Intenta de nuevo.");
+      toast.error(extractErrorMessage(err, "No se pudo eliminar al empleado."));
     } finally {
-      setEliminandoId(null);
+      setEliminando(false);
     }
   };
 
@@ -91,7 +96,6 @@ function Empleados() {
                     {emp.nombre} {emp.apellido}
                   </td>
                   <td data-label="Cargo">{emp.cargoNombre || "—"}</td>
-                  {/* TODO: el backend aun no devuelve turno en EmpleadoResponseDTO */}
                   <td data-label="Turno">—</td>
                   <td data-label="Acciones">
                     <Link
@@ -102,12 +106,9 @@ function Empleados() {
                     </Link>
                     <button
                       className="btn-delete"
-                      onClick={() =>
-                        handleEliminar(emp.id, `${emp.nombre} ${emp.apellido}`)
-                      }
-                      disabled={eliminandoId === emp.id}
+                      onClick={() => setEmpleadoAEliminar(emp)}
                     >
-                      {eliminandoId === emp.id ? "Eliminando..." : "Eliminar"}
+                      Eliminar
                     </button>
                   </td>
                 </tr>
@@ -116,6 +117,19 @@ function Empleados() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        open={!!empleadoAEliminar}
+        title="Eliminar empleado"
+        message={
+          empleadoAEliminar
+            ? `¿Eliminar a ${empleadoAEliminar.nombre} ${empleadoAEliminar.apellido}? Esta acción no se puede deshacer.`
+            : ""
+        }
+        onConfirm={confirmarEliminar}
+        onCancel={() => setEmpleadoAEliminar(null)}
+        cargando={eliminando}
+      />
     </div>
   );
 }
