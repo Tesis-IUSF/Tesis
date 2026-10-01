@@ -8,6 +8,8 @@ import com.tesis.entity.RetiroMatricula;
 import com.tesis.entity.Seccion;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
+import org.openpdf.text.pdf.PdfReader;
+import org.openpdf.text.pdf.parser.PdfTextExtractor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ActiveProfiles;
@@ -49,6 +51,26 @@ class ConstanciaServiceTest {
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> constanciaService.generarConstanciaInscripcion(matricula.getId()));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+    }
+
+    @Test
+    void generaConstanciaDeAsignacionParaMatriculaPreinscrita() {
+        Matricula matricula = crearMatricula("preinscrito", "CONSTANCIA-CUPO-01", "E");
+
+        byte[] pdf = constanciaService.generarConstanciaAsignacionCupo(matricula.getId());
+
+        assertTrue(new String(pdf, 0, 5).startsWith("%PDF-"));
+        assertTrue(extraerTexto(pdf).contains("2026-2027"));
+    }
+
+    @Test
+    void rechazaConstanciaDeAsignacionCuandoElCupoYaNoEstaReservado() {
+        Matricula matricula = crearMatricula("completada", "CONSTANCIA-CUPO-02", "F");
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> constanciaService.generarConstanciaAsignacionCupo(matricula.getId()));
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
     }
@@ -109,5 +131,16 @@ class ConstanciaServiceTest {
         entityManager.persist(matricula);
         entityManager.flush();
         return matricula;
+    }
+
+    private String extraerTexto(byte[] pdf) {
+        try {
+            PdfReader reader = new PdfReader(pdf);
+            String texto = new PdfTextExtractor(reader).getTextFromPage(1);
+            reader.close();
+            return texto;
+        } catch (Exception exception) {
+            throw new AssertionError("No se pudo leer el texto del PDF", exception);
+        }
     }
 }
