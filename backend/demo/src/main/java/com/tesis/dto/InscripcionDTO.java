@@ -19,8 +19,6 @@ public class InscripcionDTO {
         @NotNull
         private Boolean cumplido;
 
-        private Integer verificadoPorId;
-
         private String notas;
 
         @Size(max = 500)
