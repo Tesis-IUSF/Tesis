@@ -11,6 +11,8 @@ public interface CredencialQrRepository extends JpaRepository<CredencialQr, Stri
 
     List<CredencialQr> findByEmpleado_IdAndActivaTrue(Integer empleadoId);
 
+    List<CredencialQr> findByActivaTrueOrderByCreadaEnDesc();
+
     Optional<CredencialQr> findByIdAndEmpleado_IdAndActivaTrueAndExpiraEnAfter(
             String id, Integer empleadoId, LocalDateTime fechaHora);
 }
