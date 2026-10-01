@@ -4,23 +4,52 @@ import com.tesis.entity.TipoUsuario;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 public class UsuarioDTO {
 
-    @Data
+    @Getter
+    @Setter
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
     public static class UsuarioRequestDTO {
         private String nombreUsuario;
         private String email;
+        private String password;
+        @Deprecated
         private String passwordHash;
         private Integer rolId;
+        @Builder.Default
         private TipoUsuario tipoUsuario = TipoUsuario.PERSONAL;
+        @Builder.Default
         private Boolean activo = true;
+
+        public String getPassword() {
+            return password != null ? password : passwordHash;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+            if (this.passwordHash == null) {
+                this.passwordHash = password;
+            }
+        }
+
+        public String getPasswordHash() {
+            return passwordHash != null ? passwordHash : password;
+        }
+
+        public void setPasswordHash(String passwordHash) {
+            this.passwordHash = passwordHash;
+            if (this.password == null) {
+                this.password = passwordHash;
+            }
+        }
     }
 
     @Data
