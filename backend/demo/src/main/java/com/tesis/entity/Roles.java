@@ -30,8 +30,10 @@ public class Roles {
     private String descripcion;
 
     @Column(name = "activo", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 1")
+    @Builder.Default
     private Boolean activo = true;
 
     @OneToMany(mappedBy = "rol", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    @Builder.Default
     private List<Usuario> usuarios = new ArrayList<>();
 }

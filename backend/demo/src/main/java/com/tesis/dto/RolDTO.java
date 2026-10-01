@@ -14,6 +14,7 @@ public class RolDTO {
     public static class RolRequestDTO {
         private String nombreRol;
         private String descripcion;
+        @Builder.Default
         private Boolean activo = true;
     }
 
