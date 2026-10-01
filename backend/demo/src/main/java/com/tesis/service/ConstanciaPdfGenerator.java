@@ -34,7 +34,7 @@ public class ConstanciaPdfGenerator {
             document.add(new Paragraph(matricula.getEstudiante().getNombre() + " "
                     + matricula.getEstudiante().getApellido(), font(16, Font.BOLD)));
             document.add(new Paragraph("se encuentra inscrito(a) en esta institución para el año escolar "
-                    + matricula.getAnioEscolar() + ".", font(12, Font.NORMAL)));
+                    + periodoEscolar(matricula.getAnioEscolar()) + ".", font(12, Font.NORMAL)));
 
             PdfPTable details = tablaDetalles();
             agregarDetalle(details, "N.º de matrícula", matricula.getId().toString());
@@ -49,6 +49,30 @@ public class ConstanciaPdfGenerator {
         });
     }
 
+        public byte[] generarAsignacionCupo(Matricula matricula) {
+            return generar("CONSTANCIA DE ACEPTACIÓN DE CUPO", document -> {
+            document.add(new Paragraph("Por medio de la presente se hace constar que:",
+                font(12, Font.NORMAL)));
+            document.add(new Paragraph(matricula.getEstudiante().getNombre() + " "
+                + matricula.getEstudiante().getApellido(), font(16, Font.BOLD)));
+            document.add(new Paragraph("titular de la cédula de identidad "
+                + matricula.getEstudiante().getCedula() + ", tiene un cupo reservado en "
+                    + institucion + " para el período escolar "
+                    + periodoEscolar(matricula.getAnioEscolar()) + ".",
+                font(12, Font.NORMAL)));
+
+            PdfPTable details = tablaDetalles();
+            agregarDetalle(details, "N.º de matrícula", matricula.getId().toString());
+            agregarDetalle(details, "Nivel", matricula.getSeccion().getGrado()
+                .getNivelEducativo().getNombre());
+            agregarDetalle(details, "Grado", grado(matricula));
+            agregarDetalle(details, "Sección", matricula.getSeccion().getLetraSeccion());
+            agregarDetalle(details, "Período escolar", periodoEscolar(matricula.getAnioEscolar()));
+            agregarDetalle(details, "Fecha de preinscripción", fecha(matricula.getFechaSolicitud()));
+            document.add(details);
+        });
+        }
+
     public byte[] generarRetiro(RetiroMatricula retiro) {
         Matricula matricula = retiro.getMatricula();
         return generar("CONSTANCIA DE RETIRO", document -> {
@@ -56,7 +80,8 @@ public class ConstanciaPdfGenerator {
                     font(12, Font.NORMAL)));
             document.add(new Paragraph(matricula.getEstudiante().getNombre() + " "
                     + matricula.getEstudiante().getApellido(), font(16, Font.BOLD)));
-            document.add(new Paragraph("correspondiente al año escolar " + matricula.getAnioEscolar() + ".",
+                document.add(new Paragraph("correspondiente al año escolar "
+                    + periodoEscolar(matricula.getAnioEscolar()) + ".",
                     font(12, Font.NORMAL)));
 
             PdfPTable details = tablaDetalles();
@@ -149,6 +174,10 @@ public class ConstanciaPdfGenerator {
 
     private String fecha(LocalDate fecha) {
         return fecha == null ? "No registrada" : fecha.format(FORMATO_FECHA);
+    }
+
+    String periodoEscolar(Short anioInicio) {
+        return anioInicio == null ? "No registrado" : anioInicio + "-" + (anioInicio + 1);
     }
 
     private String texto(String valor, String alternativa) {

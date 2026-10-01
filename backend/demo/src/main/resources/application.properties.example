@@ -4,6 +4,7 @@
 # Define el perfil activo por defecto para desarrollo local
 spring.profiles.active=dev
 spring.application.name=sitio-web
+app.institucion.nombre=C.E.N. Lcda. Roraima Asansa Escandela
 
 # ============================================================
 # SERVIDOR (Configuración común)

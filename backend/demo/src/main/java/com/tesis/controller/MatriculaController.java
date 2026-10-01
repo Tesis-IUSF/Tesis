@@ -91,6 +91,16 @@ public class MatriculaController {
         return inscripcionService.formalizar(matriculaId, request);
     }
 
+    @GetMapping(value = "/{matriculaId}/constancia-asignacion-cupo", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> generarConstanciaAsignacionCupo(@PathVariable Integer matriculaId) {
+        byte[] pdf = constanciaService.generarConstanciaAsignacionCupo(matriculaId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                    .filename("constancia-aceptacion-cupo-" + matriculaId + ".pdf").build().toString())
+                .body(pdf);
+    }
+
     @GetMapping(value = "/{matriculaId}/constancia-inscripcion", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> generarConstanciaInscripcion(@PathVariable Integer matriculaId) {
         byte[] pdf = constanciaService.generarConstanciaInscripcion(matriculaId);
