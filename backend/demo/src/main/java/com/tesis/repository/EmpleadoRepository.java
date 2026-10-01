@@ -17,6 +17,8 @@ public interface EmpleadoRepository extends JpaRepository<Empleado, Integer> {
 
     boolean existsByCedula(String cedula);
 
+    Optional<Empleado> findByCedula(String cedula);
+
     boolean existsByCedulaAndIdNot(String cedula, Integer id);
 
     boolean existsByUsuario_Id(Integer usuarioId);
