@@ -10,12 +10,12 @@ import com.tesis.repository.CargoRepository;
 import com.tesis.repository.DepartamentoRepository;
 import com.tesis.repository.EmpleadoRepository;
 import com.tesis.repository.UsuarioRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.List;
 
 @Service
 @Transactional
@@ -37,8 +37,8 @@ public class EmpleadoService {
     }
 
     @Transactional(readOnly = true)
-    public List<EmpleadoResponseDTO> listar() {
-        return empleadoRepository.findAll().stream().map(this::toResponse).toList();
+    public Page<EmpleadoResponseDTO> listar(Pageable pageable) {
+        return empleadoRepository.findAll(pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
