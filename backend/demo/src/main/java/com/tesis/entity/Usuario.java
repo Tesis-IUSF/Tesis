@@ -36,8 +36,8 @@ public class Usuario {
     @JoinColumn(name = "rol_id", nullable = false, foreignKey = @ForeignKey(name = "fk_usuario_rol"))
     private Roles rol;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "tipo_usuario", nullable = false, columnDefinition = "ENUM('PERSONAL','ESTUDIANTE','REPRESENTANTE','VISITANTE') DEFAULT 'PERSONAL'")
+    @Convert(converter = TipoUsuarioConverter.class)
+    @Column(name = "tipo_usuario", nullable = false, columnDefinition = "ENUM('personal','estudiante','representante','visitante') DEFAULT 'personal'")
         @Builder.Default
     private TipoUsuario tipoUsuario = TipoUsuario.PERSONAL;
 
