@@ -1,25 +1,42 @@
-import { useState, useEffect } from "react";
+// src/pages/Empleados.jsx
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
+import { useCargos } from "../hooks/useCatalogos";
 import ConfirmDialog from "../components/ConfirmDialog";
 import "./Empleados.css";
 
 function Empleados() {
   const toast = useToast();
+  const { items: cargos } = useCargos();
+
   const [empleados, setEmpleados] = useState([]);
+  const [pagina, setPagina] = useState({
+    page: 0,
+    totalPages: 1,
+    totalElements: 0,
+  });
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [eliminando, setEliminando] = useState(false);
   const [empleadoAEliminar, setEmpleadoAEliminar] = useState(null);
+  const [filtroCargoId, setFiltroCargoId] = useState("");
 
-  const cargarEmpleados = async () => {
+  const cargarEmpleados = useCallback(async (page = 0) => {
     setCargando(true);
     setError("");
     try {
-      const { data } = await api.get("/empleados");
-      setEmpleados(data);
+      const { data } = await api.get("/empleados", {
+        params: { page, size: 25 },
+      });
+      setEmpleados(data.content);
+      setPagina({
+        page: data.page,
+        totalPages: data.totalPages,
+        totalElements: data.totalElements,
+      });
     } catch (err) {
       setError(
         extractErrorMessage(err, "No se pudo cargar la lista de empleados."),
@@ -27,11 +44,11 @@ function Empleados() {
     } finally {
       setCargando(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    cargarEmpleados();
-  }, []);
+    cargarEmpleados(0);
+  }, [cargarEmpleados]);
 
   const confirmarEliminar = async () => {
     if (!empleadoAEliminar) return;
@@ -50,6 +67,13 @@ function Empleados() {
     }
   };
 
+  // Filtro en cliente, sobre la página ya cargada (según pide el criterio de SW-44)
+  const empleadosFiltrados = filtroCargoId
+    ? empleados.filter((e) => String(e.cargoId) === filtroCargoId)
+    : empleados;
+
+  const limpiarFiltros = () => setFiltroCargoId("");
+
   return (
     <div className="mod-main">
       <div className="mod-heading">
@@ -59,6 +83,46 @@ function Empleados() {
             + Crear Empleado
           </Link>
         </div>
+      </div>
+
+      <div className="filters-bar">
+        <label>
+          Cargo
+          <select
+            value={filtroCargoId}
+            onChange={(e) => setFiltroCargoId(e.target.value)}
+          >
+            <option value="">Todos</option>
+            {cargos.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombreCargo}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {/* Turno: el backend aun no asocia un turno fijo al empleado (se maneja
+            via AsignacionTurno, una entidad aparte), asi que no hay dato por
+            empleado contra el cual filtrar todavia. Select deshabilitado. */}
+        <label>
+          Turno
+          <select
+            disabled
+            title="Próximamente: el backend aún no expone el turno por empleado"
+          >
+            <option>No disponible aún</option>
+          </select>
+        </label>
+
+        {filtroCargoId && (
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={limpiarFiltros}
+          >
+            Limpiar Filtros
+          </button>
+        )}
       </div>
 
       {error && <p className="error-msg">{error}</p>}
@@ -81,15 +145,17 @@ function Empleados() {
                   Cargando empleados...
                 </td>
               </tr>
-            ) : empleados.length === 0 ? (
+            ) : empleadosFiltrados.length === 0 ? (
               <tr>
                 <td colSpan={5} className="tabla-estado">
                   <span className="tabla-estado-icono">📋</span>
-                  No hay empleados registrados todavía.
+                  {filtroCargoId
+                    ? "No hay empleados con ese cargo en esta página."
+                    : "No hay empleados registrados todavía."}
                 </td>
               </tr>
             ) : (
-              empleados.map((emp) => (
+              empleadosFiltrados.map((emp) => (
                 <tr key={emp.id}>
                   <td data-label="Cédula">{emp.cedula}</td>
                   <td data-label="Nombre">
@@ -117,6 +183,27 @@ function Empleados() {
           </tbody>
         </table>
       </div>
+
+      {pagina.totalPages > 1 && (
+        <div className="paginacion">
+          <button
+            disabled={pagina.page === 0 || cargando}
+            onClick={() => cargarEmpleados(pagina.page - 1)}
+          >
+            ← Anterior
+          </button>
+          <span>
+            Página {pagina.page + 1} de {pagina.totalPages} (
+            {pagina.totalElements} empleados)
+          </span>
+          <button
+            disabled={pagina.page + 1 >= pagina.totalPages || cargando}
+            onClick={() => cargarEmpleados(pagina.page + 1)}
+          >
+            Siguiente →
+          </button>
+        </div>
+      )}
 
       <ConfirmDialog
         open={!!empleadoAEliminar}
