@@ -26,6 +26,9 @@ public class SecurityConfig {
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(authorize -> authorize
             .requestMatchers("/api/auth/login", "/api/auth/registrar").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/blog/categorias", "/api/blog/publicaciones/**").permitAll()
+            .requestMatchers("/api/blog/admin/**")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR", "ADMINISTRATIVO")
             .requestMatchers(HttpMethod.POST, "/api/asistencias/qr").hasRole("ESCANER")
             .requestMatchers(HttpMethod.POST, "/api/empleados/*/carnet")
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
