@@ -5,13 +5,14 @@ import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
 import { useCargos, useDepartamentos } from "../hooks/useCatalogos";
+import Topbar from "../components/Topbar";
 import "./EmpleadoForm.css";
 
 const VACIO = {
   nombre: "",
   apellido: "",
   cedula: "",
-  correoLocal: "", // solo la parte antes de @asansa.local
+  correoLocal: "",
   telefono: "",
   fechaNacimiento: "",
   sexo: "",
@@ -131,180 +132,188 @@ function EmpleadoForm() {
 
   if (cargandoDatos) {
     return (
-      <div className="mod-main">
-        <p>Cargando empleado...</p>
-      </div>
+      <>
+        <Topbar mostrarVolver />
+        <div className="mod-main">
+          <p>Cargando empleado...</p>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="mod-main">
-      <div className="mod-heading">
-        <h1>{esEdicion ? "Editar Empleado" : "Crear Empleado"}</h1>
-      </div>
+    <>
+      <Topbar mostrarVolver />
+      <div className="mod-main">
+        <div className="mod-heading">
+          <h1>{esEdicion ? "Editar Empleado" : "Crear Empleado"}</h1>
+        </div>
 
-      <form className="empleado-form" onSubmit={handleSubmit}>
-        <div className="form-grid-2">
-          <label>
-            Nombre *
-            <input
-              value={form.nombre}
-              onChange={(e) => actualizarCampo("nombre", e.target.value)}
-            />
-            {errores.nombre && (
-              <span className="campo-error">{errores.nombre}</span>
-            )}
-          </label>
-
-          <label>
-            Apellido *
-            <input
-              value={form.apellido}
-              onChange={(e) => actualizarCampo("apellido", e.target.value)}
-            />
-            {errores.apellido && (
-              <span className="campo-error">{errores.apellido}</span>
-            )}
-          </label>
-
-          <label>
-            Cédula *
-            <input
-              value={form.cedula}
-              onChange={(e) =>
-                actualizarCampo(
-                  "cedula",
-                  soloDigitos(e.target.value).slice(0, 8),
-                )
-              }
-              inputMode="numeric"
-              placeholder="12345678"
-            />
-            {errores.cedula && (
-              <span className="campo-error">{errores.cedula}</span>
-            )}
-          </label>
-
-          <label>
-            Correo
-            <div className="input-group">
+        <form className="empleado-form" onSubmit={handleSubmit}>
+          <div className="form-grid-2">
+            <label>
+              Nombre *
               <input
-                value={form.correoLocal}
-                onChange={(e) =>
-                  actualizarCampo("correoLocal", e.target.value.trim())
-                }
-                placeholder="nombre.apellido"
+                value={form.nombre}
+                onChange={(e) => actualizarCampo("nombre", e.target.value)}
               />
-              <span className="input-group-suffix">{DOMINIO_CORREO}</span>
-            </div>
-            {errores.correoLocal && (
-              <span className="campo-error">{errores.correoLocal}</span>
-            )}
-          </label>
+              {errores.nombre && (
+                <span className="campo-error">{errores.nombre}</span>
+              )}
+            </label>
 
-          <label>
-            Teléfono
-            <input
-              value={form.telefono}
-              onChange={(e) =>
-                actualizarCampo(
-                  "telefono",
-                  soloDigitos(e.target.value).slice(0, 11),
-                )
-              }
-              inputMode="numeric"
-              placeholder="04121234567"
-            />
-            {errores.telefono && (
-              <span className="campo-error">{errores.telefono}</span>
-            )}
-          </label>
+            <label>
+              Apellido *
+              <input
+                value={form.apellido}
+                onChange={(e) => actualizarCampo("apellido", e.target.value)}
+              />
+              {errores.apellido && (
+                <span className="campo-error">{errores.apellido}</span>
+              )}
+            </label>
 
-          <label>
-            Sexo
-            <select
-              value={form.sexo}
-              onChange={(e) => actualizarCampo("sexo", e.target.value)}
+            <label>
+              Cédula *
+              <input
+                value={form.cedula}
+                onChange={(e) =>
+                  actualizarCampo(
+                    "cedula",
+                    soloDigitos(e.target.value).slice(0, 8),
+                  )
+                }
+                inputMode="numeric"
+                placeholder="12345678"
+              />
+              {errores.cedula && (
+                <span className="campo-error">{errores.cedula}</span>
+              )}
+            </label>
+
+            <label>
+              Correo
+              <div className="input-group">
+                <input
+                  value={form.correoLocal}
+                  onChange={(e) =>
+                    actualizarCampo("correoLocal", e.target.value.trim())
+                  }
+                  placeholder="nombre.apellido"
+                />
+                <span className="input-group-suffix">{DOMINIO_CORREO}</span>
+              </div>
+              {errores.correoLocal && (
+                <span className="campo-error">{errores.correoLocal}</span>
+              )}
+            </label>
+
+            <label>
+              Teléfono
+              <input
+                value={form.telefono}
+                onChange={(e) =>
+                  actualizarCampo(
+                    "telefono",
+                    soloDigitos(e.target.value).slice(0, 11),
+                  )
+                }
+                inputMode="numeric"
+                placeholder="04121234567"
+              />
+              {errores.telefono && (
+                <span className="campo-error">{errores.telefono}</span>
+              )}
+            </label>
+
+            <label>
+              Sexo
+              <select
+                value={form.sexo}
+                onChange={(e) => actualizarCampo("sexo", e.target.value)}
+              >
+                <option value="">Selecciona...</option>
+                <option value="M">Masculino</option>
+                <option value="F">Femenino</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </label>
+
+            <label>
+              Fecha de nacimiento
+              <input
+                type="date"
+                value={form.fechaNacimiento}
+                onChange={(e) =>
+                  actualizarCampo("fechaNacimiento", e.target.value)
+                }
+              />
+            </label>
+
+            <label>
+              Fecha de ingreso
+              <input
+                type="date"
+                value={form.fechaIngreso}
+                onChange={(e) =>
+                  actualizarCampo("fechaIngreso", e.target.value)
+                }
+              />
+            </label>
+
+            <label>
+              Cargo
+              <select
+                value={form.cargoId}
+                onChange={(e) => actualizarCampo("cargoId", e.target.value)}
+              >
+                <option value="">Selecciona...</option>
+                {cargos.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombreCargo}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Departamento
+              <select
+                value={form.departamentoId}
+                onChange={(e) =>
+                  actualizarCampo("departamentoId", e.target.value)
+                }
+              >
+                <option value="">Selecciona...</option>
+                {departamentos.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="form-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => navigate("/empleados")}
+              disabled={guardando}
             >
-              <option value="">Selecciona...</option>
-              <option value="M">Masculino</option>
-              <option value="F">Femenino</option>
-              <option value="Otro">Otro</option>
-            </select>
-          </label>
-
-          <label>
-            Fecha de nacimiento
-            <input
-              type="date"
-              value={form.fechaNacimiento}
-              onChange={(e) =>
-                actualizarCampo("fechaNacimiento", e.target.value)
-              }
-            />
-          </label>
-
-          <label>
-            Fecha de ingreso
-            <input
-              type="date"
-              value={form.fechaIngreso}
-              onChange={(e) => actualizarCampo("fechaIngreso", e.target.value)}
-            />
-          </label>
-
-          <label>
-            Cargo
-            <select
-              value={form.cargoId}
-              onChange={(e) => actualizarCampo("cargoId", e.target.value)}
-            >
-              <option value="">Selecciona...</option>
-              {cargos.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nombreCargo}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Departamento
-            <select
-              value={form.departamentoId}
-              onChange={(e) =>
-                actualizarCampo("departamentoId", e.target.value)
-              }
-            >
-              <option value="">Selecciona...</option>
-              {departamentos.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div className="form-actions">
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => navigate("/empleados")}
-            disabled={guardando}
-          >
-            Cancelar
-          </button>
-          <button type="submit" className="btn-primary" disabled={guardando}>
-            {guardando
-              ? "Guardando..."
-              : esEdicion
-                ? "Guardar cambios"
-                : "Crear empleado"}
-          </button>
-        </div>
-      </form>
-    </div>
+              Cancelar
+            </button>
+            <button type="submit" className="btn-primary" disabled={guardando}>
+              {guardando
+                ? "Guardando..."
+                : esEdicion
+                  ? "Guardar cambios"
+                  : "Crear empleado"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </>
   );
 }
 
