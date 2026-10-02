@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import api from "../utils/api";
 import { extractErrorMessage } from "../utils/errors";
 import "./Historico.css";
+import Topbar from "../components/Topbar";
 
 function hace30Dias() {
   const hoy = new Date();
@@ -111,102 +112,107 @@ function Historico() {
   const horasTotales = `${Math.floor(minutosTotales / 60)}:${String(minutosTotales % 60).padStart(2, "0")}`;
 
   return (
-    <div className="mod-main">
-      <div className="mod-heading">
-        <h1>Histórico de Asistencia</h1>
-      </div>
+    <>
+      <Topbar mostrarVolver />
+      <div className="mod-main">
+        <div className="mod-heading">
+          <h1>Histórico de Asistencia</h1>
+        </div>
 
-      <form className="filters-panel" onSubmit={handleConsultar}>
-        <div className="filters-grid">
-          <label>
-            Fecha desde
-            <input
-              type="date"
-              value={desde}
-              onChange={(e) => setDesde(e.target.value)}
-              required
-            />
-          </label>
-          <label>
-            Fecha hasta
-            <input
-              type="date"
-              value={hasta}
-              onChange={(e) => setHasta(e.target.value)}
-              required
-            />
-          </label>
-          <button type="submit" className="btn-consultar" disabled={cargando}>
-            {cargando ? "Consultando…" : "Consultar"}
-          </button>
-        </div>
-      </form>
+        <form className="filters-panel" onSubmit={handleConsultar}>
+          <div className="filters-grid">
+            <label>
+              Fecha desde
+              <input
+                type="date"
+                value={desde}
+                onChange={(e) => setDesde(e.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Fecha hasta
+              <input
+                type="date"
+                value={hasta}
+                onChange={(e) => setHasta(e.target.value)}
+                required
+              />
+            </label>
+            <button type="submit" className="btn-consultar" disabled={cargando}>
+              {cargando ? "Consultando…" : "Consultar"}
+            </button>
+          </div>
+        </form>
 
-      {error && <p className="error-msg">{error}</p>}
+        {error && <p className="error-msg">{error}</p>}
 
-      <div className="stats-row">
-        <div className="stat-card stat-card--verde">
-          <div className="stat-value">{diasTrabajados}</div>
-          <div className="stat-label">Días trabajados</div>
+        <div className="stats-row">
+          <div className="stat-card stat-card--verde">
+            <div className="stat-value">{diasTrabajados}</div>
+            <div className="stat-label">Días trabajados</div>
+          </div>
+          <div className="stat-card stat-card--rojo">
+            <div className="stat-value">{inasistencias}</div>
+            <div className="stat-label">Inasistencias</div>
+          </div>
+          <div className="stat-card stat-card--naranja">
+            <div className="stat-value">{tardanzas}</div>
+            <div className="stat-label">Tardanzas</div>
+          </div>
+          <div className="stat-card stat-card--azul">
+            <div className="stat-value">{horasTotales}</div>
+            <div className="stat-label">Horas totales</div>
+          </div>
         </div>
-        <div className="stat-card stat-card--rojo">
-          <div className="stat-value">{inasistencias}</div>
-          <div className="stat-label">Inasistencias</div>
-        </div>
-        <div className="stat-card stat-card--naranja">
-          <div className="stat-value">{tardanzas}</div>
-          <div className="stat-label">Tardanzas</div>
-        </div>
-        <div className="stat-card stat-card--azul">
-          <div className="stat-value">{horasTotales}</div>
-          <div className="stat-label">Horas totales</div>
-        </div>
-      </div>
 
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Hora Entrada</th>
-              <th>Hora Salida</th>
-              <th>Horas Trabajadas</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cargando ? (
+        <div className="table-container">
+          <table>
+            <thead>
               <tr>
-                <td colSpan={5} className="tabla-estado">
-                  Cargando histórico...
-                </td>
+                <th>Fecha</th>
+                <th>Hora Entrada</th>
+                <th>Hora Salida</th>
+                <th>Horas Trabajadas</th>
+                <th>Estado</th>
               </tr>
-            ) : registros.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="tabla-estado">
-                  <span className="tabla-estado-icono">📋</span>
-                  No hay registros en ese período.
-                </td>
-              </tr>
-            ) : (
-              registros.map((r) => (
-                <tr key={r.id}>
-                  <td data-label="Fecha">{r.fecha}</td>
-                  <td data-label="Hora Entrada">{formatHora(r.horaEntrada)}</td>
-                  <td data-label="Hora Salida">{formatHora(r.horaSalida)}</td>
-                  <td data-label="Horas Trabajadas">
-                    {calcularHorasTrabajadas(r.horaEntrada, r.horaSalida)}
-                  </td>
-                  <td data-label="Estado">
-                    {badgeEstado(r.estado, r.minutosTardanza)}
+            </thead>
+            <tbody>
+              {cargando ? (
+                <tr>
+                  <td colSpan={5} className="tabla-estado">
+                    Cargando histórico...
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : registros.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="tabla-estado">
+                    <span className="tabla-estado-icono">📋</span>
+                    No hay registros en ese período.
+                  </td>
+                </tr>
+              ) : (
+                registros.map((r) => (
+                  <tr key={r.id}>
+                    <td data-label="Fecha">{r.fecha}</td>
+                    <td data-label="Hora Entrada">
+                      {formatHora(r.horaEntrada)}
+                    </td>
+                    <td data-label="Hora Salida">{formatHora(r.horaSalida)}</td>
+                    <td data-label="Horas Trabajadas">
+                      {calcularHorasTrabajadas(r.horaEntrada, r.horaSalida)}
+                    </td>
+                    <td data-label="Estado">
+                      {badgeEstado(r.estado, r.minutosTardanza)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

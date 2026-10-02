@@ -7,6 +7,7 @@ import { extractErrorMessage } from "../utils/errors";
 import { useCargos } from "../hooks/useCatalogos";
 import ConfirmDialog from "../components/ConfirmDialog";
 import "./Empleados.css";
+import Topbar from "../components/Topbar";
 
 function Empleados() {
   const toast = useToast();
@@ -75,149 +76,149 @@ function Empleados() {
   const limpiarFiltros = () => setFiltroCargoId("");
 
   return (
-    <div className="mod-main">
-      <div className="mod-heading">
-        <h1>Empleados</h1>
-        <div className="mod-heading-actions">
-          <Link to="/empleados/nuevo" className="btn-primary">
-            + Crear Empleado
-          </Link>
+    <>
+      <Topbar mostrarVolver />
+      <div className="mod-main">
+        <div className="mod-heading">
+          <h1>Empleados</h1>
+          <div className="mod-heading-actions">
+            <Link to="/empleados/nuevo" className="btn-primary">
+              + Crear Empleado
+            </Link>
+          </div>
         </div>
-      </div>
 
-      <div className="filters-bar">
-        <label>
-          Cargo
-          <select
-            value={filtroCargoId}
-            onChange={(e) => setFiltroCargoId(e.target.value)}
-          >
-            <option value="">Todos</option>
-            {cargos.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombreCargo}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="filters-bar">
+          <label>
+            Cargo
+            <select
+              value={filtroCargoId}
+              onChange={(e) => setFiltroCargoId(e.target.value)}
+            >
+              <option value="">Todos</option>
+              {cargos.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombreCargo}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        {/* Turno: el backend aun no asocia un turno fijo al empleado (se maneja
-            via AsignacionTurno, una entidad aparte), asi que no hay dato por
-            empleado contra el cual filtrar todavia. Select deshabilitado. */}
-        <label>
-          Turno
-          <select
-            disabled
-            title="Próximamente: el backend aún no expone el turno por empleado"
-          >
-            <option>No disponible aún</option>
-          </select>
-        </label>
+          <label>
+            Turno
+            <select
+              disabled
+              title="Próximamente: el backend aún no expone el turno por empleado"
+            >
+              <option>No disponible aún</option>
+            </select>
+          </label>
 
-        {filtroCargoId && (
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={limpiarFiltros}
-          >
-            Limpiar Filtros
-          </button>
-        )}
-      </div>
+          {filtroCargoId && (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={limpiarFiltros}
+            >
+              Limpiar Filtros
+            </button>
+          )}
+        </div>
 
-      {error && <p className="error-msg">{error}</p>}
+        {error && <p className="error-msg">{error}</p>}
 
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Cédula</th>
-              <th>Nombre</th>
-              <th>Cargo</th>
-              <th>Turno</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cargando ? (
+        <div className="table-container">
+          <table>
+            <thead>
               <tr>
-                <td colSpan={5} className="tabla-estado">
-                  Cargando empleados...
-                </td>
+                <th>Cédula</th>
+                <th>Nombre</th>
+                <th>Cargo</th>
+                <th>Turno</th>
+                <th>Acciones</th>
               </tr>
-            ) : empleadosFiltrados.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="tabla-estado">
-                  <span className="tabla-estado-icono">📋</span>
-                  {filtroCargoId
-                    ? "No hay empleados con ese cargo en esta página."
-                    : "No hay empleados registrados todavía."}
-                </td>
-              </tr>
-            ) : (
-              empleadosFiltrados.map((emp) => (
-                <tr key={emp.id}>
-                  <td data-label="Cédula">{emp.cedula}</td>
-                  <td data-label="Nombre">
-                    {emp.nombre} {emp.apellido}
-                  </td>
-                  <td data-label="Cargo">{emp.cargoNombre || "—"}</td>
-                  <td data-label="Turno">—</td>
-                  <td data-label="Acciones">
-                    <Link
-                      to={`/empleados/${emp.id}/editar`}
-                      className="btn-edit"
-                    >
-                      Editar
-                    </Link>
-                    <button
-                      className="btn-delete"
-                      onClick={() => setEmpleadoAEliminar(emp)}
-                    >
-                      Eliminar
-                    </button>
+            </thead>
+            <tbody>
+              {cargando ? (
+                <tr>
+                  <td colSpan={5} className="tabla-estado">
+                    Cargando empleados...
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {pagina.totalPages > 1 && (
-        <div className="paginacion">
-          <button
-            disabled={pagina.page === 0 || cargando}
-            onClick={() => cargarEmpleados(pagina.page - 1)}
-          >
-            ← Anterior
-          </button>
-          <span>
-            Página {pagina.page + 1} de {pagina.totalPages} (
-            {pagina.totalElements} empleados)
-          </span>
-          <button
-            disabled={pagina.page + 1 >= pagina.totalPages || cargando}
-            onClick={() => cargarEmpleados(pagina.page + 1)}
-          >
-            Siguiente →
-          </button>
+              ) : empleadosFiltrados.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="tabla-estado">
+                    <span className="tabla-estado-icono">📋</span>
+                    {filtroCargoId
+                      ? "No hay empleados con ese cargo en esta página."
+                      : "No hay empleados registrados todavía."}
+                  </td>
+                </tr>
+              ) : (
+                empleadosFiltrados.map((emp) => (
+                  <tr key={emp.id}>
+                    <td data-label="Cédula">{emp.cedula}</td>
+                    <td data-label="Nombre">
+                      {emp.nombre} {emp.apellido}
+                    </td>
+                    <td data-label="Cargo">{emp.cargoNombre || "—"}</td>
+                    <td data-label="Turno">—</td>
+                    <td data-label="Acciones">
+                      <Link
+                        to={`/empleados/${emp.id}/editar`}
+                        className="btn-edit"
+                      >
+                        Editar
+                      </Link>
+                      <button
+                        className="btn-delete"
+                        onClick={() => setEmpleadoAEliminar(emp)}
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
 
-      <ConfirmDialog
-        open={!!empleadoAEliminar}
-        title="Eliminar empleado"
-        message={
-          empleadoAEliminar
-            ? `¿Eliminar a ${empleadoAEliminar.nombre} ${empleadoAEliminar.apellido}? Esta acción no se puede deshacer.`
-            : ""
-        }
-        onConfirm={confirmarEliminar}
-        onCancel={() => setEmpleadoAEliminar(null)}
-        cargando={eliminando}
-      />
-    </div>
+        {pagina.totalPages > 1 && (
+          <div className="paginacion">
+            <button
+              disabled={pagina.page === 0 || cargando}
+              onClick={() => cargarEmpleados(pagina.page - 1)}
+            >
+              ← Anterior
+            </button>
+            <span>
+              Página {pagina.page + 1} de {pagina.totalPages} (
+              {pagina.totalElements} empleados)
+            </span>
+            <button
+              disabled={pagina.page + 1 >= pagina.totalPages || cargando}
+              onClick={() => cargarEmpleados(pagina.page + 1)}
+            >
+              Siguiente →
+            </button>
+          </div>
+        )}
+
+        <ConfirmDialog
+          open={!!empleadoAEliminar}
+          title="Eliminar empleado"
+          message={
+            empleadoAEliminar
+              ? `¿Eliminar a ${empleadoAEliminar.nombre} ${empleadoAEliminar.apellido}? Esta acción no se puede deshacer.`
+              : ""
+          }
+          onConfirm={confirmarEliminar}
+          onCancel={() => setEmpleadoAEliminar(null)}
+          cargando={eliminando}
+        />
+      </div>
+    </>
   );
 }
 

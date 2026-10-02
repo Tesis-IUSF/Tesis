@@ -8,6 +8,7 @@ import NoAutorizado from "./pages/NoAutorizado";
 import { ROLES } from "./constants/roles";
 import Historico from "./pages/Historico";
 import EmpleadoForm from "./pages/EmpleadoForm";
+import EscanerQR from "./pages/EscanerQR";
 
 function App() {
   return (
@@ -19,6 +20,9 @@ function App() {
           <Route path="/asistencia/historico" element={<Historico />} />
           <Route path="/empleados/nuevo" element={<EmpleadoForm />} />
           <Route path="/empleados/:id/editar" element={<EmpleadoForm />} />
+          <Route element={<ProtectedRoute allowedRoles={[ROLES.ESCANER]} />}>
+            <Route path="/escaner" element={<EscanerQR />} />
+          </Route>
 
           <Route
             element={
