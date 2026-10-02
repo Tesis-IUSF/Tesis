@@ -1,0 +1,251 @@
+.mod-main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+  font-family: var(--font-texto);
+}
+
+.mod-heading h1 {
+  font-family: var(--font-titulos);
+  font-size: 2rem;
+  color: var(--azul-oscuro);
+  margin: 0 0 1.5rem;
+}
+
+.filters-panel {
+  background: var(--blanco);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 4px 16px rgba(47, 90, 138, 0.07);
+  margin-bottom: 1.5rem;
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.filters-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.filters-grid input {
+  font-family: var(--font-texto);
+  font-size: 0.9rem;
+  padding: 0.55rem 0.75rem;
+  border: 1.5px solid #d0dcea;
+  border-radius: 8px;
+  background: var(--blanco);
+}
+
+.btn-consultar {
+  padding: 0.6rem 1.5rem;
+  background: var(--azul);
+  color: var(--blanco);
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  height: 42px;
+}
+
+.btn-consultar:hover {
+  background: var(--azul-oscuro);
+}
+
+.btn-consultar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error-msg {
+  background: #fdf0ee;
+  color: #a32d2d;
+  border: 1px solid #f0c0b8;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-card {
+  background: var(--blanco);
+  border-radius: 14px;
+  padding: 1.25rem;
+  box-shadow: 0 4px 16px rgba(47, 90, 138, 0.07);
+  text-align: center;
+  border-top: 4px solid var(--azul-claro);
+}
+
+.stat-card--azul {
+  border-top-color: var(--azul);
+}
+.stat-card--verde {
+  border-top-color: #3a7d44;
+}
+.stat-card--rojo {
+  border-top-color: #c0392b;
+}
+.stat-card--naranja {
+  border-top-color: #c97a3a;
+}
+
+.stat-value {
+  font-family: var(--font-titulos);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--azul-oscuro);
+}
+
+.stat-label {
+  font-size: 0.78rem;
+  color: var(--texto-suave);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+
+.table-container {
+  overflow-x: auto;
+  background: var(--blanco);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(47, 90, 138, 0.07);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+thead th {
+  text-align: left;
+  padding: 0.85rem 1rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--texto-suave);
+  font-weight: 600;
+  border-bottom: 2px solid var(--azul-claro);
+  white-space: nowrap;
+}
+
+tbody tr {
+  border-bottom: 1px solid #eef2f7;
+}
+
+tbody tr:hover {
+  background: #f7fafd;
+}
+
+tbody td {
+  padding: 0.85rem 1rem;
+  color: var(--texto);
+}
+
+.tabla-estado {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: #a0afc0;
+  font-size: 0.9rem;
+}
+
+.tabla-estado-icono {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badge-presente {
+  background: #d4edda;
+  color: #3a7d44;
+}
+.badge-ausente {
+  background: #fde8e8;
+  color: #c0392b;
+}
+.badge-tardanza {
+  background: #fef3e2;
+  color: #c97a3a;
+}
+.badge-salida-anticipada {
+  background: #fef3e2;
+  color: #c97a3a;
+}
+.badge-permiso {
+  background: #e8f4fd;
+  color: var(--azul);
+}
+.badge-feriado {
+  background: var(--azul-claro);
+  color: var(--azul-oscuro);
+}
+.badge-libre {
+  background: #f0f4f8;
+  color: var(--texto-suave);
+}
+
+@media (max-width: 640px) {
+  .filters-grid {
+    grid-template-columns: 1fr;
+  }
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  thead {
+    display: none;
+  }
+  table,
+  tbody,
+  tr,
+  td {
+    display: block;
+  }
+  tbody tr {
+    margin-bottom: 0.75rem;
+    border: 1px solid #dce6f0;
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem;
+  }
+  tbody td {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0;
+    border: none;
+  }
+  tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--azul);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+  }
+}

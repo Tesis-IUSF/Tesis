@@ -6,6 +6,8 @@ import Empleados from "./pages/Empleados";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NoAutorizado from "./pages/NoAutorizado";
 import { ROLES } from "./constants/roles";
+import Historico from "./pages/Historico";
+import EmpleadoForm from "./pages/EmpleadoForm";
 
 function App() {
   return (
@@ -14,6 +16,9 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/no-autorizado" element={<NoAutorizado />} />
+          <Route path="/asistencia/historico" element={<Historico />} />
+          <Route path="/empleados/nuevo" element={<EmpleadoForm />} />
+          <Route path="/empleados/:id/editar" element={<EmpleadoForm />} />
 
           <Route
             element={
