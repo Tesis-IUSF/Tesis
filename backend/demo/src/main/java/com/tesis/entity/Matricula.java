@@ -47,6 +47,9 @@ public class Matricula {
     @Column(name = "tipo_ingreso", length = 20, nullable = false)
     private String tipoIngreso = "regular";
 
+    @Column(name = "institucion_procedencia", length = 150)
+    private String institucionProcedencia;
+
     @Column(name = "estado_matricula", length = 20, nullable = false)
     private String estadoMatricula = "preinscrito";
 

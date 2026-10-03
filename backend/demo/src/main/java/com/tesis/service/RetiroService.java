@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -32,17 +33,20 @@ public class RetiroService {
     private final RepresentanteRepository representanteRepository;
     private final RelacionEstudianteRepresentanteRepository relacionRepository;
     private final UsuarioRepository usuarioRepository;
+        private final Clock clock;
 
     public RetiroService(MatriculaRepository matriculaRepository,
                          RetiroMatriculaRepository retiroRepository,
                          RepresentanteRepository representanteRepository,
                          RelacionEstudianteRepresentanteRepository relacionRepository,
-                         UsuarioRepository usuarioRepository) {
+                         UsuarioRepository usuarioRepository,
+                         Clock clock) {
         this.matriculaRepository = matriculaRepository;
         this.retiroRepository = retiroRepository;
         this.representanteRepository = representanteRepository;
         this.relacionRepository = relacionRepository;
         this.usuarioRepository = usuarioRepository;
+        this.clock = clock;
     }
 
         public RetiroResponseDTO retirar(Integer matriculaId, RetiroRequestDTO request, String procesadoPorEmail) {
@@ -51,7 +55,7 @@ public class RetiroService {
                         throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                                         "La fecha y el motivo del retiro son obligatorios");
                 }
-                if (request.getFechaRetiro().isAfter(LocalDate.now())) {
+                if (request.getFechaRetiro().isAfter(LocalDate.now(clock))) {
                         throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                                         "La fecha de retiro no puede ser futura");
                 }

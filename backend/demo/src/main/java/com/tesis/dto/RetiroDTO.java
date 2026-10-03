@@ -2,7 +2,6 @@ package com.tesis.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -22,7 +21,6 @@ public class RetiroDTO {
         private String motivo;
 
         @NotNull
-        @PastOrPresent
         private LocalDate fechaRetiro;
 
         private Integer representanteId;

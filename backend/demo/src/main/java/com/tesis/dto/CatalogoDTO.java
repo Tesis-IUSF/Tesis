@@ -190,6 +190,7 @@ public class CatalogoDTO {
         private String nombre;
         private String descripcion;
         private Boolean obligatorio;
+        private String aplicaTipoIngreso;
         private Integer nivelEducativoId;
         private String documentoTemplateUrl;
         private Boolean activo;
@@ -204,6 +205,7 @@ public class CatalogoDTO {
         private String nombre;
         private String descripcion;
         private Boolean obligatorio;
+        private String aplicaTipoIngreso;
         private Integer nivelEducativoId;
         private String nivelEducativoNombre;
         private String documentoTemplateUrl;
