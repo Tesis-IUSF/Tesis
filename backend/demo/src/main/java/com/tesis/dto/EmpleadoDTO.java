@@ -71,5 +71,7 @@ public class EmpleadoDTO {
         private Boolean activo;
         private LocalDateTime creadoEn;
         private LocalDateTime actualizadoEn;
+        private Integer turnoId;
+        private String turnoNombre;
     }
 }
