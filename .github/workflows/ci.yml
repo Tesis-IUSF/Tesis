@@ -17,6 +17,8 @@ jobs:
   backend-ci:
     name: Backend CI (Java 25)
     runs-on: ubuntu-latest
+    env:
+      TZ: UTC
 
     defaults:
       run:
