@@ -1,0 +1,183 @@
+.mod-main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+  font-family: var(--font-texto);
+}
+
+.mod-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.mod-heading h1 {
+  font-family: var(--font-titulos);
+  font-size: 2rem;
+  color: var(--azul-oscuro);
+  margin: 0;
+}
+
+.reloj-digital {
+  font-family: "Courier New", monospace;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--azul);
+  background: var(--blanco);
+  padding: 0.5rem 1.25rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(47, 90, 138, 0.1);
+  letter-spacing: 0.05em;
+}
+
+.error-msg {
+  background: #fdf0ee;
+  color: #a32d2d;
+  border: 1px solid #f0c0b8;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.table-container {
+  overflow-x: auto;
+  background: var(--blanco);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(47, 90, 138, 0.07);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+thead th {
+  text-align: left;
+  padding: 0.85rem 1rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--texto-suave);
+  font-weight: 600;
+  border-bottom: 2px solid var(--azul-claro);
+  white-space: nowrap;
+}
+
+tbody tr {
+  border-bottom: 1px solid #eef2f7;
+}
+
+tbody tr:hover {
+  background: #f7fafd;
+}
+
+tbody td {
+  padding: 0.85rem 1rem;
+  color: var(--texto);
+}
+
+.tabla-estado {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: #a0afc0;
+  font-size: 0.9rem;
+}
+
+.tabla-estado-icono {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badge-presente {
+  background: #d4edda;
+  color: #3a7d44;
+}
+.badge-ausente {
+  background: #fde8e8;
+  color: #c0392b;
+}
+.badge-tardanza {
+  background: #fef3e2;
+  color: #c97a3a;
+}
+.badge-salida_anticipada {
+  background: #fef3e2;
+  color: #c97a3a;
+}
+.badge-permiso {
+  background: #e8f4fd;
+  color: var(--azul);
+}
+.badge-feriado {
+  background: var(--azul-claro);
+  color: var(--azul-oscuro);
+}
+.badge-libre {
+  background: #f0f4f8;
+  color: var(--texto-suave);
+}
+
+.btn-marcar-salida {
+  display: inline-block;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  background: var(--azul-claro);
+  color: var(--azul);
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.btn-marcar-salida:hover {
+  background: #b8d4ee;
+}
+
+@media (max-width: 640px) {
+  .mod-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  thead {
+    display: none;
+  }
+  table,
+  tbody,
+  tr,
+  td {
+    display: block;
+  }
+  tbody tr {
+    margin-bottom: 0.75rem;
+    border: 1px solid #dce6f0;
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem;
+  }
+  tbody td {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0;
+    border: none;
+  }
+  tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--azul);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+  }
+}

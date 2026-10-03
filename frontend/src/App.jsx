@@ -9,6 +9,7 @@ import { ROLES } from "./constants/roles";
 import Historico from "./pages/Historico";
 import EmpleadoForm from "./pages/EmpleadoForm";
 import EscanerQR from "./pages/EscanerQR";
+import AsistenciaHoy from "./pages/AsistenciaHoy";
 
 function App() {
   return (
@@ -17,13 +18,13 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/no-autorizado" element={<NoAutorizado />} />
-          <Route path="/asistencia/historico" element={<Historico />} />
-          <Route path="/empleados/nuevo" element={<EmpleadoForm />} />
-          <Route path="/empleados/:id/editar" element={<EmpleadoForm />} />
+
+          {/* Solo Escáner */}
           <Route element={<ProtectedRoute allowedRoles={[ROLES.ESCANER]} />}>
             <Route path="/escaner" element={<EscanerQR />} />
           </Route>
 
+          {/* Admin, Director, Administrativo */}
           <Route
             element={
               <ProtectedRoute
@@ -37,13 +38,10 @@ function App() {
           >
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/empleados" element={<Empleados />} />
-          </Route>
-
-          <Route element={<ProtectedRoute allowedRoles={[ROLES.ESCANER]} />}>
-            <Route
-              path="/escaner"
-              element={<div>Escáner QR (pendiente)</div>}
-            />
+            <Route path="/empleados/nuevo" element={<EmpleadoForm />} />
+            <Route path="/empleados/:id/editar" element={<EmpleadoForm />} />
+            <Route path="/asistencia/hoy" element={<AsistenciaHoy />} />
+            <Route path="/asistencia/historico" element={<Historico />} />
           </Route>
 
           <Route path="/" element={<Navigate to="/login" replace />} />
