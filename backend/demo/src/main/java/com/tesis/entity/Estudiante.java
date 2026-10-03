@@ -12,6 +12,7 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -43,6 +44,7 @@ public class Estudiante {
     private LocalDate fechaNacimiento;
 
     @Column(name = "sexo", length = 4, nullable = false)
+    @Pattern(regexp = "M|F|Otro", message = "El sexo debe ser M, F u Otro")
     private String sexo;
 
     @Column(name = "correo", length = 150)
