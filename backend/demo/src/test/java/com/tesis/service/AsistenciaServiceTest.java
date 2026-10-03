@@ -116,6 +116,41 @@ class AsistenciaServiceTest {
     }
 
     @Test
+    void salidaManualRegistraHoraYTipoSinQr() {
+        Empleado empleado = empleadoActivo();
+        Turno turno = turnoVigente();
+        Asistencia asistencia = asistenciaExistente(empleado, turno);
+        asistencia.setHoraEntrada(LocalTime.now(clock).minusMinutes(1));
+        when(empleadoRepository.findByIdForUpdate(7)).thenReturn(Optional.of(empleado));
+        when(asistenciaRepository.findByPersonal_IdAndFecha(7, LocalDate.now(clock)))
+                .thenReturn(Optional.of(asistencia));
+        when(asistenciaRepository.save(any(Asistencia.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        AsistenciaResponseDTO respuesta = asistenciaService.registrarSalidaManual(7);
+
+        assertEquals("salida", respuesta.getTipoRegistro());
+        assertEquals(LocalTime.now(clock).truncatedTo(java.time.temporal.ChronoUnit.SECONDS),
+                respuesta.getHoraSalida());
+        verify(asistenciaRepository).save(asistencia);
+    }
+
+    @Test
+    void salidaManualSinEntradaSeRechaza() {
+        Empleado empleado = empleadoActivo();
+        Asistencia asistencia = asistenciaExistente(empleado, turnoVigente());
+        when(empleadoRepository.findByIdForUpdate(7)).thenReturn(Optional.of(empleado));
+        when(asistenciaRepository.findByPersonal_IdAndFecha(7, LocalDate.now(clock)))
+                .thenReturn(Optional.of(asistencia));
+
+        ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
+                () -> asistenciaService.registrarSalidaManual(7));
+
+        assertEquals(HttpStatus.CONFLICT, excepcion.getStatusCode());
+        verify(asistenciaRepository, never()).save(any(Asistencia.class));
+    }
+
+    @Test
     void tercerEscaneoSeRechazaSinModificarAsistencia() {
         Empleado empleado = empleadoActivo();
         Turno turno = turnoVigente();

@@ -119,15 +119,7 @@ public class AsistenciaService {
             registrarEntrada(asistencia, turno, horaActual);
             tipoRegistro = "entrada";
         } else if (asistencia.getHoraSalida() == null) {
-            if (horaActual.isBefore(turno.getHoraEntrada())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "No se puede registrar salida antes del inicio del turno");
-            }
-            if (!horaActual.isAfter(asistencia.getHoraEntrada())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "La salida debe registrarse después de la entrada");
-            }
-            registrarSalida(asistencia, turno, horaActual);
+            registrarSalidaValidada(asistencia, horaActual);
             tipoRegistro = "salida";
         } else {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -135,6 +127,26 @@ public class AsistenciaService {
         }
 
         return toResponse(asistenciaRepository.save(asistencia), tipoRegistro);
+    }
+
+    public AsistenciaResponseDTO registrarSalidaManual(Integer empleadoId) {
+        empleadoRepository.findByIdForUpdate(empleadoId).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Empleado no encontrado"));
+        LocalDateTime ahora = LocalDateTime.now(clock);
+        Asistencia asistencia = asistenciaRepository.findByPersonal_IdAndFecha(
+                        empleadoId, ahora.toLocalDate())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                        "No hay una entrada registrada para hoy"));
+        if (asistencia.getHoraEntrada() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede registrar salida sin una entrada previa");
+        }
+        if (asistencia.getHoraSalida() != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "La asistencia de hoy ya tiene salida registrada");
+        }
+        registrarSalidaValidada(asistencia, ahora.toLocalTime().truncatedTo(ChronoUnit.SECONDS));
+        return toResponse(asistenciaRepository.save(asistencia), "salida");
     }
 
     @Transactional(readOnly = true)
@@ -337,6 +349,23 @@ public class AsistenciaService {
         } else if (hora.isAfter(turno.getHoraSalida())) {
             long minutosExtra = ChronoUnit.MINUTES.between(turno.getHoraSalida(), hora);
             asistencia.setMinutosExtra((short) Math.min(Short.MAX_VALUE, minutosExtra));
+        }
+    }
+
+    private void registrarSalidaValidada(Asistencia asistencia, LocalTime hora) {
+        Turno turno = asistencia.getTurno();
+        if (turno != null && hora.isBefore(turno.getHoraEntrada())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede registrar salida antes del inicio del turno");
+        }
+        if (!hora.isAfter(asistencia.getHoraEntrada())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "La salida debe registrarse después de la entrada");
+        }
+        if (turno == null) {
+            asistencia.setHoraSalida(hora);
+        } else {
+            registrarSalida(asistencia, turno, hora);
         }
     }
 
