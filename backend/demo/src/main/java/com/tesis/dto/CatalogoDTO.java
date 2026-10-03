@@ -1,5 +1,9 @@
 package com.tesis.dto;
 
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -51,10 +55,20 @@ public class CatalogoDTO {
     @AllArgsConstructor
     @Builder
     public static class TurnoRequestDTO {
+        @NotBlank
+        @Size(max = 100)
         private String nombre;
+
+        @NotNull
         private LocalTime horaEntrada;
+
+        @NotNull
         private LocalTime horaSalida;
+
+        @Min(0)
         private Short toleranciaMin;
+
+        @Min(0)
         private Short minutosSalidaAnticipadaPermitidos;
         private Boolean requiereJustificacionTardanza;
         private Boolean lunes;
