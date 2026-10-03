@@ -110,26 +110,48 @@ public class CatalogoService {
 
     public Turno crearTurno(Turno turno) {
         validarTexto(turno != null ? turno.getNombre() : null, "nombre del turno");
+        if (turno.getHoraEntrada() == null || turno.getHoraSalida() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Debe indicar las horas de entrada y salida del turno");
+        }
+        turno.setNombre(turno.getNombre().trim());
+        turno.setToleranciaMin(turno.getToleranciaMin() == null ? (short) 0 : turno.getToleranciaMin());
+        turno.setMinutosSalidaAnticipadaPermitidos(turno.getMinutosSalidaAnticipadaPermitidos() == null
+            ? (short) 0 : turno.getMinutosSalidaAnticipadaPermitidos());
+        turno.setRequiereJustificacionTardanza(turno.getRequiereJustificacionTardanza() == null
+            ? true : turno.getRequiereJustificacionTardanza());
+        turno.setLunes(turno.getLunes() == null || turno.getLunes());
+        turno.setMartes(turno.getMartes() == null || turno.getMartes());
+        turno.setMiercoles(turno.getMiercoles() == null || turno.getMiercoles());
+        turno.setJueves(turno.getJueves() == null || turno.getJueves());
+        turno.setViernes(turno.getViernes() == null || turno.getViernes());
+        turno.setSabado(Boolean.TRUE.equals(turno.getSabado()));
+        turno.setDomingo(Boolean.TRUE.equals(turno.getDomingo()));
+        turno.setActivo(turno.getActivo() == null || turno.getActivo());
         return turnoRepository.save(turno);
     }
 
     public Turno actualizarTurno(Integer id, Turno turno) {
         Turno actual = buscarTurno(id);
         validarTexto(turno != null ? turno.getNombre() : null, "nombre del turno");
-        actual.setNombre(turno.getNombre());
-        actual.setHoraEntrada(turno.getHoraEntrada());
-        actual.setHoraSalida(turno.getHoraSalida());
-        actual.setToleranciaMin(turno.getToleranciaMin());
-        actual.setMinutosSalidaAnticipadaPermitidos(turno.getMinutosSalidaAnticipadaPermitidos());
-        actual.setRequiereJustificacionTardanza(turno.getRequiereJustificacionTardanza());
-        actual.setLunes(turno.getLunes());
-        actual.setMartes(turno.getMartes());
-        actual.setMiercoles(turno.getMiercoles());
-        actual.setJueves(turno.getJueves());
-        actual.setViernes(turno.getViernes());
-        actual.setSabado(turno.getSabado());
-        actual.setDomingo(turno.getDomingo());
-        actual.setActivo(turno.getActivo());
+        actual.setNombre(turno.getNombre().trim());
+        if (turno.getHoraEntrada() != null) actual.setHoraEntrada(turno.getHoraEntrada());
+        if (turno.getHoraSalida() != null) actual.setHoraSalida(turno.getHoraSalida());
+        if (turno.getToleranciaMin() != null) actual.setToleranciaMin(turno.getToleranciaMin());
+        if (turno.getMinutosSalidaAnticipadaPermitidos() != null) {
+            actual.setMinutosSalidaAnticipadaPermitidos(turno.getMinutosSalidaAnticipadaPermitidos());
+        }
+        if (turno.getRequiereJustificacionTardanza() != null) {
+            actual.setRequiereJustificacionTardanza(turno.getRequiereJustificacionTardanza());
+        }
+        if (turno.getLunes() != null) actual.setLunes(turno.getLunes());
+        if (turno.getMartes() != null) actual.setMartes(turno.getMartes());
+        if (turno.getMiercoles() != null) actual.setMiercoles(turno.getMiercoles());
+        if (turno.getJueves() != null) actual.setJueves(turno.getJueves());
+        if (turno.getViernes() != null) actual.setViernes(turno.getViernes());
+        if (turno.getSabado() != null) actual.setSabado(turno.getSabado());
+        if (turno.getDomingo() != null) actual.setDomingo(turno.getDomingo());
+        if (turno.getActivo() != null) actual.setActivo(turno.getActivo());
         return turnoRepository.save(actual);
     }
 
