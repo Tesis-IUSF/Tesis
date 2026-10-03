@@ -3,10 +3,12 @@ package com.tesis.controller;
 import com.tesis.dto.InscripcionDTO.ChecklistUpdateRequestDTO;
 import com.tesis.dto.InscripcionDTO.FormalizarInscripcionRequestDTO;
 import com.tesis.dto.InscripcionDTO.InscripcionResponseDTO;
+import com.tesis.dto.CalendarioMatriculaDTO;
 import com.tesis.dto.PaginacionDTO;
 import com.tesis.dto.PreinscripcionDTO.PreinscripcionRequestDTO;
 import com.tesis.dto.PreinscripcionDTO.PreinscripcionResponseDTO;
 import com.tesis.service.InscripcionService;
+import com.tesis.service.CalendarioMatriculaService;
 import com.tesis.service.PreinscripcionService;
 import com.tesis.service.ConstanciaService;
 import jakarta.validation.Valid;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -35,13 +38,22 @@ public class MatriculaController {
     private final PreinscripcionService preinscripcionService;
     private final InscripcionService inscripcionService;
     private final ConstanciaService constanciaService;
+    private final CalendarioMatriculaService calendarioService;
 
     public MatriculaController(PreinscripcionService preinscripcionService,
                                InscripcionService inscripcionService,
-                               ConstanciaService constanciaService) {
+                               ConstanciaService constanciaService,
+                               CalendarioMatriculaService calendarioService) {
         this.preinscripcionService = preinscripcionService;
         this.inscripcionService = inscripcionService;
         this.constanciaService = constanciaService;
+        this.calendarioService = calendarioService;
+    }
+
+    @GetMapping("/calendario")
+    public CalendarioMatriculaDTO obtenerCalendario(
+            @RequestParam(required = false) Short anio) {
+        return calendarioService.obtenerCalendario(anio);
     }
 
     @PostMapping("/preinscripciones")

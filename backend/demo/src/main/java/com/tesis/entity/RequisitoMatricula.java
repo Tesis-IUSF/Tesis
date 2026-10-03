@@ -37,6 +37,9 @@ public class RequisitoMatricula {
     @Column(name = "obligatorio", nullable = false)
     private Boolean obligatorio = true;
 
+    @Column(name = "aplica_tipo_ingreso")
+    private String aplicaTipoIngreso;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "nivel_educativo_id",
             foreignKey = @ForeignKey(name = "fk_req_nivel"))

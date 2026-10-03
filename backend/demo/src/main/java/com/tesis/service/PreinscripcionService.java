@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
 import java.time.LocalDate;
 
 @Service
@@ -30,6 +31,10 @@ public class PreinscripcionService {
     private static final String ESTADO_EN_PROCESO = "en_proceso";
     private static final String ESTADO_COMPLETADA = "completada";
     private static final String ESTADO_RETIRADA = "retirada";
+    private static final String TIPO_NUEVO_INGRESO = "nuevo_ingreso";
+    private static final String TIPO_REGULAR = "regular";
+    private static final String TIPO_REINGRESO = "reingreso";
+    private static final String TIPO_TRASLADO = "traslado";
 
     private final EstudianteRepository estudianteRepository;
     private final RepresentanteRepository representanteRepository;
@@ -37,22 +42,29 @@ public class PreinscripcionService {
     private final MatriculaRepository matriculaRepository;
     private final SeccionRepository seccionRepository;
     private final EdadMatriculaService edadMatriculaService;
+    private final CalendarioMatriculaService calendarioService;
+    private final Clock clock;
 
     public PreinscripcionService(EstudianteRepository estudianteRepository,
                                  RepresentanteRepository representanteRepository,
                                  RelacionEstudianteRepresentanteRepository relacionRepository,
                                  MatriculaRepository matriculaRepository,
                                  SeccionRepository seccionRepository,
-                                 EdadMatriculaService edadMatriculaService) {
+                                 EdadMatriculaService edadMatriculaService,
+                                 CalendarioMatriculaService calendarioService,
+                                 Clock clock) {
         this.estudianteRepository = estudianteRepository;
         this.representanteRepository = representanteRepository;
         this.relacionRepository = relacionRepository;
         this.matriculaRepository = matriculaRepository;
         this.seccionRepository = seccionRepository;
         this.edadMatriculaService = edadMatriculaService;
+        this.calendarioService = calendarioService;
+        this.clock = clock;
     }
 
     public PreinscripcionResponseDTO preinscribir(PreinscripcionRequestDTO request) {
+        calendarioService.validarAnioExistente(request.getAnioEscolar());
         EstudianteData datosEstudiante = request.getEstudiante();
         Estudiante estudianteExistente = estudianteRepository.findByCedulaForUpdate(datosEstudiante.getCedula())
             .orElse(null);
@@ -67,6 +79,7 @@ public class PreinscripcionService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "El año escolar no corresponde a la sección seleccionada");
         }
+        calendarioService.validarPreinscripcion(request.getAnioEscolar());
 
         LocalDate fechaNacimiento = estudianteExistente == null
             ? datosEstudiante.getFechaNacimiento() : estudianteExistente.getFechaNacimiento();
@@ -96,12 +109,15 @@ public class PreinscripcionService {
         Representante representante = guardarRepresentante(request.getRepresentante());
         guardarRelacion(request, estudiante, representante);
 
-        LocalDate fechaSolicitud = LocalDate.now();
+        LocalDate fechaSolicitud = LocalDate.now(clock);
         if (matricula.getId() == null) {
             matricula.setEstudiante(estudiante);
             matricula.setSeccion(seccion);
             matricula.setAnioEscolar(request.getAnioEscolar());
-            matricula.setTipoIngreso(estudianteNuevo ? "nuevo_ingreso" : "regular");
+                matricula.setTipoIngreso(determinarTipoIngreso(estudiante,
+                    request.getAnioEscolar(), request.getInstitucionProcedencia()));
+                matricula.setInstitucionProcedencia(normalizarInstitucionProcedencia(
+                    request.getInstitucionProcedencia()));
         }
         matricula.setFechaSolicitud(fechaSolicitud);
         matricula.setFechaFormalizacion(null);
@@ -120,7 +136,34 @@ public class PreinscripcionService {
                 nombreCompleto(representante.getNombre(), representante.getApellido()),
                 seccion.getId(),
                 matricula.getAnioEscolar(),
-                cuposDisponibles - 1);
+                cuposDisponibles - 1,
+                matricula.getTipoIngreso());
+    }
+
+    private String determinarTipoIngreso(Estudiante estudiante,
+                                         Short anioEscolar,
+                                         String institucionProcedencia) {
+        if (institucionProcedencia != null && !institucionProcedencia.isBlank()) {
+            return TIPO_TRASLADO;
+        }
+
+        Short anioAnterior = (short) (anioEscolar - 1);
+        if (matriculaRepository.existsByEstudiante_IdAndAnioEscolarAndEstadoMatricula(
+                estudiante.getId(), anioAnterior, ESTADO_COMPLETADA)) {
+            return TIPO_REGULAR;
+        }
+        if (matriculaRepository.tieneHistorialNoAnuladoAnteriorA(
+                estudiante.getId(), anioEscolar)) {
+            return TIPO_REINGRESO;
+        }
+        return TIPO_NUEVO_INGRESO;
+    }
+
+    private String normalizarInstitucionProcedencia(String institucionProcedencia) {
+        if (institucionProcedencia == null || institucionProcedencia.isBlank()) {
+            return null;
+        }
+        return institucionProcedencia.trim();
     }
 
     private Matricula buscarMatriculaReactivableOValidarNueva(Estudiante estudiante,
@@ -199,7 +242,7 @@ public class PreinscripcionService {
         relacion.setAutorizadoRetirar(Boolean.TRUE.equals(request.getAutorizadoRetirar()));
         relacion.setRecibeComunicados(Boolean.TRUE.equals(request.getRecibeComunicados()));
         if (relacion.getFechaVinculacion() == null) {
-            relacion.setFechaVinculacion(LocalDate.now());
+            relacion.setFechaVinculacion(LocalDate.now(clock));
         }
         relacion.setActivo(true);
         relacionRepository.save(relacion);

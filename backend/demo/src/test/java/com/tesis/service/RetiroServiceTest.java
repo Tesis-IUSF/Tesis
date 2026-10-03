@@ -25,6 +25,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -54,12 +55,15 @@ class RetiroServiceTest {
     @Autowired
     private EntityManager entityManager;
 
+        @Autowired
+        private Clock clock;
+
     @Test
     void registraRetiroDeSolicitanteExternoYLiberaElCupo() {
         crearProcesador();
         Matricula matricula = crearMatricula("completada", "RETIRO-EXT-01", "A");
         RetiroRequestDTO request = new RetiroRequestDTO(
-                "Cambio de domicilio", LocalDate.now(), null,
+                "Cambio de domicilio", LocalDate.now(clock), null,
                 "Carla", "Soto", "CED-EXT-01");
 
         RetiroResponseDTO response = retiroService.retirar(matricula.getId(), request, "procesador@test.local");
@@ -92,12 +96,12 @@ class RetiroServiceTest {
         RelacionEstudianteRepresentante relacion = new RelacionEstudianteRepresentante();
         relacion.setEstudiante(matricula.getEstudiante());
         relacion.setRepresentante(representante);
-        relacion.setFechaVinculacion(LocalDate.now());
+        relacion.setFechaVinculacion(LocalDate.now(clock));
         relacion.setAutorizadoRetirar(true);
         relacionRepository.saveAndFlush(relacion);
 
         RetiroRequestDTO request = new RetiroRequestDTO(
-                "Solicitud de la familia", LocalDate.now(), representante.getId(),
+                "Solicitud de la familia", LocalDate.now(clock), representante.getId(),
                 null, null, null);
         RetiroResponseDTO response = retiroService.retirar(matricula.getId(), request, "procesador@test.local");
 
@@ -111,7 +115,7 @@ class RetiroServiceTest {
         crearProcesador();
         Matricula matricula = crearMatricula("en_proceso", "RETIRO-PEND-01", "C");
         RetiroRequestDTO request = new RetiroRequestDTO(
-                "Solicitud", LocalDate.now(), null, "Persona", "Externa", "CED-02");
+                "Solicitud", LocalDate.now(clock), null, "Persona", "Externa", "CED-02");
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> retiroService.retirar(matricula.getId(), request, "procesador@test.local"));

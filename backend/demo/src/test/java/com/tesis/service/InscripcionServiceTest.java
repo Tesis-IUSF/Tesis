@@ -7,9 +7,12 @@ import com.tesis.entity.Estudiante;
 import com.tesis.entity.Grado;
 import com.tesis.entity.Matricula;
 import com.tesis.entity.NivelEducativo;
+import com.tesis.entity.AnioEscolar;
+import com.tesis.entity.PeriodoMatricula;
 import com.tesis.entity.RequisitoMatricula;
 import com.tesis.entity.Roles;
 import com.tesis.entity.Seccion;
+import com.tesis.entity.TipoPeriodoMatricula;
 import com.tesis.entity.Usuario;
 import com.tesis.repository.ChecklistMatriculaRepository;
 import jakarta.persistence.EntityManager;
@@ -21,6 +24,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -42,6 +46,9 @@ class InscripcionServiceTest {
     @Autowired
     private EntityManager entityManager;
 
+        @Autowired
+        private Clock clock;
+
     @Test
     void inicializaChecklistYFormalizaCuandoTodosLosObligatoriosEstanCumplidos() {
                 crearVerificador();
@@ -50,6 +57,7 @@ class InscripcionServiceTest {
                 "Partida de nacimiento", true, nivel);
         RequisitoMatricula requisitoGlobalObligatorio = crearRequisito(
                 "Foto", true, null);
+        crearRequisito("Boletín de nuevo ingreso", true, nivel, "nuevo_ingreso");
         crearRequisito("Autorización opcional", false, nivel);
         Matricula matricula = crearMatricula(nivel);
 
@@ -90,6 +98,37 @@ class InscripcionServiceTest {
                 .findFirst().orElseThrow().getCumplido());
     }
 
+    @Test
+    void permiteConsultarSeguimientoAunqueElPeriodoEsteCerrado() {
+        Matricula matricula = crearMatricula(crearNivel());
+        entityManager.createQuery("update PeriodoMatricula p set p.activo = false "
+                        + "where p.anioEscolar = :anio and p.tipo = :tipo")
+                .setParameter("anio", (short) 2026)
+                .setParameter("tipo", TipoPeriodoMatricula.inscripcion)
+                .executeUpdate();
+
+        assertEquals("preinscrito", inscripcionService.obtenerSeguimiento(matricula.getId())
+                .getEstadoMatricula());
+    }
+
+        @Test
+        void generaChecklistSoloConRequisitosAplicablesAlTipoDeIngreso() {
+                NivelEducativo nivel = crearNivel();
+                NivelEducativo otroNivel = new NivelEducativo();
+                otroNivel.setNombre("Nivel distinto para aplicabilidad");
+                otroNivel.setOrdinal((short) 112);
+                entityManager.persist(otroNivel);
+                crearRequisito("Requisito regular", true, nivel, "regular");
+                crearRequisito("Requisito de nuevo ingreso", true, nivel, "nuevo_ingreso");
+                crearRequisito("Requisito de otro nivel", true, otroNivel, "regular");
+                Matricula matricula = crearMatricula(nivel);
+
+                InscripcionResponseDTO response = inscripcionService.prepararChecklist(matricula.getId());
+
+                assertEquals(1, response.getChecklist().size());
+                assertEquals("Requisito regular", response.getChecklist().getFirst().getNombreRequisito());
+        }
+
     private void marcarCumplido(Integer matriculaId, Integer requisitoId) {
         ChecklistUpdateRequestDTO request = new ChecklistUpdateRequestDTO(
                                 true, "Verificado", null);
@@ -121,15 +160,24 @@ class InscripcionServiceTest {
     private RequisitoMatricula crearRequisito(String nombre,
                                                boolean obligatorio,
                                                NivelEducativo nivel) {
+                return crearRequisito(nombre, obligatorio, nivel, null);
+        }
+
+        private RequisitoMatricula crearRequisito(String nombre,
+                                                                                           boolean obligatorio,
+                                                                                           NivelEducativo nivel,
+                                                                                           String tiposAplicables) {
         RequisitoMatricula requisito = new RequisitoMatricula();
         requisito.setNombre(nombre);
         requisito.setObligatorio(obligatorio);
         requisito.setNivelEducativo(nivel);
+                requisito.setAplicaTipoIngreso(tiposAplicables);
         entityManager.persist(requisito);
         return requisito;
     }
 
     private Matricula crearMatricula(NivelEducativo nivel) {
+                asegurarCalendario();
         Grado grado = new Grado();
         grado.setNivelEducativo(nivel);
         grado.setNumeroGrado((short) 1);
@@ -159,4 +207,37 @@ class InscripcionServiceTest {
         entityManager.flush();
         return matricula;
     }
+
+        private void asegurarCalendario() {
+                boolean anioExiste = !entityManager.createQuery(
+                                                "select a.id from AnioEscolar a where a.anio = :anio", Integer.class)
+                                .setParameter("anio", (short) 2026)
+                                .getResultList().isEmpty();
+                if (!anioExiste) {
+                        AnioEscolar anio = new AnioEscolar();
+                        anio.setAnio((short) 2026);
+                        anio.setNombre("2026-2027");
+                        anio.setFechaInicio(LocalDate.of(2026, 9, 9));
+                        anio.setFechaFin(LocalDate.of(2027, 7, 30));
+                        anio.setActivo(true);
+                        entityManager.persist(anio);
+                }
+
+                boolean periodoExiste = !entityManager.createQuery(
+                                                "select p.id from PeriodoMatricula p where p.anioEscolar = :anio "
+                                                                + "and p.tipo = :tipo", Integer.class)
+                                .setParameter("anio", (short) 2026)
+                                .setParameter("tipo", TipoPeriodoMatricula.inscripcion)
+                                .getResultList().isEmpty();
+                if (!periodoExiste) {
+                        LocalDate hoy = LocalDate.now(clock);
+                        PeriodoMatricula periodo = new PeriodoMatricula();
+                        periodo.setAnioEscolar((short) 2026);
+                        periodo.setTipo(TipoPeriodoMatricula.inscripcion);
+                        periodo.setFechaInicio(hoy.minusYears(1));
+                        periodo.setFechaFin(hoy.plusYears(1));
+                        periodo.setActivo(true);
+                        entityManager.persist(periodo);
+                }
+        }
 }

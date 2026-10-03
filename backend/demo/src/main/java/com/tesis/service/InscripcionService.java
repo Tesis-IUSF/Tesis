@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -39,15 +40,21 @@ public class InscripcionService {
     private final ChecklistMatriculaRepository checklistRepository;
     private final RequisitoMatriculaRepository requisitoRepository;
     private final UsuarioRepository usuarioRepository;
+    private final CalendarioMatriculaService calendarioService;
+    private final Clock clock;
 
     public InscripcionService(MatriculaRepository matriculaRepository,
                               ChecklistMatriculaRepository checklistRepository,
                               RequisitoMatriculaRepository requisitoRepository,
-                              UsuarioRepository usuarioRepository) {
+                              UsuarioRepository usuarioRepository,
+                              CalendarioMatriculaService calendarioService,
+                              Clock clock) {
         this.matriculaRepository = matriculaRepository;
         this.checklistRepository = checklistRepository;
         this.requisitoRepository = requisitoRepository;
         this.usuarioRepository = usuarioRepository;
+        this.calendarioService = calendarioService;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
@@ -70,6 +77,8 @@ public class InscripcionService {
     public InscripcionResponseDTO prepararChecklist(Integer matriculaId) {
         Matricula matricula = buscarMatriculaBloqueada(matriculaId);
         validarEstadoEditable(matricula);
+        calendarioService.validarGestionInscripcion(
+            matricula.getAnioEscolar(), matricula.getEstadoMatricula());
         List<ChecklistMatricula> checklist = inicializarChecklist(matricula);
         marcarEnProceso(matricula);
         return toResponse(matricula, checklist);
@@ -86,6 +95,8 @@ public class InscripcionService {
 
         Matricula matricula = buscarMatriculaBloqueada(matriculaId);
         validarEstadoEditable(matricula);
+        calendarioService.validarGestionInscripcion(
+            matricula.getAnioEscolar(), matricula.getEstadoMatricula());
         inicializarChecklist(matricula);
         ChecklistMatricula item = checklistRepository
                 .findByMatricula_IdAndRequisito_Id(matriculaId, requisitoId)
@@ -96,7 +107,7 @@ public class InscripcionService {
         item.setNotas(request.getNotas());
         item.setArchivoUrl(request.getArchivoUrl());
         if (Boolean.TRUE.equals(request.getCumplido())) {
-            item.setFechaVerificacion(LocalDateTime.now());
+            item.setFechaVerificacion(LocalDateTime.now(clock));
             item.setVerificadoPor(buscarUsuarioAutenticado(verificadoPorEmail));
         } else {
             item.setFechaVerificacion(null);
@@ -114,11 +125,16 @@ public class InscripcionService {
             return toResponse(matricula, checklistRepository.findByMatricula_Id(matriculaId));
         }
         validarEstadoEditable(matricula);
+        calendarioService.validarGestionInscripcion(
+            matricula.getAnioEscolar(), matricula.getEstadoMatricula());
 
         List<ChecklistMatricula> checklist = inicializarChecklist(matricula);
+        String tipoIngreso = matricula.getTipoIngreso();
         List<RequisitoMatricula> obligatorios = requisitoRepository
             .findObligatoriosActivosAplicablesAlNivel(
-                matricula.getSeccion().getGrado().getNivelEducativo().getId());
+            matricula.getSeccion().getGrado().getNivelEducativo().getId()).stream()
+            .filter(requisito -> aplicaAlTipoIngreso(requisito, tipoIngreso))
+            .toList();
         Map<Integer, ChecklistMatricula> checklistPorRequisito = checklist.stream()
                 .collect(Collectors.toMap(item -> item.getRequisito().getId(),
                         Function.identity(), (first, duplicate) -> first));
@@ -136,7 +152,7 @@ public class InscripcionService {
         }
 
         matricula.setEstadoMatricula(COMPLETADA);
-        matricula.setFechaFormalizacion(LocalDate.now());
+        matricula.setFechaFormalizacion(LocalDate.now(clock));
         if (request != null) {
             matricula.setNumeroConstancia(request.getNumeroConstancia());
             matricula.setConstanciaUrl(request.getConstanciaUrl());
@@ -168,7 +184,9 @@ public class InscripcionService {
 
         List<ChecklistMatricula> nuevos = new ArrayList<>();
         for (RequisitoMatricula requisito : requisitoRepository
-                .findActivosAplicablesAlNivel(nivelId)) {
+            .findActivosAplicablesAlNivel(nivelId).stream()
+            .filter(item -> aplicaAlTipoIngreso(item, matricula.getTipoIngreso()))
+            .toList()) {
             if (!porRequisito.containsKey(requisito.getId())) {
                 ChecklistMatricula item = new ChecklistMatricula();
                 item.setMatricula(matricula);
@@ -182,6 +200,14 @@ public class InscripcionService {
             checklistRepository.flush();
         }
         return checklistRepository.findByMatricula_Id(matricula.getId());
+    }
+
+    private boolean aplicaAlTipoIngreso(RequisitoMatricula requisito, String tipoIngreso) {
+        String tiposAplicables = requisito.getAplicaTipoIngreso();
+        return tiposAplicables == null || tiposAplicables.isBlank()
+                || java.util.Arrays.stream(tiposAplicables.split(","))
+                .map(String::trim)
+                .anyMatch(tipo -> tipo.equals(tipoIngreso));
     }
 
     private void marcarEnProceso(Matricula matricula) {

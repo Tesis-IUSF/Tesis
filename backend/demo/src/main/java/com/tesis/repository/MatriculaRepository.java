@@ -16,6 +16,15 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
 
     List<Matricula> findByEstudiante_IdAndAnioEscolar(Integer estudianteId, Short anioEscolar);
 
+        boolean existsByEstudiante_IdAndAnioEscolarAndEstadoMatricula(
+            Integer estudianteId, Short anioEscolar, String estadoMatricula);
+
+        @Query("select case when count(m) > 0 then true else false end from Matricula m "
+            + "where m.estudiante.id = :estudianteId and m.anioEscolar < :anioEscolar "
+            + "and m.estadoMatricula <> 'anulada'")
+        boolean tieneHistorialNoAnuladoAnteriorA(@Param("estudianteId") Integer estudianteId,
+                             @Param("anioEscolar") Short anioEscolar);
+
         List<Matricula> findByEstudiante_IdAndEstadoMatriculaAndAnioEscolar(
             Integer estudianteId, String estadoMatricula, Short anioEscolar);
 

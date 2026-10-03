@@ -23,9 +23,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 @Service
 @Transactional
 public class CatalogoService {
+
+    private static final List<String> TIPOS_INGRESO =
+            List.of("nuevo_ingreso", "regular", "reingreso", "traslado");
+    private static final Set<String> TIPOS_INGRESO_VALIDOS = Set.copyOf(TIPOS_INGRESO);
 
     private final DepartamentoRepository departamentoRepository;
     private final CargoRepository cargoRepository;
@@ -338,6 +348,8 @@ public class CatalogoService {
 
     public RequisitoMatricula crearRequisitoMatricula(RequisitoMatricula requisitoMatricula) {
         validarTexto(requisitoMatricula != null ? requisitoMatricula.getNombre() : null, "nombre del requisito");
+        requisitoMatricula.setAplicaTipoIngreso(
+            normalizarTiposIngreso(requisitoMatricula.getAplicaTipoIngreso()));
         if (requisitoMatricula.getNivelEducativo() != null && requisitoMatricula.getNivelEducativo().getId() != null) {
             buscarNivelEducativo(requisitoMatricula.getNivelEducativo().getId());
         }
@@ -347,16 +359,37 @@ public class CatalogoService {
     public RequisitoMatricula actualizarRequisitoMatricula(Integer id, RequisitoMatricula requisitoMatricula) {
         RequisitoMatricula actual = buscarRequisitoMatricula(id);
         validarTexto(requisitoMatricula != null ? requisitoMatricula.getNombre() : null, "nombre del requisito");
+        String tiposAplicables = normalizarTiposIngreso(requisitoMatricula.getAplicaTipoIngreso());
         if (requisitoMatricula.getNivelEducativo() != null && requisitoMatricula.getNivelEducativo().getId() != null) {
             buscarNivelEducativo(requisitoMatricula.getNivelEducativo().getId());
         }
         actual.setNombre(requisitoMatricula.getNombre());
         actual.setDescripcion(requisitoMatricula.getDescripcion());
         actual.setObligatorio(requisitoMatricula.getObligatorio());
+        actual.setAplicaTipoIngreso(tiposAplicables);
         actual.setNivelEducativo(requisitoMatricula.getNivelEducativo());
         actual.setDocumentoTemplateUrl(requisitoMatricula.getDocumentoTemplateUrl());
         actual.setActivo(requisitoMatricula.getActivo());
         return requisitoMatriculaRepository.save(actual);
+    }
+
+    private String normalizarTiposIngreso(String tipos) {
+        if (tipos == null || tipos.isBlank()) {
+            return null;
+        }
+        List<String> proporcionados = Arrays.stream(tipos.split(",", -1))
+                .map(String::trim)
+                .map(tipo -> tipo.toLowerCase(Locale.ROOT))
+                .toList();
+        Set<String> seleccionados = Set.copyOf(proporcionados);
+        if (seleccionados.size() != proporcionados.size()
+                || !TIPOS_INGRESO_VALIDOS.containsAll(seleccionados)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Los tipos de ingreso deben ser nuevo_ingreso, regular, reingreso o traslado");
+        }
+        return TIPOS_INGRESO.stream()
+                .filter(seleccionados::contains)
+                .collect(Collectors.joining(","));
     }
 
     public void eliminarRequisitoMatricula(Integer id) {

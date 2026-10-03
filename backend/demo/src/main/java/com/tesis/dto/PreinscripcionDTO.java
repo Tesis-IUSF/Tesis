@@ -33,6 +33,9 @@ public class PreinscripcionDTO {
         @NotNull
         private Short anioEscolar;
 
+        @Size(max = 150)
+        private String institucionProcedencia;
+
         private Boolean relacionPrincipal = true;
         private Boolean autorizadoRetirar = true;
         private Boolean recibeComunicados = true;
@@ -128,5 +131,6 @@ public class PreinscripcionDTO {
         private Integer seccionId;
         private Short anioEscolar;
         private Long cuposDisponibles;
+        private String tipoIngreso;
     }
 }
