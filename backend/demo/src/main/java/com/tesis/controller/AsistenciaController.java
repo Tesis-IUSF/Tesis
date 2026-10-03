@@ -36,6 +36,11 @@ public class AsistenciaController {
         return asistenciaService.registrarEscaneo(request.getQrToken());
     }
 
+    @PostMapping("/empleado/{empleadoId}/salida")
+    public AsistenciaResponseDTO registrarSalidaManual(@PathVariable Integer empleadoId) {
+        return asistenciaService.registrarSalidaManual(empleadoId);
+    }
+
     @GetMapping("/hoy")
     public List<AsistenciaHoyDTO> listarHoy() {
         return asistenciaService.listarHoy();

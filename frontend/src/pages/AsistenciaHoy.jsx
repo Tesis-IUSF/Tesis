@@ -1,7 +1,7 @@
 // src/pages/AsistenciaHoy.jsx
 import { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
 import api from "../utils/api";
+import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
 import Topbar from "../components/Topbar";
 import "./AsistenciaHoy.css";
@@ -32,9 +32,11 @@ function RelojDigital() {
 }
 
 function AsistenciaHoy() {
+  const toast = useToast();
   const [registros, setRegistros] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
+  const [registrandoSalidaId, setRegistrandoSalidaId] = useState(null);
 
   const cargar = useCallback(async () => {
     try {
@@ -49,6 +51,19 @@ function AsistenciaHoy() {
       setCargando(false);
     }
   }, []);
+
+  const marcarSalida = async (empleadoId) => {
+    setRegistrandoSalidaId(empleadoId);
+    try {
+      await api.post(`/asistencias/empleado/${empleadoId}/salida`);
+      toast.success("Salida registrada correctamente.");
+      await cargar();
+    } catch (err) {
+      toast.error(extractErrorMessage(err, "No se pudo registrar la salida."));
+    } finally {
+      setRegistrandoSalidaId(null);
+    }
+  };
 
   useEffect(() => {
     cargar();
@@ -113,9 +128,16 @@ function AsistenciaHoy() {
                     </td>
                     <td data-label="Acciones">
                       {!r.horaSalida && (
-                        <Link to="/escaner" className="btn-marcar-salida">
-                          Marcar Salida
-                        </Link>
+                        <button
+                          type="button"
+                          className="btn-marcar-salida"
+                          disabled={registrandoSalidaId === r.empleadoId}
+                          onClick={() => marcarSalida(r.empleadoId)}
+                        >
+                          {registrandoSalidaId === r.empleadoId
+                            ? "Registrando..."
+                            : "Marcar Salida"}
+                        </button>
                       )}
                     </td>
                   </tr>
@@ -125,9 +147,6 @@ function AsistenciaHoy() {
           </table>
         </div>
 
-        {/* Nota: el botón "Marcar Salida" redirige al escáner porque hoy
-            no existe un endpoint para registrar la salida manualmente sin
-            volver a escanear el QR. Pendiente de confirmar con backend. */}
       </div>
     </>
   );
