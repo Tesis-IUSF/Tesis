@@ -51,6 +51,24 @@ class SecurityConfigTest {
                     .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void rechazaAsignacionDeTurnosParaRolEscaner() throws Exception {
+        mockMvc.perform(post("/api/asignaciones-turnos")
+                        .with(user("escaner").roles("ESCANER"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void rechazaCreacionDeTurnoParaRolEscaner() throws Exception {
+        mockMvc.perform(post("/api/catalogos/turnos")
+                        .with(user("escaner").roles("ESCANER"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+    }
+
         @Test
         void rechazaEmisionDeCarnetParaRolEscaner() throws Exception {
             mockMvc.perform(post("/api/empleados/1/carnet")
