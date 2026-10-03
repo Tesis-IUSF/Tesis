@@ -104,5 +104,10 @@ public class EstudianteService {
         if (estudiante.getSexo() == null || estudiante.getSexo().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El sexo es obligatorio");
         }
+        if (!"M".equals(estudiante.getSexo()) && !"F".equals(estudiante.getSexo())
+                && !"Otro".equals(estudiante.getSexo())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El sexo debe ser M, F u Otro");
+        }
     }
 }
