@@ -2,6 +2,7 @@ package com.tesis.service;
 
 import com.tesis.entity.Departamento;
 import com.tesis.entity.NivelEducativo;
+import com.tesis.entity.RequisitoMatricula;
 import com.tesis.entity.Turno;
 import com.tesis.repository.CargoRepository;
 import com.tesis.repository.DepartamentoRepository;
@@ -168,5 +169,27 @@ class CatalogoServiceTest {
         assertEquals((short) 15, resultado.getToleranciaMin());
         assertEquals(true, resultado.getLunes());
         assertEquals(false, resultado.getSabado());
+    }
+
+    @Test
+    void validaYNormalizaTiposDeIngresoDeLosRequisitos() {
+        when(requisitoMatriculaRepository.save(any(RequisitoMatricula.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        RequisitoMatricula valido = new RequisitoMatricula();
+        valido.setNombre("Documento según ingreso");
+        valido.setAplicaTipoIngreso(" traslado, nuevo_ingreso ");
+
+        RequisitoMatricula guardado = catalogoService.crearRequisitoMatricula(valido);
+
+        assertEquals("nuevo_ingreso,traslado", guardado.getAplicaTipoIngreso());
+
+        RequisitoMatricula invalido = new RequisitoMatricula();
+        invalido.setNombre("Tipo no admitido");
+        invalido.setAplicaTipoIngreso("nuevo_ingreso,pendiente_documentos");
+        org.springframework.web.server.ResponseStatusException error = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> catalogoService.crearRequisitoMatricula(invalido));
+
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, error.getStatusCode());
     }
 }

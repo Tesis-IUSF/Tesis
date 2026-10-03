@@ -8,8 +8,11 @@ import com.tesis.entity.Estudiante;
 import com.tesis.entity.Grado;
 import com.tesis.entity.Matricula;
 import com.tesis.entity.NivelEducativo;
+import com.tesis.entity.AnioEscolar;
+import com.tesis.entity.PeriodoMatricula;
 import com.tesis.entity.Representante;
 import com.tesis.entity.Seccion;
+import com.tesis.entity.TipoPeriodoMatricula;
 import com.tesis.repository.EstudianteRepository;
 import com.tesis.repository.MatriculaRepository;
 import com.tesis.repository.RelacionEstudianteRepresentanteRepository;
@@ -23,10 +26,12 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest
@@ -52,6 +57,9 @@ class PreinscripcionServiceTest {
     @Autowired
     private EntityManager entityManager;
 
+    @Autowired
+    private Clock clock;
+
     @Test
     void preinscribeEstudianteYActualizaRepresentanteExistente() {
         Seccion seccion = crearSeccion(2, "A");
@@ -68,6 +76,8 @@ class PreinscripcionServiceTest {
         PreinscripcionResponseDTO response = preinscripcionService.preinscribir(request);
 
         assertEquals("preinscrito", response.getEstadoMatricula());
+        assertEquals("nuevo_ingreso", matriculaRepository.findById(response.getMatriculaId())
+            .orElseThrow().getTipoIngreso());
         assertEquals(1L, response.getCuposDisponibles());
         assertEquals("Nombre actualizado Apellido", response.getRepresentanteNombreCompleto());
         assertEquals(representante.getId(), response.getRepresentanteId());
@@ -100,6 +110,58 @@ class PreinscripcionServiceTest {
     }
 
     @Test
+    void clasificaComoRegularSiCompletoElAnioInmediatamenteAnterior() {
+        Seccion seccionNueva = crearSeccion(2, "H");
+        Estudiante estudiante = crearEstudiante("EST-REGULAR-ANTERIOR");
+        crearMatriculaHistorica(estudiante, (short) 2025, "completada", "A");
+
+        PreinscripcionResponseDTO response = preinscripcionService.preinscribir(
+                crearRequest(seccionNueva.getId(), "EST-REGULAR-ANTERIOR", "REP-REGULAR-ANTERIOR"));
+
+        Matricula matricula = matriculaRepository.findById(response.getMatriculaId()).orElseThrow();
+        assertEquals("regular", matricula.getTipoIngreso());
+        assertNull(matricula.getInstitucionProcedencia());
+    }
+
+    @Test
+    void estudianteExistenteSinMatriculasPreviasEsNuevoIngreso() {
+        Seccion seccionNueva = crearSeccion(2, "K");
+        crearEstudiante("EST-CONOCIDO");
+
+        PreinscripcionResponseDTO response = preinscripcionService.preinscribir(
+                crearRequest(seccionNueva.getId(), "EST-CONOCIDO", "REP-CONOCIDO"));
+
+        assertEquals("nuevo_ingreso", response.getTipoIngreso());
+    }
+
+    @Test
+    void clasificaComoReingresoSiTieneHistorialPeroNoCompletoElAnioAnterior() {
+        Seccion seccionNueva = crearSeccion(2, "I");
+        Estudiante estudiante = crearEstudiante("EST-REING-24");
+        crearMatriculaHistorica(estudiante, (short) 2024, "completada", "A");
+
+        PreinscripcionResponseDTO response = preinscripcionService.preinscribir(
+                crearRequest(seccionNueva.getId(), "EST-REING-24", "REP-REING-24"));
+
+        assertEquals("reingreso", matriculaRepository.findById(response.getMatriculaId())
+                .orElseThrow().getTipoIngreso());
+    }
+
+    @Test
+    void clasificaComoTrasladoYGuardaLaInstitucionDeProcedencia() {
+        Seccion seccionNueva = crearSeccion(2, "J");
+        PreinscripcionRequestDTO request = crearRequest(
+                seccionNueva.getId(), "EST-TRASLADO", "REP-TRASLADO");
+        request.setInstitucionProcedencia("  U.E. Simón Rodríguez  ");
+
+        PreinscripcionResponseDTO response = preinscripcionService.preinscribir(request);
+
+        Matricula matricula = matriculaRepository.findById(response.getMatriculaId()).orElseThrow();
+        assertEquals("traslado", matricula.getTipoIngreso());
+        assertEquals("U.E. Simón Rodríguez", matricula.getInstitucionProcedencia());
+    }
+
+    @Test
     void rechazaSegundaMatriculaActivaDelEstudianteEnElMismoAnio() {
         Seccion primeraSeccion = crearSeccion(3, "D");
         Seccion segundaSeccion = crearSeccion(3, "E");
@@ -114,6 +176,41 @@ class PreinscripcionServiceTest {
         assertEquals(primera.getMatriculaId(), matriculaRepository.findAll().getFirst().getId());
         assertEquals(1, matriculaRepository.count());
     }
+
+        @Test
+        void rechazaUnAnioEscolarInexistente() {
+        Seccion seccion = crearSeccion(2, "F");
+        PreinscripcionRequestDTO request = crearRequest(
+            seccion.getId(), "EST-ANIO-INEXISTENTE", "REP-ANIO-INEXISTENTE");
+        request.setAnioEscolar((short) 2025);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+            () -> preinscripcionService.preinscribir(request));
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+        assertEquals(0, estudianteRepository.count());
+        }
+
+        @Test
+        void rechazaUnAnioEscolarIncompatibleConLaSeccion() {
+        Seccion seccion = crearSeccion(2, "G");
+        AnioEscolar anioAnterior = new AnioEscolar();
+        anioAnterior.setAnio((short) 2025);
+        anioAnterior.setNombre("2025-2026");
+        anioAnterior.setFechaInicio(LocalDate.of(2025, 9, 9));
+        anioAnterior.setFechaFin(LocalDate.of(2026, 7, 30));
+        anioAnterior.setActivo(false);
+        entityManager.persist(anioAnterior);
+        entityManager.flush();
+        PreinscripcionRequestDTO request = crearRequest(
+            seccion.getId(), "EST-ANIO-INCOMPATIBLE", "REP-ANIO-INCOMPATIBLE");
+        request.setAnioEscolar((short) 2025);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+            () -> preinscripcionService.preinscribir(request));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        }
 
     @Test
         void reactivaMatriculaRetiradaSinModificarLosDatosDelEstudiante() {
@@ -146,6 +243,11 @@ class PreinscripcionServiceTest {
     }
 
     private Seccion crearSeccion(int capacidad, String letra) {
+        return crearSeccion((short) 2026, capacidad, letra);
+    }
+
+    private Seccion crearSeccion(Short anioEscolar, int capacidad, String letra) {
+        asegurarAnioEscolar(anioEscolar);
         NivelEducativo nivel = entityManager.createQuery(
                         "select n from NivelEducativo n where n.nombre = :nombre", NivelEducativo.class)
                 .setParameter("nombre", "Educación Primaria")
@@ -176,10 +278,61 @@ class PreinscripcionServiceTest {
         seccion.setGrado(grado);
         seccion.setLetraSeccion(letra);
         seccion.setCapacidadMaxima((short) capacidad);
-        seccion.setAnioEscolar((short) 2026);
+        seccion.setAnioEscolar(anioEscolar);
         entityManager.persist(seccion);
         entityManager.flush();
         return seccion;
+    }
+
+    private Matricula crearMatriculaHistorica(Estudiante estudiante,
+                                               Short anioEscolar,
+                                               String estado,
+                                               String letra) {
+        Seccion seccion = crearSeccion(anioEscolar, 10, letra);
+        Matricula matricula = new Matricula();
+        matricula.setEstudiante(estudiante);
+        matricula.setSeccion(seccion);
+        matricula.setAnioEscolar(anioEscolar);
+        matricula.setFechaSolicitud(LocalDate.of(anioEscolar, 9, 10));
+        matricula.setEstadoMatricula(estado);
+        if ("completada".equals(estado)) {
+            matricula.setFechaFormalizacion(LocalDate.of(anioEscolar, 9, 15));
+        }
+        return matriculaRepository.saveAndFlush(matricula);
+    }
+
+    private void asegurarAnioEscolar(Short anio) {
+        entityManager.createQuery("select a from AnioEscolar a where a.anio = :anio", AnioEscolar.class)
+                .setParameter("anio", anio)
+                .getResultStream()
+                .findFirst()
+                .orElseGet(() -> {
+                    AnioEscolar nuevo = new AnioEscolar();
+                    nuevo.setAnio(anio);
+                    nuevo.setNombre(anio + "-" + (anio + 1));
+                    nuevo.setFechaInicio(LocalDate.of(anio, 9, 9));
+                    nuevo.setFechaFin(LocalDate.of(anio + 1, 7, 30));
+                    nuevo.setActivo(anio == 2026);
+                    entityManager.persist(nuevo);
+                    return nuevo;
+                });
+
+        boolean periodoExiste = !entityManager.createQuery(
+                        "select p.id from PeriodoMatricula p where p.anioEscolar = :anio "
+                                + "and p.tipo = :tipo", Integer.class)
+                .setParameter("anio", anio)
+                .setParameter("tipo", TipoPeriodoMatricula.preinscripcion)
+                .getResultList().isEmpty();
+        if (!periodoExiste) {
+            LocalDate hoy = LocalDate.now(clock);
+            PeriodoMatricula periodo = new PeriodoMatricula();
+            periodo.setAnioEscolar(anio);
+            periodo.setTipo(TipoPeriodoMatricula.preinscripcion);
+            periodo.setFechaInicio(hoy.minusYears(1));
+            periodo.setFechaFin(hoy.plusYears(1));
+            periodo.setActivo(true);
+            entityManager.persist(periodo);
+        }
     }
 
     private Estudiante crearEstudiante(String cedula) {
