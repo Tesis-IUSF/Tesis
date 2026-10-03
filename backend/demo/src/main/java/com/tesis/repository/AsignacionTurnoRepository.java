@@ -26,4 +26,11 @@ public interface AsignacionTurnoRepository extends JpaRepository<AsignacionTurno
             + "order by a.fechaDesde desc")
     List<AsignacionTurno> buscarVigentes(@Param("empleadoId") Integer empleadoId,
                                          @Param("fecha") LocalDate fecha);
+
+    @Query("select a from AsignacionTurno a join fetch a.turno t "
+            + "where a.personal.id in :empleadoIds and a.fechaDesde <= :fecha "
+            + "and (a.fechaHasta is null or a.fechaHasta >= :fecha) and t.activo = true "
+            + "order by a.fechaDesde desc, a.id desc")
+    List<AsignacionTurno> buscarVigentesPorEmpleados(@Param("empleadoIds") List<Integer> empleadoIds,
+                                                      @Param("fecha") LocalDate fecha);
 }
