@@ -7,6 +7,7 @@ import { extractErrorMessage } from "../utils/errors";
 import { logout } from "../utils/auth";
 import "./EscanerQR.css";
 import Topbar from "../components/Topbar";
+import { useToast } from "../context/ToastContext";
 
 function EscanerQR() {
   const videoRef = useRef(null);
@@ -14,6 +15,7 @@ function EscanerQR() {
   const streamRef = useRef(null);
   const animFrameRef = useRef(null);
   const procesandoRef = useRef(false);
+  const toast = useToast();
 
   const [activo, setActivo] = useState(false);
   const [resultado, setResultado] = useState(null); // { tipo: "success"|"error"|"cargando", mensaje, hora }
@@ -28,35 +30,65 @@ function EscanerQR() {
     setActivo(false);
   }, []);
 
-  const enviarEscaneo = useCallback(async (qrToken) => {
-    procesandoRef.current = true;
-    setResultado({ tipo: "cargando", mensaje: "Procesando…", hora: "" });
+  const enviarEscaneo = useCallback(
+    async (qrToken) => {
+      procesandoRef.current = true;
+      setResultado({ tipo: "cargando", mensaje: "Procesando…", hora: "" });
 
-    try {
-      const { data } = await api.post("/asistencias/qr", { qrToken });
-      const tipo = data.tipoRegistro === "entrada" ? "Entrada" : "Salida";
-      const hora =
-        data.tipoRegistro === "entrada" ? data.horaEntrada : data.horaSalida;
-      const horaFormateada = hora ? hora.substring(0, 5) : "";
+      try {
+        const { data } = await api.post("/asistencias/qr", { qrToken });
+        const tipo = data.tipoRegistro === "entrada" ? "Entrada" : "Salida";
+        const hora =
+          data.tipoRegistro === "entrada" ? data.horaEntrada : data.horaSalida;
+        const horaFormateada = hora ? hora.substring(0, 5) : "";
+        const nombreEmpleado = data.empleadoNombre || "Empleado";
 
-      setResultado({
-        tipo: "success",
-        mensaje: `${tipo} — ${data.empleadoNombre || "Empleado"}`,
-        hora: horaFormateada,
-      });
-    } catch (err) {
-      setResultado({
-        tipo: "error",
-        mensaje: extractErrorMessage(err, "QR inválido o vencido."),
-        hora: "",
-      });
-    } finally {
-      setTimeout(() => {
-        procesandoRef.current = false;
-        setResultado(null);
-      }, 3000);
-    }
-  }, []);
+        setResultado({
+          tipo: "success",
+          mensaje: `${tipo} — ${nombreEmpleado}`,
+          hora: horaFormateada,
+        });
+
+        toast.success(
+          `${tipo} registrada para ${nombreEmpleado} a las ${horaFormateada}.`,
+        );
+      } catch (err) {
+        const status = err.response?.status;
+        let mensaje;
+
+        // Mensajes específicos según el criterio de SW-53 (400, 401, 404, 409)
+        switch (status) {
+          case 400:
+            mensaje = "El código QR no tiene un formato válido.";
+            break;
+          case 401:
+            mensaje = "QR inválido, revocado o vencido.";
+            break;
+          case 404:
+            mensaje = "No se encontró al empleado asociado a este QR.";
+            break;
+          case 409:
+            // El backend ya manda el mensaje exacto en estos casos:
+            // "ya tiene entrada y salida registradas", "no tiene turno asignado",
+            // "la salida debe registrarse después de la entrada", etc.
+            mensaje =
+              err.response?.data?.message || "Ya se registró esta asistencia.";
+            break;
+          default:
+            mensaje = "No se pudo conectar con el servidor. Intenta de nuevo.";
+        }
+
+        setResultado({ tipo: "error", mensaje, hora: "" });
+        toast.error(mensaje);
+      } finally {
+        setTimeout(() => {
+          procesandoRef.current = false;
+          setResultado(null);
+        }, 3000);
+      }
+    },
+    [toast],
+  );
 
   const loopEscaneo = useCallback(() => {
     const video = videoRef.current;
