@@ -49,6 +49,7 @@ services:
     environment:
       # Activa el perfil de desarrollo para leer application-dev.properties
       SPRING_PROFILES_ACTIVE: dev
+      TZ: America/Caracas
       # Forzamos que el host sea el nombre del servicio de la DB en la red de Docker
       DB_HOST: db
       DB_PORT: 3306
