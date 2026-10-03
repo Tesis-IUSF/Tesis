@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
-import { useCargos } from "../hooks/useCatalogos";
+import { useCargos, useTurnos } from "../hooks/useCatalogos";
 import ConfirmDialog from "../components/ConfirmDialog";
 import "./Empleados.css";
 import Topbar from "../components/Topbar";
@@ -12,6 +12,7 @@ import Topbar from "../components/Topbar";
 function Empleados() {
   const toast = useToast();
   const { items: cargos } = useCargos();
+  const { items: turnos } = useTurnos();
 
   const [empleados, setEmpleados] = useState([]);
   const [pagina, setPagina] = useState({
@@ -24,6 +25,7 @@ function Empleados() {
   const [eliminando, setEliminando] = useState(false);
   const [empleadoAEliminar, setEmpleadoAEliminar] = useState(null);
   const [filtroCargoId, setFiltroCargoId] = useState("");
+  const [filtroTurnoId, setFiltroTurnoId] = useState("");
 
   const cargarEmpleados = useCallback(async (page = 0) => {
     setCargando(true);
@@ -69,11 +71,15 @@ function Empleados() {
   };
 
   // Filtro en cliente, sobre la página ya cargada (según pide el criterio de SW-44)
-  const empleadosFiltrados = filtroCargoId
-    ? empleados.filter((e) => String(e.cargoId) === filtroCargoId)
-    : empleados;
+  const empleadosFiltrados = empleados.filter((empleado) =>
+    (!filtroCargoId || String(empleado.cargoId) === filtroCargoId) &&
+    (!filtroTurnoId || String(empleado.turnoId) === filtroTurnoId),
+  );
 
-  const limpiarFiltros = () => setFiltroCargoId("");
+  const limpiarFiltros = () => {
+    setFiltroCargoId("");
+    setFiltroTurnoId("");
+  };
 
   return (
     <>
@@ -107,14 +113,19 @@ function Empleados() {
           <label>
             Turno
             <select
-              disabled
-              title="Próximamente: el backend aún no expone el turno por empleado"
+              value={filtroTurnoId}
+              onChange={(e) => setFiltroTurnoId(e.target.value)}
             >
-              <option>No disponible aún</option>
+              <option value="">Todos</option>
+              {turnos.map((turno) => (
+                <option key={turno.id} value={turno.id}>
+                  {turno.nombre}
+                </option>
+              ))}
             </select>
           </label>
 
-          {filtroCargoId && (
+          {(filtroCargoId || filtroTurnoId) && (
             <button
               type="button"
               className="btn-secondary"
@@ -149,8 +160,8 @@ function Empleados() {
                 <tr>
                   <td colSpan={5} className="tabla-estado">
                     <span className="tabla-estado-icono">📋</span>
-                    {filtroCargoId
-                      ? "No hay empleados con ese cargo en esta página."
+                      {filtroCargoId || filtroTurnoId
+                      ? "No hay empleados con esos filtros en esta página."
                       : "No hay empleados registrados todavía."}
                   </td>
                 </tr>
@@ -162,7 +173,7 @@ function Empleados() {
                       {emp.nombre} {emp.apellido}
                     </td>
                     <td data-label="Cargo">{emp.cargoNombre || "—"}</td>
-                    <td data-label="Turno">—</td>
+                    <td data-label="Turno">{emp.turnoNombre || "—"}</td>
                     <td data-label="Acciones">
                       <Link
                         to={`/empleados/${emp.id}/editar`}

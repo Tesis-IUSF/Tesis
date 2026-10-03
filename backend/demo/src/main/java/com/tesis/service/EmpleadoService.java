@@ -2,10 +2,12 @@ package com.tesis.service;
 
 import com.tesis.dto.EmpleadoDTO.EmpleadoRequestDTO;
 import com.tesis.dto.EmpleadoDTO.EmpleadoResponseDTO;
+import com.tesis.entity.AsignacionTurno;
 import com.tesis.entity.Cargo;
 import com.tesis.entity.Departamento;
 import com.tesis.entity.Empleado;
 import com.tesis.entity.Usuario;
+import com.tesis.repository.AsignacionTurnoRepository;
 import com.tesis.repository.CargoRepository;
 import com.tesis.repository.DepartamentoRepository;
 import com.tesis.repository.EmpleadoRepository;
@@ -17,6 +19,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 @Service
 @Transactional
 public class EmpleadoService {
@@ -25,20 +33,26 @@ public class EmpleadoService {
     private final CargoRepository cargoRepository;
     private final DepartamentoRepository departamentoRepository;
     private final UsuarioRepository usuarioRepository;
+    private final AsignacionTurnoRepository asignacionTurnoRepository;
 
     public EmpleadoService(EmpleadoRepository empleadoRepository,
                            CargoRepository cargoRepository,
                            DepartamentoRepository departamentoRepository,
-                           UsuarioRepository usuarioRepository) {
+                           UsuarioRepository usuarioRepository,
+                           AsignacionTurnoRepository asignacionTurnoRepository) {
         this.empleadoRepository = empleadoRepository;
         this.cargoRepository = cargoRepository;
         this.departamentoRepository = departamentoRepository;
         this.usuarioRepository = usuarioRepository;
+        this.asignacionTurnoRepository = asignacionTurnoRepository;
     }
 
     @Transactional(readOnly = true)
     public Page<EmpleadoResponseDTO> listar(Pageable pageable) {
-        return empleadoRepository.findAll(pageable).map(this::toResponse);
+        Page<Empleado> empleados = empleadoRepository.findAll(pageable);
+        Map<Integer, AsignacionTurno> turnosVigentes = buscarTurnosVigentes(
+            empleados.getContent().stream().map(Empleado::getId).toList());
+        return empleados.map(empleado -> toResponse(empleado, turnosVigentes.get(empleado.getId())));
     }
 
     @Transactional(readOnly = true)
@@ -71,6 +85,15 @@ public class EmpleadoService {
     private Empleado buscarEmpleado(Integer id) {
         return empleadoRepository.findById(id).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.NOT_FOUND, "Empleado no encontrado"));
+    }
+
+    private Map<Integer, AsignacionTurno> buscarTurnosVigentes(List<Integer> empleadoIds) {
+        if (empleadoIds.isEmpty()) {
+            return Map.of();
+        }
+        return asignacionTurnoRepository.buscarVigentesPorEmpleados(empleadoIds, LocalDate.now()).stream()
+                .collect(Collectors.toMap(asignacion -> asignacion.getPersonal().getId(), Function.identity(),
+                        (primera, ignorada) -> primera));
     }
 
     private void aplicarRequest(EmpleadoRequestDTO request, Empleado empleado, boolean nuevo) {
@@ -125,6 +148,11 @@ public class EmpleadoService {
     }
 
     private EmpleadoResponseDTO toResponse(Empleado empleado) {
+        Map<Integer, AsignacionTurno> turnos = buscarTurnosVigentes(List.of(empleado.getId()));
+        return toResponse(empleado, turnos.get(empleado.getId()));
+    }
+
+    private EmpleadoResponseDTO toResponse(Empleado empleado, AsignacionTurno asignacionTurno) {
         return new EmpleadoResponseDTO(
                 empleado.getId(),
                 empleado.getNombre(),
@@ -143,6 +171,8 @@ public class EmpleadoService {
                 empleado.getUsuario() == null ? null : empleado.getUsuario().getId(),
                 empleado.getActivo(),
                 empleado.getCreadoEn(),
-                empleado.getActualizadoEn());
+                empleado.getActualizadoEn(),
+                asignacionTurno == null ? null : asignacionTurno.getTurno().getId(),
+                asignacionTurno == null ? null : asignacionTurno.getTurno().getNombre());
     }
 }
