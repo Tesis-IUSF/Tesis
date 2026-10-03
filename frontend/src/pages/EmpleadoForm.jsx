@@ -19,6 +19,7 @@ const VACIO = {
   cargoId: "",
   departamentoId: "",
   fechaIngreso: "",
+  turnoNombre: "",
 };
 
 const DOMINIO_CORREO = "@asansa.local";
@@ -56,6 +57,7 @@ function EmpleadoForm() {
           cargoId: data.cargoId ?? "",
           departamentoId: data.departamentoId ?? "",
           fechaIngreso: data.fechaIngreso || "",
+          turnoNombre: data.turnoNombre || "",
         });
       })
       .catch((err) => {
@@ -291,6 +293,14 @@ function EmpleadoForm() {
                   </option>
                 ))}
               </select>
+            </label>
+
+            <label>
+              Turno asignado
+              <input
+                value={form.turnoNombre || "Sin turno asignado"}
+                readOnly
+              />
             </label>
           </div>
 

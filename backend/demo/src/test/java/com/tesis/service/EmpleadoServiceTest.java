@@ -2,11 +2,14 @@ package com.tesis.service;
 
 import com.tesis.dto.EmpleadoDTO.EmpleadoRequestDTO;
 import com.tesis.dto.EmpleadoDTO.EmpleadoResponseDTO;
+import com.tesis.entity.AsignacionTurno;
 import com.tesis.entity.Cargo;
 import com.tesis.entity.Departamento;
 import com.tesis.entity.Empleado;
+import com.tesis.entity.Turno;
 import com.tesis.entity.Usuario;
 import com.tesis.repository.CargoRepository;
+import com.tesis.repository.AsignacionTurnoRepository;
 import com.tesis.repository.DepartamentoRepository;
 import com.tesis.repository.EmpleadoRepository;
 import com.tesis.repository.UsuarioRepository;
@@ -30,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -48,12 +52,18 @@ class EmpleadoServiceTest {
     @Mock
     private UsuarioRepository usuarioRepository;
 
+    @Mock
+    private AsignacionTurnoRepository asignacionTurnoRepository;
+
     private EmpleadoService empleadoService;
 
     @BeforeEach
     void setUp() {
         empleadoService = new EmpleadoService(
-                empleadoRepository, cargoRepository, departamentoRepository, usuarioRepository);
+            empleadoRepository, cargoRepository, departamentoRepository, usuarioRepository,
+            asignacionTurnoRepository);
+        lenient().when(asignacionTurnoRepository.buscarVigentesPorEmpleados(any(), any()))
+            .thenReturn(List.of());
     }
 
     @Test
@@ -71,6 +81,26 @@ class EmpleadoServiceTest {
         assertEquals(empleado.getDepartamento().getId(), respuesta.get(0).getDepartamentoId());
         assertEquals("Académico", respuesta.get(0).getDepartamentoNombre());
         assertEquals(empleado.getUsuario().getId(), respuesta.get(0).getUsuarioId());
+    }
+
+    @Test
+    void listarIncluyeTurnoVigenteEnLaRespuesta() {
+        Empleado empleado = empleadoExistente();
+        Turno turno = new Turno();
+        turno.setId(4);
+        turno.setNombre("Matutino");
+        AsignacionTurno asignacion = new AsignacionTurno();
+        asignacion.setPersonal(empleado);
+        asignacion.setTurno(turno);
+        when(empleadoRepository.findAll(any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(empleado), PageRequest.of(0, 25), 1));
+        when(asignacionTurnoRepository.buscarVigentesPorEmpleados(List.of(3), LocalDate.now()))
+                .thenReturn(List.of(asignacion));
+
+        EmpleadoResponseDTO respuesta = empleadoService.listar(PageRequest.of(0, 25)).getContent().get(0);
+
+        assertEquals(4, respuesta.getTurnoId());
+        assertEquals("Matutino", respuesta.getTurnoNombre());
     }
 
     @Test
