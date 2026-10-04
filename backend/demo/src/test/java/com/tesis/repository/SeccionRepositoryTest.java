@@ -28,7 +28,7 @@ class SeccionRepositoryTest {
     private SeccionRepository seccionRepository;
 
     @Test
-    void calculaCuposDisponiblesIgnorandoMatriculasCanceladasYSuspendidas() {
+    void calculaCuposDisponiblesConLosCincoEstadosDeMatricula() {
         NivelEducativo nivel = new NivelEducativo();
         nivel.setNombre("Primaria prueba");
         nivel.setOrdinal((short) 90);
@@ -42,17 +42,27 @@ class SeccionRepositoryTest {
         Seccion seccion = new Seccion();
         seccion.setGrado(grado);
         seccion.setLetraSeccion("Z");
-        seccion.setCapacidadMaxima((short) 5);
+        seccion.setCapacidadMaxima((short) 7);
         seccion.setAnioEscolar((short) 2026);
         entityManager.persist(seccion);
 
         persistirMatricula(seccion, "CUPOS-PREINSCRITO", "preinscrito");
+        persistirMatricula(seccion, "CUPOS-EN-PROCESO", "en_proceso");
         persistirMatricula(seccion, "CUPOS-COMPLETADA", "completada");
-        persistirMatricula(seccion, "CUPOS-CANCELADA", "cancelada");
-        persistirMatricula(seccion, "CUPOS-SUSPENDIDA", "suspendida");
+        persistirMatricula(seccion, "CUPOS-RETIRADA", "retirada");
+        persistirMatricula(seccion, "CUPOS-ANULADA", "anulada");
         entityManager.flush();
 
-        assertEquals(3L, seccionRepository.calcularCuposDisponibles(seccion.getId()).orElseThrow());
+        Long ocupadas = entityManager.createQuery("select count(m) from Matricula m "
+                + "where m.seccion = :seccion and m.anioEscolar = :anio "
+                + "and m.estadoMatricula in ('preinscrito', 'en_proceso', 'completada')", Long.class)
+            .setParameter("seccion", seccion)
+            .setParameter("anio", (short) 2026)
+            .getSingleResult();
+        entityManager.refresh(seccion);
+        assertEquals((short) 7, seccion.getCapacidadMaxima());
+        assertEquals(3L, ocupadas);
+        assertEquals(4L, seccionRepository.calcularCuposDisponibles(seccion.getId()).orElseThrow());
     }
 
     private void persistirMatricula(Seccion seccion, String cedula, String estado) {
