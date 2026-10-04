@@ -6,7 +6,7 @@ server.port=8080
 # Variables de Base de Datos (Toma valores del .env o usa fallbacks)
 db.host=${DB_HOST:localhost}
 db.port=${DB_PORT:3306}
-db.name=${MYSQL_DATABASE:mi_app_dev}
+db.name=${DB_NAME:mi_app_dev}
 db.user=${DB_USER:root}
 db.pass=${DB_PASS:root}
 
@@ -17,7 +17,7 @@ spring.datasource.password=${db.pass}
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 
 # JPA / Hibernate
-spring.jpa.database-platform=org.hibernate.dialect.MySQL8Dialect
+spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
 spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true

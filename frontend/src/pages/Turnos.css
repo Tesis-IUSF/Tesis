@@ -1,0 +1,200 @@
+/* Reutiliza estilos de .table-container, .badge, .paginacion, .btn-edit,
+   .btn-delete, .btn-reactivar ya definidos globalmente */
+
+.mod-heading-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.table-container {
+  overflow-x: auto;
+  background: var(--blanco);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(47, 90, 138, 0.07);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+thead th {
+  text-align: left;
+  padding: 0.85rem 1rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--texto-suave);
+  font-weight: 600;
+  border-bottom: 2px solid var(--azul-claro);
+  white-space: nowrap;
+}
+
+tbody tr {
+  border-bottom: 1px solid #eef2f7;
+  transition: background 0.15s;
+}
+
+tbody tr:hover {
+  background: #f7fafd;
+}
+
+tbody td {
+  padding: 0.85rem 1rem;
+  color: var(--texto);
+  vertical-align: middle;
+}
+
+.tabla-estado {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: #a0afc0;
+  font-size: 0.9rem;
+}
+
+.tabla-estado-icono {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-presente {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.badge-ausente {
+  background: #fde8e8;
+  color: #c0392b;
+}
+
+.btn-edit {
+  display: inline-block;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  background: var(--azul-claro);
+  color: var(--azul);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  text-decoration: none;
+  margin-right: 0.4rem;
+  transition: background 0.15s;
+}
+
+.btn-edit:hover {
+  background: #b8d4ee;
+}
+
+.btn-delete {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  background: #fde8e8;
+  color: #c0392b;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+
+.btn-delete:hover {
+  background: #f5c6c6;
+}
+
+.btn-reactivar {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  background: #d1fae5;
+  color: #065f46;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+
+.btn-reactivar:hover {
+  background: #a7f3d0;
+}
+
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+}
+
+.paginacion button {
+  padding: 0.5rem 1rem;
+  background: var(--blanco);
+  border: 1.5px solid var(--azul-claro);
+  border-radius: 8px;
+  color: var(--azul);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.paginacion button:hover:not(:disabled) {
+  background: var(--azul-claro);
+}
+
+.paginacion button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.error-msg {
+  background: #fdf0ee;
+  color: #a32d2d;
+  border: 1px solid #f0c0b8;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+/* Responsivo: tabla -> tarjetas apiladas en móvil */
+@media (max-width: 640px) {
+  thead {
+    display: none;
+  }
+  table,
+  tbody,
+  tr,
+  td {
+    display: block;
+  }
+  tbody tr {
+    margin-bottom: 0.75rem;
+    border: 1px solid #dce6f0;
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem;
+  }
+  tbody td {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0;
+    border: none;
+  }
+  tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--azul);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+  }
+}

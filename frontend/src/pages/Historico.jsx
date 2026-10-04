@@ -5,12 +5,10 @@ import { extractErrorMessage } from "../utils/errors";
 import "./Historico.css";
 import Topbar from "../components/Topbar";
 
-function hace30Dias() {
+function rangoHoy() {
   const hoy = new Date();
-  const hace30 = new Date(hoy);
-  hace30.setDate(hoy.getDate() - 30);
   const fmt = (d) => d.toISOString().split("T")[0];
-  return { desde: fmt(hace30), hasta: fmt(hoy) };
+  return { desde: fmt(hoy), hasta: fmt(hoy) };
 }
 
 const BADGES = {
@@ -57,7 +55,7 @@ function formatHora(hora) {
 }
 
 function Historico() {
-  const [{ desde: desdeInicial, hasta: hastaInicial }] = useState(hace30Dias);
+  const [{ desde: desdeInicial, hasta: hastaInicial }] = useState(rangoHoy);
   const [desde, setDesde] = useState(desdeInicial);
   const [hasta, setHasta] = useState(hastaInicial);
   const [registros, setRegistros] = useState([]);
@@ -92,11 +90,6 @@ function Historico() {
     consultar();
   }, [consultar]);
 
-  const handleConsultar = (e) => {
-    e.preventDefault();
-    consultar();
-  };
-
   const diasTrabajados = registros.filter((r) => r.horaEntrada).length;
   const tardanzas = registros.filter(
     (r) => r.estado?.toLowerCase() === "tardanza",
@@ -119,7 +112,7 @@ function Historico() {
           <h1>Histórico de Asistencia</h1>
         </div>
 
-        <form className="filters-panel" onSubmit={handleConsultar}>
+        <div className="filters-panel">
           <div className="filters-grid">
             <label>
               Fecha desde
@@ -139,11 +132,23 @@ function Historico() {
                 required
               />
             </label>
-            <button type="submit" className="btn-consultar" disabled={cargando}>
-              {cargando ? "Consultando…" : "Consultar"}
-            </button>
+
+            {(desde !== desdeInicial || hasta !== hastaInicial) && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  const { desde: hoyDesde, hasta: hoyHasta } = rangoHoy();
+                  setDesde(hoyDesde);
+                  setHasta(hoyHasta);
+                }}
+                disabled={cargando}
+              >
+                Volver a hoy
+              </button>
+            )}
           </div>
-        </form>
+        </div>
 
         {error && <p className="error-msg">{error}</p>}
 

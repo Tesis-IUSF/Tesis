@@ -71,9 +71,10 @@ function Empleados() {
   };
 
   // Filtro en cliente, sobre la página ya cargada (según pide el criterio de SW-44)
-  const empleadosFiltrados = empleados.filter((empleado) =>
-    (!filtroCargoId || String(empleado.cargoId) === filtroCargoId) &&
-    (!filtroTurnoId || String(empleado.turnoId) === filtroTurnoId),
+  const empleadosFiltrados = empleados.filter(
+    (empleado) =>
+      (!filtroCargoId || String(empleado.cargoId) === filtroCargoId) &&
+      (!filtroTurnoId || String(empleado.turnoId) === filtroTurnoId),
   );
 
   const limpiarFiltros = () => {
@@ -136,6 +137,14 @@ function Empleados() {
           )}
         </div>
 
+        {(filtroCargoId || filtroTurnoId) && (
+          <p className="filtro-aviso">
+            ⚠️ El filtro se aplica solo sobre los {empleados.length} empleados
+            de esta página. Si el empleado que buscas está en otra página, no
+            aparecerá aquí.
+          </p>
+        )}
+
         {error && <p className="error-msg">{error}</p>}
 
         <div className="table-container">
@@ -160,7 +169,7 @@ function Empleados() {
                 <tr>
                   <td colSpan={5} className="tabla-estado">
                     <span className="tabla-estado-icono">📋</span>
-                      {filtroCargoId || filtroTurnoId
+                    {filtroCargoId || filtroTurnoId
                       ? "No hay empleados con esos filtros en esta página."
                       : "No hay empleados registrados todavía."}
                   </td>
