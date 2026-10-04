@@ -46,6 +46,9 @@ function Topbar({ mostrarVolver = false }) {
             <Link to="/asistencia/historico" className="btn-back">
               Histórico
             </Link>
+            <Link to="/turnos" className="btn-back">
+              Turnos
+            </Link>
           </>
         )}
 

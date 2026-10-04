@@ -10,6 +10,8 @@ import Historico from "./pages/Historico";
 import EmpleadoForm from "./pages/EmpleadoForm";
 import EscanerQR from "./pages/EscanerQR";
 import AsistenciaHoy from "./pages/AsistenciaHoy";
+import Turnos from "./pages/Turnos";
+import TurnoForm from "./pages/TurnoForm";
 
 function App() {
   return (
@@ -42,6 +44,9 @@ function App() {
             <Route path="/empleados/:id/editar" element={<EmpleadoForm />} />
             <Route path="/asistencia/hoy" element={<AsistenciaHoy />} />
             <Route path="/asistencia/historico" element={<Historico />} />
+            <Route path="/turnos" element={<Turnos />} />
+            <Route path="/turnos/nuevo" element={<TurnoForm />} />
+            <Route path="/turnos/:id/editar" element={<TurnoForm />} />
           </Route>
 
           <Route path="/" element={<Navigate to="/login" replace />} />
