@@ -1,0 +1,216 @@
+/* src/pages/Carnets.css */
+
+/* El campo de búsqueda toma el mismo aspecto que los select de .filters-bar */
+.filters-bar input[type="search"] {
+  font-family: var(--font-texto);
+  font-size: 0.9rem;
+  padding: 0.5rem 0.75rem;
+  border: 1.5px solid #d0dcea;
+  border-radius: 8px;
+  background: var(--blanco);
+  min-width: 180px;
+}
+
+/* "Por vencer en" más compacto, para que quepa junto a Estado */
+.filters-bar .filtro-corto select {
+  min-width: 110px;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-edit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+tbody input[type="checkbox"],
+thead input[type="checkbox"] {
+  accent-color: var(--azul);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* Estados del carnet */
+.badge.carnet-vigente {
+  background: #e6f4ea;
+  color: #1e7e34;
+}
+
+.badge.carnet-por_vencer {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge.carnet-vencido {
+  background: #fde8e8;
+  color: #c0392b;
+}
+
+.badge.carnet-sin_carnet {
+  background: #eef2f7;
+  color: var(--texto-suave);
+}
+
+/* Modal */
+.carnets-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(20, 40, 65, 0.45);
+}
+
+.carnets-modal {
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 1.5rem;
+  border-radius: 14px;
+  background: var(--blanco);
+  box-shadow: 0 12px 32px rgba(47, 90, 138, 0.25);
+  font-family: var(--font-texto);
+  color: var(--texto);
+}
+
+.carnets-modal h2 {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-titulos);
+  color: var(--azul-oscuro);
+}
+
+.carnets-resumen {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.95rem;
+}
+
+.carnets-resumen strong {
+  font-size: 1.1rem;
+  color: var(--azul-oscuro);
+}
+
+/* Aviso de reemplazo */
+.carnets-alerta {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  color: #92400e;
+  font-size: 0.875rem;
+}
+
+.carnets-alerta p {
+  margin: 0 0 0.6rem;
+}
+
+.carnets-lista {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  max-height: 140px;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 6px;
+}
+
+.carnets-lista li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid #fde68a;
+}
+
+.carnets-lista li:last-child {
+  border-bottom: 0;
+}
+
+.carnets-confirmar {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.carnets-confirmar input {
+  accent-color: var(--azul);
+  margin-top: 0.15rem;
+}
+
+/* Formato de descarga */
+.carnets-formatos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  border: 0;
+}
+
+.carnets-formatos legend {
+  margin-bottom: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.carnets-formatos label {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.75rem;
+  border: 1.5px solid #d0dcea;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.carnets-formatos label:has(input:checked) {
+  border-color: var(--azul);
+  background: var(--azul-claro);
+}
+
+.carnets-formatos input[type="radio"] {
+  accent-color: var(--azul);
+  margin-top: 0.2rem;
+}
+
+.carnets-formatos label span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.9rem;
+}
+
+.carnets-formatos small {
+  color: var(--texto-suave);
+}
+
+.carnets-modal-acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .carnets-modal-acciones {
+    flex-direction: column-reverse;
+  }
+}
