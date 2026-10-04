@@ -21,10 +21,10 @@
 }
 
 .filters-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
   align-items: end;
+  gap: 0.75rem;
 }
 
 .filters-grid label {
@@ -41,29 +41,30 @@
 .filters-grid input {
   font-family: var(--font-texto);
   font-size: 0.9rem;
-  padding: 0.55rem 0.75rem;
+  padding: 0.5rem 0.75rem;
   border: 1.5px solid #d0dcea;
   border-radius: 8px;
   background: var(--blanco);
+  max-width: 170px;
 }
 
-.btn-consultar {
-  padding: 0.6rem 1.5rem;
-  background: var(--azul);
-  color: var(--blanco);
-  border: none;
+.btn-secondary {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  color: var(--azul);
+  border: 1.5px solid var(--azul);
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  height: 42px;
+  height: 38px;
 }
 
-.btn-consultar:hover {
-  background: var(--azul-oscuro);
+.btn-secondary:hover {
+  background: var(--azul-claro);
 }
 
-.btn-consultar:disabled {
+.btn-secondary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -215,7 +216,11 @@ tbody td {
 
 @media (max-width: 640px) {
   .filters-grid {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .filters-grid input {
+    max-width: none;
   }
   .stats-row {
     grid-template-columns: repeat(2, 1fr);
@@ -248,4 +253,8 @@ tbody td {
     font-size: 0.75rem;
     text-transform: uppercase;
   }
+}
+
+.filters-panel {
+  padding: 1.5rem 1.75rem;
 }

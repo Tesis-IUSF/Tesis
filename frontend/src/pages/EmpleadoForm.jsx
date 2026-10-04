@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
-import { useCargos, useDepartamentos } from "../hooks/useCatalogos";
+import { useCargos, useDepartamentos, useTurnos } from "../hooks/useCatalogos";
 import Topbar from "../components/Topbar";
 import "./EmpleadoForm.css";
 
@@ -19,8 +19,10 @@ const VACIO = {
   cargoId: "",
   departamentoId: "",
   fechaIngreso: "",
-  turnoNombre: "",
+  turnoId: "",
 };
+
+const hoyISO = () => new Date().toISOString().split("T")[0];
 
 const DOMINIO_CORREO = "@asansa.local";
 
@@ -33,8 +35,11 @@ function EmpleadoForm() {
   const toast = useToast();
   const { items: cargos } = useCargos();
   const { items: departamentos } = useDepartamentos();
+  const { items: turnos } = useTurnos();
 
   const [form, setForm] = useState(VACIO);
+  const [turnoIdOriginal, setTurnoIdOriginal] = useState("");
+  const [fechaDesdeTurno, setFechaDesdeTurno] = useState(hoyISO());
   const [cargandoDatos, setCargandoDatos] = useState(esEdicion);
   const [guardando, setGuardando] = useState(false);
   const [errores, setErrores] = useState({});
@@ -57,8 +62,9 @@ function EmpleadoForm() {
           cargoId: data.cargoId ?? "",
           departamentoId: data.departamentoId ?? "",
           fechaIngreso: data.fechaIngreso || "",
-          turnoNombre: data.turnoNombre || "",
+          turnoId: data.turnoId ?? "",
         });
+        setTurnoIdOriginal(data.turnoId ?? "");
       })
       .catch((err) => {
         toast.error(extractErrorMessage(err, "No se pudo cargar el empleado."));
@@ -117,13 +123,52 @@ function EmpleadoForm() {
     };
 
     try {
+      let empleadoId = id;
       if (esEdicion) {
         await api.put(`/empleados/${id}`, payload);
         toast.success("Empleado actualizado correctamente.");
       } else {
-        await api.post("/empleados", payload);
+        const { data } = await api.post("/empleados", payload);
+        empleadoId = data.id;
         toast.success("Empleado creado correctamente.");
       }
+
+      // Asignación de turno: solo aplica en edición, y solo si cambió
+      // Asignación de turno: solo aplica en edición, y solo si cambió
+      if (
+        esEdicion &&
+        form.turnoId &&
+        String(form.turnoId) !== String(turnoIdOriginal)
+      ) {
+        try {
+          if (turnoIdOriginal) {
+            // Ya tenía turno: reemplazar la asignación vigente
+            await api.put(
+              `/asignaciones-turnos/empleado/${empleadoId}/vigente`,
+              {
+                turnoId: Number(form.turnoId),
+                fechaDesde: fechaDesdeTurno,
+              },
+            );
+          } else {
+            // Primera asignación: crear una nueva
+            await api.post("/asignaciones-turnos", {
+              empleadoId: Number(empleadoId),
+              turnoId: Number(form.turnoId),
+              fechaDesde: fechaDesdeTurno,
+            });
+          }
+          toast.success("Turno actualizado correctamente.");
+        } catch (errTurno) {
+          toast.error(
+            extractErrorMessage(
+              errTurno,
+              "No se pudo actualizar el turno del empleado.",
+            ),
+          );
+        }
+      }
+
       navigate("/empleados");
     } catch (err) {
       toast.error(extractErrorMessage(err, "No se pudo guardar el empleado."));
@@ -295,13 +340,45 @@ function EmpleadoForm() {
               </select>
             </label>
 
-            <label>
-              Turno asignado
-              <input
-                value={form.turnoNombre || "Sin turno asignado"}
-                readOnly
-              />
-            </label>
+            {esEdicion ? (
+              <>
+                <label>
+                  Turno asignado
+                  <select
+                    value={form.turnoId}
+                    onChange={(e) => actualizarCampo("turnoId", e.target.value)}
+                  >
+                    <option value="">Sin turno asignado</option>
+                    {turnos.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {String(form.turnoId) !== String(turnoIdOriginal) &&
+                  form.turnoId && (
+                    <label>
+                      Turno efectivo desde
+                      <input
+                        type="date"
+                        value={fechaDesdeTurno}
+                        onChange={(e) => setFechaDesdeTurno(e.target.value)}
+                      />
+                    </label>
+                  )}
+              </>
+            ) : (
+              <label>
+                Turno
+                <input
+                  value="Podrás asignar el turno después de crear al empleado."
+                  readOnly
+                  disabled
+                />
+              </label>
+            )}
           </div>
 
           <div className="form-actions">
