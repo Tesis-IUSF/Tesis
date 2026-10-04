@@ -48,6 +48,8 @@ public class SecurityConfig {
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
             .requestMatchers(HttpMethod.POST, "/api/empleados/carnets/lote")
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
+            .requestMatchers(HttpMethod.POST, "/api/empleados/carnets/lote/descarga")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
             .requestMatchers("/api/matriculas/**")
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR", "ADMINISTRATIVO")
             .anyRequest().authenticated())
