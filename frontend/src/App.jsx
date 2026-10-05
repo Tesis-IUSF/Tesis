@@ -12,6 +12,7 @@ import EscanerQR from "./pages/EscanerQR";
 import AsistenciaHoy from "./pages/AsistenciaHoy";
 import Turnos from "./pages/Turnos";
 import TurnoForm from "./pages/TurnoForm";
+import Carnets from "./pages/Carnets";
 
 function App() {
   return (
@@ -38,6 +39,14 @@ function App() {
               />
             }
           >
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR]} />
+              }
+            >
+              <Route path="/carnets" element={<Carnets />} />
+            </Route>
+
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/empleados" element={<Empleados />} />
             <Route path="/empleados/nuevo" element={<EmpleadoForm />} />

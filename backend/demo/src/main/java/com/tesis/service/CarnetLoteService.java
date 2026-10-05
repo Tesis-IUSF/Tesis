@@ -1,6 +1,8 @@
 package com.tesis.service;
 
 import com.tesis.entity.Empleado;
+import com.tesis.entity.CredencialQr;
+import com.tesis.repository.CredencialQrRepository;
 import com.tesis.repository.EmpleadoRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -11,7 +13,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -27,17 +31,73 @@ public class CarnetLoteService {
     private final CarnetService carnetService;
     private final CarnetPdfGenerator pdfGenerator;
     private final EmpleadoRepository empleadoRepository;
+    private final CredencialQrRepository credencialQrRepository;
 
     public CarnetLoteService(CarnetService carnetService,
                              CarnetPdfGenerator pdfGenerator,
-                             EmpleadoRepository empleadoRepository) {
+                             EmpleadoRepository empleadoRepository,
+                             CredencialQrRepository credencialQrRepository) {
         this.carnetService = carnetService;
         this.pdfGenerator = pdfGenerator;
         this.empleadoRepository = empleadoRepository;
+        this.credencialQrRepository = credencialQrRepository;
     }
 
     @Transactional
     public byte[] generar(List<Integer> idsSolicitados, String formatoSolicitado) {
+        SolicitudLote solicitud = validarSolicitud(idsSolicitados, formatoSolicitado);
+        LinkedHashSet<Integer> ids = solicitud.ids();
+        String formato = solicitud.formato();
+        Map<Integer, Empleado> empleados = new HashMap<>();
+        empleadoRepository.findAllById(ids).forEach(empleado -> empleados.put(empleado.getId(), empleado));
+        validarEmpleados(ids, empleados);
+
+        List<byte[]> carnets = new ArrayList<>();
+        for (Integer id : ids) {
+            carnets.add(carnetService.generarCarnet(id));
+        }
+        return empaquetar(ids, formato, empleados, carnets);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] descargarExistentes(List<Integer> idsSolicitados, String formatoSolicitado) {
+        SolicitudLote solicitud = validarSolicitud(idsSolicitados, formatoSolicitado);
+        LinkedHashSet<Integer> ids = solicitud.ids();
+        String formato = solicitud.formato();
+
+        Map<Integer, Empleado> empleados = new HashMap<>();
+        empleadoRepository.findAllById(ids).forEach(empleado -> empleados.put(empleado.getId(), empleado));
+        validarEmpleados(ids, empleados);
+
+        LocalDateTime ahora = LocalDateTime.now();
+        Map<Integer, CredencialQr> credenciales = new HashMap<>();
+        List<String> sinCredencialVigente = new ArrayList<>();
+        for (Integer id : ids) {
+            CredencialQr credencial = credencialQrRepository.findByEmpleado_IdAndActivaTrue(id).stream()
+                    .filter(candidata -> candidata.getExpiraEn().isAfter(ahora))
+                    .max(Comparator.comparing(CredencialQr::getCreadaEn))
+                    .orElse(null);
+            if (credencial == null) {
+                Empleado empleado = empleados.get(id);
+                sinCredencialVigente.add(empleado.getNombre() + " " + empleado.getApellido()
+                        + " (ID: " + id + ")");
+            } else {
+                credenciales.put(id, credencial);
+            }
+        }
+        if (!sinCredencialVigente.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No hay credencial activa y vigente para: " + String.join(", ", sinCredencialVigente));
+        }
+
+        List<byte[]> carnets = new ArrayList<>();
+        for (Integer id : ids) {
+            carnets.add(carnetService.generarCarnetExistente(empleados.get(id), credenciales.get(id)));
+        }
+        return empaquetar(ids, formato, empleados, carnets);
+    }
+
+    private SolicitudLote validarSolicitud(List<Integer> idsSolicitados, String formatoSolicitado) {
         if (idsSolicitados == null || idsSolicitados.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Seleccione al menos un empleado");
@@ -53,9 +113,10 @@ public class CarnetLoteService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "El formato debe ser zip o pdf");
         }
+        return new SolicitudLote(ids, formato);
+    }
 
-        Map<Integer, Empleado> empleados = new HashMap<>();
-        empleadoRepository.findAllById(ids).forEach(empleado -> empleados.put(empleado.getId(), empleado));
+    private void validarEmpleados(LinkedHashSet<Integer> ids, Map<Integer, Empleado> empleados) {
         for (Integer id : ids) {
             Empleado empleado = empleados.get(id);
             if (empleado == null) {
@@ -67,12 +128,13 @@ public class CarnetLoteService {
                         "No se puede emitir carnet para un empleado inactivo: " + id);
             }
         }
+    }
 
+    private byte[] empaquetar(LinkedHashSet<Integer> ids,
+                              String formato,
+                              Map<Integer, Empleado> empleados,
+                              List<byte[]> carnets) {
         if (formato.equals("pdf")) {
-            List<byte[]> carnets = new ArrayList<>();
-            for (Integer id : ids) {
-                carnets.add(carnetService.generarCarnet(id));
-            }
             return pdfGenerator.unirCarnets(carnets);
         }
 
@@ -80,9 +142,10 @@ public class CarnetLoteService {
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             StringBuilder manifiesto = new StringBuilder("empleado_id,nombre,apellido,ci,resultado\n");
             try (ZipOutputStream zip = new ZipOutputStream(output, StandardCharsets.UTF_8)) {
+                int indice = 0;
                 for (Integer id : ids) {
                     Empleado empleado = empleados.get(id);
-                    byte[] pdf = carnetService.generarCarnet(id);
+                    byte[] pdf = carnets.get(indice++);
                     zip.putNextEntry(new ZipEntry(nombreArchivo(empleado)));
                     zip.write(pdf);
                     zip.closeEntry();
@@ -98,6 +161,9 @@ public class CarnetLoteService {
         } catch (IOException exception) {
             throw new IllegalStateException("No se pudo preparar el archivo ZIP de carnets", exception);
         }
+    }
+
+    private record SolicitudLote(LinkedHashSet<Integer> ids, String formato) {
     }
 
     private String nombreArchivo(Empleado empleado) {

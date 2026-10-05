@@ -84,6 +84,21 @@ class SecurityConfigTest {
         }
 
         @Test
+        void soloRolesAdministrativosPuedenDescargarCarnetsExistentes() throws Exception {
+            mockMvc.perform(post("/api/empleados/carnets/lote/descarga")
+                    .with(user("escaner").roles("ESCANER"))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"empleadoIds\":[1],\"formato\":\"pdf\"}"))
+                .andExpect(status().isForbidden());
+
+            mockMvc.perform(post("/api/empleados/carnets/lote/descarga")
+                    .with(user("director").roles("DIRECTOR"))
+                    .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"empleadoIds\":[999],\"formato\":\"pdf\"}"))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
         void consultaAsistenciasDeHoyDevuelveListaJson() throws Exception {
             mockMvc.perform(get("/api/asistencias/hoy")
                             .with(user("admin").roles("ADMINISTRADOR")))

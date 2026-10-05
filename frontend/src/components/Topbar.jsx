@@ -14,6 +14,8 @@ function Topbar({ mostrarVolver = false }) {
     navigate("/login");
   };
 
+  const puedeVerCarnets = rol === ROLES.ADMIN || rol === ROLES.DIRECTOR;
+
   return (
     <header className="topbar">
       <Link className="topbar-brand" to={esEscaner ? "/escaner" : "/dashboard"}>
@@ -49,6 +51,11 @@ function Topbar({ mostrarVolver = false }) {
             <Link to="/turnos" className="btn-back">
               Turnos
             </Link>
+            {puedeVerCarnets && (
+              <Link to="/carnets" className="btn-back">
+                Carnets
+              </Link>
+            )}
           </>
         )}
 

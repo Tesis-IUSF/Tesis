@@ -62,6 +62,19 @@ public class CarnetController {
                 .body(archivo);
     }
 
+    @PostMapping("/carnets/lote/descarga")
+    public ResponseEntity<byte[]> descargarLote(@Valid @RequestBody GeneracionLoteRequestDTO request) {
+        boolean zip = "zip".equalsIgnoreCase(request.getFormato());
+        byte[] archivo = carnetLoteService.descargarExistentes(
+                request.getEmpleadoIds(), request.getFormato());
+        String nombre = zip ? "carnets-personal.zip" : "carnets-personal.pdf";
+        return ResponseEntity.ok()
+                .contentType(zip ? MediaType.parseMediaType("application/zip") : MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(nombre).build().toString())
+                .body(archivo);
+    }
+
     @PostMapping(value = "/{id}/carnet", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> generarCarnet(@PathVariable Integer id) {
         byte[] pdf = carnetService.generarCarnet(id);

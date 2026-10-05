@@ -1,5 +1,6 @@
 package com.tesis.service;
 
+import com.tesis.entity.CredencialQr;
 import com.tesis.entity.Empleado;
 import com.tesis.repository.EmpleadoRepository;
 import com.tesis.repository.CredencialQrRepository;
@@ -15,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
@@ -83,6 +85,83 @@ class CarnetLoteServiceTest {
         assertEquals(3, lector.getNumberOfPages());
         assertTrue(lector.getPageSize(1).getWidth() < 300);
         lector.close();
+    }
+
+    @Test
+    void descargaPdfSinReemplazarCredencialesActivas() throws Exception {
+        Empleado primero = crearEmpleado("Elena", "Uno", "LOTE-DESCARGA-001", true);
+        Empleado segundo = crearEmpleado("Marco", "Dos", "LOTE-DESCARGA-002", true);
+        carnetLoteService.generar(List.of(primero.getId(), segundo.getId()), "pdf");
+        CredencialQr credencialPrimero = credencialRepository
+            .findByEmpleado_IdAndActivaTrue(primero.getId()).getFirst();
+        CredencialQr credencialSegundo = credencialRepository
+            .findByEmpleado_IdAndActivaTrue(segundo.getId()).getFirst();
+        String idPrimero = credencialPrimero.getId();
+        String idSegundo = credencialSegundo.getId();
+        LocalDateTime expiraPrimero = credencialPrimero.getExpiraEn();
+        LocalDateTime expiraSegundo = credencialSegundo.getExpiraEn();
+
+        byte[] pdf = carnetLoteService.descargarExistentes(
+            List.of(primero.getId(), segundo.getId()), "pdf");
+        PdfReader lector = new PdfReader(pdf);
+
+        assertEquals(2, lector.getNumberOfPages());
+        assertEquals(idPrimero, credencialRepository
+            .findByEmpleado_IdAndActivaTrue(primero.getId()).getFirst().getId());
+        assertEquals(idSegundo, credencialRepository
+            .findByEmpleado_IdAndActivaTrue(segundo.getId()).getFirst().getId());
+        assertEquals(expiraPrimero, credencialRepository
+            .findByEmpleado_IdAndActivaTrue(primero.getId()).getFirst().getExpiraEn());
+        assertEquals(expiraSegundo, credencialRepository
+            .findByEmpleado_IdAndActivaTrue(segundo.getId()).getFirst().getExpiraEn());
+        lector.close();
+
+        byte[] zip = carnetLoteService.descargarExistentes(
+            List.of(primero.getId(), segundo.getId()), "zip");
+        List<String> entradas = new ArrayList<>();
+        try (ZipInputStream archivo = new ZipInputStream(
+                new ByteArrayInputStream(zip), StandardCharsets.UTF_8)) {
+            ZipEntry entrada;
+            while ((entrada = archivo.getNextEntry()) != null) {
+                entradas.add(entrada.getName());
+            }
+        }
+        assertTrue(entradas.contains("carnet-elena-uno-lote-descarga-001.pdf"));
+        assertTrue(entradas.contains("carnet-marco-dos-lote-descarga-002.pdf"));
+        assertTrue(entradas.contains("resultado.csv"));
+    }
+
+    @Test
+    void noDescargaParcialmenteSiFaltaUnaCredencialVigente() {
+        Empleado conCredencial = crearEmpleado("Con", "Credencial", "LOTE-DESCARGA-003", true);
+        Empleado sinCredencial = crearEmpleado("Sin", "Credencial", "LOTE-DESCARGA-004", true);
+        carnetLoteService.generar(List.of(conCredencial.getId()), "pdf");
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+            () -> carnetLoteService.descargarExistentes(
+                List.of(conCredencial.getId(), sinCredencial.getId()), "zip"));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertTrue(exception.getReason().contains("Sin Credencial"));
+        assertTrue(exception.getReason().contains(sinCredencial.getId().toString()));
+        assertEquals(1, credencialRepository
+            .findByEmpleado_IdAndActivaTrue(conCredencial.getId()).size());
+    }
+
+    @Test
+    void rechazaDescargaDeCredencialVencida() {
+        Empleado empleado = crearEmpleado("Vencida", "Credencial", "LOTE-DESCARGA-005", true);
+        carnetLoteService.generar(List.of(empleado.getId()), "pdf");
+        CredencialQr credencial = credencialRepository
+            .findByEmpleado_IdAndActivaTrue(empleado.getId()).getFirst();
+        credencial.setExpiraEn(LocalDateTime.now().minusMinutes(1));
+        credencialRepository.saveAndFlush(credencial);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+            () -> carnetLoteService.descargarExistentes(List.of(empleado.getId()), "pdf"));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertTrue(exception.getReason().contains(empleado.getId().toString()));
     }
 
     @Test
