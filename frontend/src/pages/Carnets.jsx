@@ -22,6 +22,9 @@ const ETIQUETA_ESTADO = Object.fromEntries(
   ESTADOS.filter((e) => e.valor).map((e) => [e.valor, e.etiqueta]),
 );
 
+// Estados con credencial activa y vigente: los únicos que el backend deja descargar
+const ESTADOS_DESCARGABLES = ["vigente", "por_vencer"];
+
 const DIAS_AVISO = [15, 30, 60, 90];
 
 function formatFecha(valor) {
@@ -79,10 +82,10 @@ function Carnets() {
 
   // Selección: id -> { nombre, estadoQr }. Se conserva al cambiar de página.
   const [seleccion, setSeleccion] = useState(() => new Map());
-  const [modalAbierto, setModalAbierto] = useState(false);
+  const [modal, setModal] = useState(null); // null | "generar" | "descargar"
   const [formato, setFormato] = useState("pdf");
   const [entiendo, setEntiendo] = useState(false);
-  const [generando, setGenerando] = useState(false);
+  const [procesando, setProcesando] = useState(false);
   const [generandoId, setGenerandoId] = useState(null);
 
   const cargar = useCallback(
@@ -192,40 +195,89 @@ function Carnets() {
     });
   };
 
-  // ---------- Resumen para el modal ----------
-  const aReemplazar = [...seleccion.entries()].filter(
+  // ---------- Resúmenes para los modales ----------
+  const entradas = [...seleccion.entries()];
+
+  // Generar: los que ya tienen carnet (en cualquier estado) se reemplazan
+  const aReemplazar = entradas.filter(
     ([, info]) => info.estadoQr !== "sin_carnet",
   );
   const cantidadNuevos = seleccion.size - aReemplazar.length;
 
-  const abrirModal = () => {
+  // Descargar: solo los que tienen credencial activa y vigente
+  const descargables = entradas.filter(([, info]) =>
+    ESTADOS_DESCARGABLES.includes(info.estadoQr),
+  );
+  const noDescargables = entradas.filter(
+    ([, info]) => !ESTADOS_DESCARGABLES.includes(info.estadoQr),
+  );
+  const abrirModal = (tipo) => {
+    if (tipo === "descargar" && descargables.length === 0) {
+      toast.error(
+        seleccion.size === 1
+          ? `${entradas[0][1].nombre} no tiene un carnet vigente. Genera su carnet primero y luego podrás descargarlo.`
+          : "Ninguno de los empleados seleccionados tiene un carnet vigente. Genera sus carnets primero y luego podrás descargarlos.",
+      );
+      return;
+    }
     setEntiendo(false);
-    setModalAbierto(true);
+    setModal(tipo);
   };
 
-  // ---------- Generación ----------
+  const cerrarModal = () => {
+    if (!procesando) setModal(null);
+  };
+
+  const nombreArchivoLote = () =>
+    formato === "zip" ? "carnets-personal.zip" : "carnets-personal.pdf";
+
+  // ---------- Generación y descarga ----------
   const generarLote = async () => {
-    setGenerando(true);
+    setProcesando(true);
     try {
       const { data } = await api.post(
         "/empleados/carnets/lote",
         { empleadoIds: [...seleccion.keys()], formato },
         { responseType: "blob" },
       );
-      descargarArchivo(
-        data,
-        formato === "zip" ? "carnets-personal.zip" : "carnets-personal.pdf",
-      );
+      descargarArchivo(data, nombreArchivoLote());
       toast.success(`Se generaron ${seleccion.size} carnets.`);
       setSeleccion(new Map());
-      setModalAbierto(false);
+      setModal(null);
       cargar(pagina.page);
     } catch (err) {
       toast.error(
         await mensajeError(err, "No se pudieron generar los carnets."),
       );
     } finally {
-      setGenerando(false);
+      setProcesando(false);
+    }
+  };
+
+  const descargarExistentes = async () => {
+    const ids = descargables.map(([id]) => id);
+    setProcesando(true);
+    try {
+      const { data } = await api.post(
+        "/empleados/carnets/lote/descarga",
+        { empleadoIds: ids, formato },
+        { responseType: "blob" },
+      );
+      descargarArchivo(data, nombreArchivoLote());
+      toast.success(`Se descargaron ${ids.length} carnets existentes.`);
+      // Se quitan solo los descargados: el resto queda seleccionado para generarlo después
+      setSeleccion((prev) => {
+        const siguiente = new Map(prev);
+        ids.forEach((id) => siguiente.delete(id));
+        return siguiente;
+      });
+      setModal(null);
+    } catch (err) {
+      toast.error(
+        await mensajeError(err, "No se pudieron descargar los carnets."),
+      );
+    } finally {
+      setProcesando(false);
     }
   };
 
@@ -270,9 +322,18 @@ function Carnets() {
           <h1>Carnets</h1>
           <div className="mod-heading-actions">
             <button
+              type="button"
+              className="btn-secondary"
+              disabled={seleccion.size === 0}
+              onClick={() => abrirModal("descargar")}
+            >
+              Descargar existentes
+            </button>
+            <button
+              type="button"
               className="btn-primary"
               disabled={seleccion.size === 0}
-              onClick={abrirModal}
+              onClick={() => abrirModal("generar")}
             >
               Generar carnets ({seleccion.size})
             </button>
@@ -480,11 +541,8 @@ function Carnets() {
         )}
       </div>
 
-      {modalAbierto && (
-        <div
-          className="carnets-overlay"
-          onClick={() => !generando && setModalAbierto(false)}
-        >
+      {modal && (
+        <div className="carnets-overlay" onClick={cerrarModal}>
           <div
             className="carnets-modal"
             role="dialog"
@@ -492,51 +550,102 @@ function Carnets() {
             aria-labelledby="carnets-modal-titulo"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="carnets-modal-titulo">Generar carnets</h2>
+            {modal === "generar" ? (
+              <>
+                <h2 id="carnets-modal-titulo">Generar carnets</h2>
 
-            <ul className="carnets-resumen">
-              <li>
-                <strong>{cantidadNuevos}</strong>{" "}
-                {cantidadNuevos === 1 ? "carnet nuevo" : "carnets nuevos"}
-              </li>
-              <li>
-                <strong>{aReemplazar.length}</strong>{" "}
-                {aReemplazar.length === 1
-                  ? "carnet que reemplaza a uno existente"
-                  : "carnets que reemplazan a uno existente"}
-              </li>
-            </ul>
-
-            {aReemplazar.length > 0 && (
-              <div className="carnets-alerta" role="alert">
-                <p>
-                  <strong>Atención:</strong> al reemplazar un carnet, el código
-                  QR anterior se invalida. Si ya lo imprimiste o lo entregaste,
-                  esa persona no podrá registrar asistencia con él.
-                </p>
-                <ul className="carnets-lista">
-                  {aReemplazar.map(([id, info]) => (
-                    <li key={id}>
-                      {info.nombre}
-                      <span className={`badge carnet-${info.estadoQr}`}>
-                        {ETIQUETA_ESTADO[info.estadoQr] ?? info.estadoQr}
-                      </span>
-                    </li>
-                  ))}
+                <ul className="carnets-resumen">
+                  <li>
+                    <strong>{cantidadNuevos}</strong>{" "}
+                    {cantidadNuevos === 1 ? "carnet nuevo" : "carnets nuevos"}
+                  </li>
+                  <li>
+                    <strong>{aReemplazar.length}</strong>{" "}
+                    {aReemplazar.length === 1
+                      ? "carnet que reemplaza a uno existente"
+                      : "carnets que reemplazan a uno existente"}
+                  </li>
                 </ul>
-                <label className="carnets-confirmar">
-                  <input
-                    type="checkbox"
-                    checked={entiendo}
-                    onChange={(e) => setEntiendo(e.target.checked)}
-                    disabled={generando}
-                  />
-                  Entiendo que los carnets anteriores dejarán de funcionar
-                </label>
-              </div>
+
+                {aReemplazar.length > 0 && (
+                  <div className="carnets-alerta" role="alert">
+                    <p>
+                      <strong>Atención:</strong> al reemplazar un carnet, el
+                      código QR anterior se invalida. Si ya lo imprimiste o lo
+                      entregaste, esa persona no podrá registrar asistencia con
+                      él.
+                    </p>
+                    <ul className="carnets-lista">
+                      {aReemplazar.map(([id, info]) => (
+                        <li key={id}>
+                          {info.nombre}
+                          <span className={`badge carnet-${info.estadoQr}`}>
+                            {ETIQUETA_ESTADO[info.estadoQr] ?? info.estadoQr}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <label className="carnets-confirmar">
+                      <input
+                        type="checkbox"
+                        checked={entiendo}
+                        onChange={(e) => setEntiendo(e.target.checked)}
+                        disabled={procesando}
+                      />
+                      Entiendo que los carnets anteriores dejarán de funcionar
+                    </label>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <h2 id="carnets-modal-titulo">Descargar carnets existentes</h2>
+
+                <ul className="carnets-resumen">
+                  <li>
+                    <strong>{descargables.length}</strong>{" "}
+                    {descargables.length === 1
+                      ? "carnet existente se descargará"
+                      : "carnets existentes se descargarán"}
+                  </li>
+                  {noDescargables.length > 0 && (
+                    <li>
+                      <strong>{noDescargables.length}</strong>{" "}
+                      {noDescargables.length === 1
+                        ? "empleado sin carnet vigente (no se incluirá)"
+                        : "empleados sin carnet vigente (no se incluirán)"}
+                    </li>
+                  )}
+                </ul>
+
+                <div className="carnets-info">
+                  Se descarga el mismo carnet que ya está emitido. No se genera
+                  uno nuevo ni se invalida ningún QR.
+                </div>
+
+                {noDescargables.length > 0 && (
+                  <div className="carnets-alerta">
+                    <p>
+                      Estos empleados no tienen un carnet vigente, así que no se
+                      incluirán. Puedes generarlos después con “Generar
+                      carnets”.
+                    </p>
+                    <ul className="carnets-lista">
+                      {noDescargables.map(([id, info]) => (
+                        <li key={id}>
+                          {info.nombre}
+                          <span className={`badge carnet-${info.estadoQr}`}>
+                            {ETIQUETA_ESTADO[info.estadoQr] ?? info.estadoQr}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
             )}
 
-            <fieldset className="carnets-formatos" disabled={generando}>
+            <fieldset className="carnets-formatos" disabled={procesando}>
               <legend>Formato de descarga</legend>
               <label>
                 <input
@@ -568,19 +677,32 @@ function Carnets() {
 
             <div className="carnets-modal-acciones">
               <button
+                type="button"
                 className="btn-secondary"
-                disabled={generando}
-                onClick={() => setModalAbierto(false)}
+                disabled={procesando}
+                onClick={cerrarModal}
               >
                 Cancelar
               </button>
-              <button
-                className="btn-primary"
-                disabled={generando || (aReemplazar.length > 0 && !entiendo)}
-                onClick={generarLote}
-              >
-                {generando ? "Generando..." : "Generar y descargar"}
-              </button>
+              {modal === "generar" ? (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={procesando || (aReemplazar.length > 0 && !entiendo)}
+                  onClick={generarLote}
+                >
+                  {procesando ? "Generando..." : "Generar y descargar"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={procesando || descargables.length === 0}
+                  onClick={descargarExistentes}
+                >
+                  {procesando ? "Descargando..." : "Descargar"}
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -214,3 +214,26 @@ thead input[type="checkbox"] {
     flex-direction: column-reverse;
   }
 }
+
+/* Acciones del encabezado: dos botones juntos */
+.mod-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Aviso informativo del modal de descarga */
+.carnets-info {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--azul-claro);
+  border-radius: 8px;
+  color: var(--azul-oscuro);
+  font-size: 0.875rem;
+}
