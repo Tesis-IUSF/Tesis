@@ -234,7 +234,7 @@ class PreinscripcionServiceTest {
         assertEquals(estudiante.getId(), response.getEstudianteId());
         assertEquals("Ocupante Prueba", response.getEstudianteNombreCompleto());
         assertEquals("preinscrito", response.getEstadoMatricula());
-        assertEquals(LocalDate.now(), matriculaRepository.findById(matriculaRetirada.getId())
+        assertEquals(LocalDate.now(clock), matriculaRepository.findById(matriculaRetirada.getId())
             .orElseThrow().getFechaSolicitud());
         assertEquals("Ocupante", estudianteRepository.findById(estudiante.getId())
             .orElseThrow().getNombre());

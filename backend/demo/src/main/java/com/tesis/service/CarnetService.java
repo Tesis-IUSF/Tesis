@@ -70,4 +70,20 @@ public class CarnetService {
         String qrToken = jwtProvider.generarTokenQr(empleadoId, credencialId, expiracionToken);
         return carnetPdfGenerator.generar(empleado, qrToken);
     }
+
+    public byte[] generarCarnetExistente(Empleado empleado, CredencialQr credencial) {
+        LocalDateTime ahora = LocalDateTime.now();
+        if (!Boolean.TRUE.equals(empleado.getActivo())
+                || !Boolean.TRUE.equals(credencial.getActiva())
+                || !empleado.getId().equals(credencial.getEmpleado().getId())
+                || !credencial.getExpiraEn().isAfter(ahora)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No existe una credencial activa y vigente para el empleado: " + empleado.getId());
+        }
+
+        Instant expiracionToken = credencial.getExpiraEn()
+                .atZone(ZoneId.systemDefault()).toInstant();
+        String qrToken = jwtProvider.generarTokenQr(empleado.getId(), credencial.getId(), expiracionToken);
+        return carnetPdfGenerator.generar(empleado, qrToken);
+    }
 }
