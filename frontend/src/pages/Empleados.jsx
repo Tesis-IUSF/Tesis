@@ -8,6 +8,8 @@ import { useCargos, useTurnos } from "../hooks/useCatalogos";
 import ConfirmDialog from "../components/ConfirmDialog";
 import "./Empleados.css";
 import Topbar from "../components/Topbar";
+import { Icon } from "@iconify/react";
+import { ICONOS } from "../utils/iconos";
 
 function Empleados() {
   const toast = useToast();
@@ -139,8 +141,9 @@ function Empleados() {
 
         {(filtroCargoId || filtroTurnoId) && (
           <p className="filtro-aviso">
-            ⚠️ El filtro se aplica solo sobre los {empleados.length} empleados
-            de esta página. Si el empleado que buscas está en otra página, no
+            <Icon icon={ICONOS.aviso} className="icono-inline" />
+            El filtro se aplica solo sobre los {empleados.length} empleados de
+            esta página. Si el empleado que buscas está en otra página, no
             aparecerá aquí.
           </p>
         )}
@@ -168,7 +171,9 @@ function Empleados() {
               ) : empleadosFiltrados.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="tabla-estado">
-                    <span className="tabla-estado-icono">📋</span>
+                    <span className="tabla-estado-icono">
+                      <Icon icon={ICONOS.lista} />
+                    </span>
                     {filtroCargoId || filtroTurnoId
                       ? "No hay empleados con esos filtros en esta página."
                       : "No hay empleados registrados todavía."}

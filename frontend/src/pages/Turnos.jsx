@@ -6,6 +6,8 @@ import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
 import Topbar from "../components/Topbar";
 import "./Turnos.css";
+import { Icon } from "@iconify/react";
+import { ICONOS } from "../utils/iconos";
 
 const DIAS = [
   { campo: "lunes", etiqueta: "L" },
@@ -120,7 +122,9 @@ function Turnos() {
               ) : turnos.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="tabla-estado">
-                    <span className="tabla-estado-icono">🕐</span>
+                    <span className="tabla-estado-icono">
+                      <Icon icon={ICONOS.reloj} />
+                    </span>
                     No hay turnos registrados todavía.
                   </td>
                 </tr>

@@ -5,6 +5,8 @@ import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
 import Topbar from "../components/Topbar";
 import "./AsistenciaHoy.css";
+import { Icon } from "@iconify/react";
+import { ICONOS } from "../utils/iconos";
 
 const INTERVALO_AUTO_REFRESH = 30000; // 30 segundos, según criterio #6
 
@@ -104,7 +106,9 @@ function AsistenciaHoy() {
               ) : registros.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="tabla-estado">
-                    <span className="tabla-estado-icono">📋</span>
+                    <span className="tabla-estado-icono">
+                      <Icon icon={ICONOS.lista} />
+                    </span>
                     Nadie ha marcado entrada todavía hoy.
                   </td>
                 </tr>
@@ -146,7 +150,6 @@ function AsistenciaHoy() {
             </tbody>
           </table>
         </div>
-
       </div>
     </>
   );

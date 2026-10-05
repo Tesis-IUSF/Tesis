@@ -4,6 +4,8 @@ import api from "../utils/api";
 import { extractErrorMessage } from "../utils/errors";
 import "./Historico.css";
 import Topbar from "../components/Topbar";
+import { Icon } from "@iconify/react";
+import { ICONOS } from "../utils/iconos";
 
 function rangoHoy() {
   const hoy = new Date();
@@ -192,7 +194,9 @@ function Historico() {
               ) : registros.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="tabla-estado">
-                    <span className="tabla-estado-icono">📋</span>
+                    <span className="tabla-estado-icono">
+                      <Icon icon={ICONOS.lista} />
+                    </span>
                     No hay registros en ese período.
                   </td>
                 </tr>
