@@ -4,8 +4,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
-import Topbar from "../components/Topbar";
 import "./TurnoForm.css";
+import { Icon } from "@iconify/react";
+import { ICONOS } from "../utils/iconos";
 
 const DIAS = [
   { campo: "lunes", etiqueta: "Lunes" },
@@ -142,7 +143,6 @@ function TurnoForm() {
   if (cargandoDatos) {
     return (
       <>
-        <Topbar mostrarVolver />
         <div className="mod-main">
           <p>Cargando turno...</p>
         </div>
@@ -152,7 +152,6 @@ function TurnoForm() {
 
   return (
     <>
-      <Topbar mostrarVolver />
       <div className="mod-main">
         <div className="mod-heading">
           <h1>{esEdicion ? "Editar Turno" : "Crear Turno"}</h1>
@@ -239,7 +238,8 @@ function TurnoForm() {
           </div>
 
           <p className="turno-form-nota">
-            ⚠️ Si la hora de salida es menor que la de entrada, el turno se
+            <Icon icon={ICONOS.aviso} className="icono-inline" />
+            Si la hora de salida es menor que la de entrada, el turno se
             interpreta como un turno nocturno que cruza la medianoche.
           </p>
 
