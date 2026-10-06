@@ -7,7 +7,6 @@ import { extractErrorMessage } from "../utils/errors";
 import { useCargos, useTurnos } from "../hooks/useCatalogos";
 import ConfirmDialog from "../components/ConfirmDialog";
 import "./Empleados.css";
-import Topbar from "../components/Topbar";
 import { Icon } from "@iconify/react";
 import { ICONOS } from "../utils/iconos";
 
@@ -86,7 +85,6 @@ function Empleados() {
 
   return (
     <>
-      <Topbar mostrarVolver />
       <div className="mod-main">
         <div className="mod-heading">
           <h1>Empleados</h1>

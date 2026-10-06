@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from "react";
 import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
-import Topbar from "../components/Topbar";
 import { useCargos, useDepartamentos } from "../hooks/useCatalogos";
 import "./Empleados.css"; // estilos compartidos (tabla, filtros, botones, paginación)
 import "./Carnets.css";
@@ -318,7 +317,6 @@ function Carnets() {
 
   return (
     <>
-      <Topbar mostrarVolver />
       <div className="mod-main">
         <div className="mod-heading">
           <h1>Carnets</h1>

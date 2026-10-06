@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from "react";
 import api from "../utils/api";
 import { extractErrorMessage } from "../utils/errors";
 import "./Historico.css";
-import Topbar from "../components/Topbar";
 import { Icon } from "@iconify/react";
 import { ICONOS } from "../utils/iconos";
 
@@ -108,7 +107,6 @@ function Historico() {
 
   return (
     <>
-      <Topbar mostrarVolver />
       <div className="mod-main">
         <div className="mod-heading">
           <h1>Histórico de Asistencia</h1>

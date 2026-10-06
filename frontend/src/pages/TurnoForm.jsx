@@ -4,7 +4,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
-import Topbar from "../components/Topbar";
 import "./TurnoForm.css";
 import { Icon } from "@iconify/react";
 import { ICONOS } from "../utils/iconos";
@@ -144,7 +143,6 @@ function TurnoForm() {
   if (cargandoDatos) {
     return (
       <>
-        <Topbar mostrarVolver />
         <div className="mod-main">
           <p>Cargando turno...</p>
         </div>
@@ -154,7 +152,6 @@ function TurnoForm() {
 
   return (
     <>
-      <Topbar mostrarVolver />
       <div className="mod-main">
         <div className="mod-heading">
           <h1>{esEdicion ? "Editar Turno" : "Crear Turno"}</h1>

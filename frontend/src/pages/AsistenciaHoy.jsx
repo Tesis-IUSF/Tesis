@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from "react";
 import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
-import Topbar from "../components/Topbar";
 import "./AsistenciaHoy.css";
 import { Icon } from "@iconify/react";
 import { ICONOS } from "../utils/iconos";
@@ -75,7 +74,6 @@ function AsistenciaHoy() {
 
   return (
     <>
-      <Topbar mostrarVolver />
       <div className="mod-main">
         <div className="mod-heading">
           <h1>Asistencia de Hoy</h1>
