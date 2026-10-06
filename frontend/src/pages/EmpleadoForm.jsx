@@ -5,7 +5,6 @@ import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
 import { useCargos, useDepartamentos, useTurnos } from "../hooks/useCatalogos";
-import Topbar from "../components/Topbar";
 import "./EmpleadoForm.css";
 
 const VACIO = {
@@ -180,7 +179,6 @@ function EmpleadoForm() {
   if (cargandoDatos) {
     return (
       <>
-        <Topbar mostrarVolver />
         <div className="mod-main">
           <p>Cargando empleado...</p>
         </div>
@@ -190,7 +188,6 @@ function EmpleadoForm() {
 
   return (
     <>
-      <Topbar mostrarVolver />
       <div className="mod-main">
         <div className="mod-heading">
           <h1>{esEdicion ? "Editar Empleado" : "Crear Empleado"}</h1>

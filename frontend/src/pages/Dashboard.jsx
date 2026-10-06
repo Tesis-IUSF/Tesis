@@ -1,7 +1,6 @@
 // src/pages/Dashboard.jsx
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import Topbar from "../components/Topbar";
 import "./Dashboard.css";
 
 function getSemanaActual() {
@@ -71,7 +70,6 @@ function Dashboard() {
 
   return (
     <>
-      <Topbar />
       <main className="dash-main">
         <div className="dash-heading">
           <p className="eyebrow"></p>

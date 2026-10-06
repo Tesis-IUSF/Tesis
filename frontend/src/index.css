@@ -32,3 +32,9 @@ h4 {
   font-family: var(--font-titulos);
   margin: 0;
 }
+
+/* Ícono en línea junto a un texto (avisos) */
+.icono-inline {
+  vertical-align: -0.15em;
+  margin-right: 0.35rem;
+}

@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Empleados from "./pages/Empleados";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Layout from "./components/Layout";
 import NoAutorizado from "./pages/NoAutorizado";
 import { ROLES } from "./constants/roles";
 import Historico from "./pages/Historico";
@@ -22,12 +23,12 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/no-autorizado" element={<NoAutorizado />} />
 
-          {/* Solo Escáner */}
+          {/* Solo Escáner (sin menú lateral) */}
           <Route element={<ProtectedRoute allowedRoles={[ROLES.ESCANER]} />}>
             <Route path="/escaner" element={<EscanerQR />} />
           </Route>
 
-          {/* Admin, Director, Administrativo */}
+          {/* Admin, Director, Administrativo (con menú lateral) */}
           <Route
             element={
               <ProtectedRoute
@@ -39,23 +40,28 @@ function App() {
               />
             }
           >
-            <Route
-              element={
-                <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR]} />
-              }
-            >
-              <Route path="/carnets" element={<Carnets />} />
-            </Route>
+            <Route element={<Layout />}>
+              {/* Solo Admin y Director */}
+              <Route
+                element={
+                  <ProtectedRoute
+                    allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR]}
+                  />
+                }
+              >
+                <Route path="/carnets" element={<Carnets />} />
+              </Route>
 
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/empleados" element={<Empleados />} />
-            <Route path="/empleados/nuevo" element={<EmpleadoForm />} />
-            <Route path="/empleados/:id/editar" element={<EmpleadoForm />} />
-            <Route path="/asistencia/hoy" element={<AsistenciaHoy />} />
-            <Route path="/asistencia/historico" element={<Historico />} />
-            <Route path="/turnos" element={<Turnos />} />
-            <Route path="/turnos/nuevo" element={<TurnoForm />} />
-            <Route path="/turnos/:id/editar" element={<TurnoForm />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/empleados" element={<Empleados />} />
+              <Route path="/empleados/nuevo" element={<EmpleadoForm />} />
+              <Route path="/empleados/:id/editar" element={<EmpleadoForm />} />
+              <Route path="/asistencia/hoy" element={<AsistenciaHoy />} />
+              <Route path="/asistencia/historico" element={<Historico />} />
+              <Route path="/turnos" element={<Turnos />} />
+              <Route path="/turnos/nuevo" element={<TurnoForm />} />
+              <Route path="/turnos/:id/editar" element={<TurnoForm />} />
+            </Route>
           </Route>
 
           <Route path="/" element={<Navigate to="/login" replace />} />

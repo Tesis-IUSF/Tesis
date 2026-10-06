@@ -1,0 +1,148 @@
+.sidebar {
+  position: sticky;
+  top: var(--topbar-alto);
+  height: calc(100vh - var(--topbar-alto));
+  width: var(--sidebar-ancho);
+  flex-shrink: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  background: var(--blanco);
+  border-right: 1.5px solid var(--azul-claro);
+  transition: width 0.2s ease;
+}
+
+.sidebar::-webkit-scrollbar {
+  display: none;
+}
+
+.sidebar-titulo {
+  margin: 0;
+  padding: 1rem 1.25rem 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--texto-suave);
+  white-space: nowrap;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid #eef2f7;
+  border-left: 4px solid transparent;
+  color: var(--texto);
+  font-size: 0.95rem;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.sidebar-item:hover {
+  background: #f7fafd;
+}
+
+.sidebar-item--activo {
+  background: var(--azul-claro);
+  border-left-color: var(--azul);
+  color: var(--azul-oscuro);
+  font-weight: 600;
+}
+
+.sidebar-item--activo:hover {
+  background: var(--azul-claro);
+}
+
+.sidebar-icono {
+  flex-shrink: 0;
+  font-size: 1.35rem;
+}
+
+.sidebar-etiqueta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Módulos que todavía no existen */
+.sidebar-item--pronto {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sidebar-item--pronto:hover {
+  background: transparent;
+}
+
+.sidebar-pronto {
+  margin-left: auto;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: var(--texto-suave);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Escritorio: franja de solo íconos */
+@media (min-width: 769px) {
+  .sidebar--colapsado {
+    width: var(--sidebar-ancho-colapsado);
+  }
+
+  .sidebar--colapsado .sidebar-titulo,
+  .sidebar--colapsado .sidebar-etiqueta,
+  .sidebar--colapsado .sidebar-pronto {
+    display: none;
+  }
+
+  .sidebar--colapsado .sidebar-item {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .sidebar--colapsado .sidebar-seccion + .sidebar-seccion {
+    margin-top: 0.4rem;
+  }
+
+  .sidebar-fondo {
+    display: none;
+  }
+}
+
+/* Celular: cajón que se abre con la hamburguesa */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: var(--topbar-alto);
+    bottom: 0;
+    left: 0;
+    height: auto;
+    width: 270px;
+    max-width: 85vw;
+    z-index: 90;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+
+  .sidebar--abierto {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(47, 90, 138, 0.25);
+  }
+
+  .sidebar-fondo {
+    position: fixed;
+    top: var(--topbar-alto);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 80;
+    background: rgba(20, 40, 65, 0.4);
+  }
+}

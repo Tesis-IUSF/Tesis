@@ -108,3 +108,65 @@
     display: none;
   }
 }
+
+.topbar-izquierda {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.topbar-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: var(--azul-claro);
+  color: var(--azul);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.topbar-menu-btn:hover {
+  background: #b8d4ee;
+}
+
+.topbar-usuario {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--texto-suave);
+}
+
+.topbar-usuario-icono {
+  font-size: 1.6rem;
+  color: var(--azul);
+}
+
+/* Barra con menú lateral: altura fija para alinear el menú debajo */
+.topbar--con-menu {
+  height: var(--topbar-alto, 70px);
+  padding-top: 0;
+  padding-bottom: 0;
+  flex-wrap: nowrap;
+}
+
+@media (max-width: 768px) {
+  .topbar--con-menu {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .topbar--con-menu .topbar-brand-text span {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar--con-menu .topbar-brand-text {
+    display: none;
+  }
+}

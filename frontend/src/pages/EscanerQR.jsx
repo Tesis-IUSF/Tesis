@@ -8,6 +8,8 @@ import { logout } from "../utils/auth";
 import "./EscanerQR.css";
 import Topbar from "../components/Topbar";
 import { useToast } from "../context/ToastContext";
+import { Icon } from "@iconify/react";
+import { ICONOS } from "../utils/iconos";
 
 function EscanerQR() {
   const videoRef = useRef(null);
@@ -151,7 +153,9 @@ function EscanerQR() {
             <video ref={videoRef} className="qr-video" muted playsInline />
             {!activo && (
               <div className="qr-video-placeholder">
-                <span>📷</span>
+                <span>
+                  <Icon icon={ICONOS.camara} />
+                </span>
                 <p>La cámara está detenida</p>
               </div>
             )}
@@ -176,11 +180,15 @@ function EscanerQR() {
           {resultado && (
             <div className={`escaner-resultado escaner-${resultado.tipo}`}>
               <span className="escaner-icono">
-                {resultado.tipo === "success"
-                  ? "✅"
-                  : resultado.tipo === "error"
-                    ? "❌"
-                    : "⏳"}
+                <Icon
+                  icon={
+                    resultado.tipo === "success"
+                      ? ICONOS.exito
+                      : resultado.tipo === "error"
+                        ? ICONOS.error
+                        : ICONOS.cargando
+                  }
+                />
               </span>
               <p className="escaner-mensaje">{resultado.mensaje}</p>
               {resultado.hora && (

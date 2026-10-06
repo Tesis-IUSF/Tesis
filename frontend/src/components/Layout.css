@@ -1,0 +1,19 @@
+.layout {
+  --topbar-alto: 70px;
+  --sidebar-ancho: 250px;
+  --sidebar-ancho-colapsado: 68px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-cuerpo {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+}
+
+.layout-contenido {
+  flex: 1;
+  min-width: 0; /* evita que las tablas anchas desborden la página */
+}
