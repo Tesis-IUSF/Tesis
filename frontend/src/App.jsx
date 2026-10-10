@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import Empleados from "./pages/Empleados";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
+import PublicLayout from "./components/PublicLayout";
 import NoAutorizado from "./pages/NoAutorizado";
 import { ROLES } from "./constants/roles";
 import Historico from "./pages/Historico";
@@ -14,6 +15,8 @@ import AsistenciaHoy from "./pages/AsistenciaHoy";
 import Turnos from "./pages/Turnos";
 import TurnoForm from "./pages/TurnoForm";
 import Carnets from "./pages/Carnets";
+import Noticias from "./pages/Noticias";
+import NoticiaDetalle from "./pages/NoticiaDetalle";
 
 function App() {
   return (
@@ -22,6 +25,12 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/no-autorizado" element={<NoAutorizado />} />
+
+          {/* Páginas públicas (sin sesión) */}
+          <Route element={<PublicLayout />}>
+            <Route path="/noticias" element={<Noticias />} />
+            <Route path="/noticias/:id" element={<NoticiaDetalle />} />
+          </Route>
 
           {/* Solo Escáner (sin menú lateral) */}
           <Route element={<ProtectedRoute allowedRoles={[ROLES.ESCANER]} />}>

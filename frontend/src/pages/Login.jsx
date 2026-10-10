@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ROLES } from "../constants/roles";
 import api from "../utils/api";
 import { normalizarRol } from "../utils/auth";
@@ -33,7 +33,10 @@ function Login() {
       const rol = normalizarRol(data.rolNombre);
       localStorage.setItem("token", data.token);
       localStorage.setItem("rol", rol);
-      localStorage.setItem("nombre", data.nombreUsuario || data.email || email.trim());
+      localStorage.setItem(
+        "nombre",
+        data.nombreUsuario || data.email || email.trim(),
+      );
 
       if (rol === ROLES.ESCANER) {
         navigate("/escaner");
@@ -127,6 +130,9 @@ function Login() {
             >
               {cargando ? "Ingresando..." : "Iniciar sesión"}
             </button>
+            <Link to="/noticias" className="login-enlace">
+              Ver noticias del plantel
+            </Link>
           </div>
         </div>
       </div>

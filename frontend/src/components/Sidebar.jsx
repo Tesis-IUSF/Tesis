@@ -8,6 +8,7 @@ import "./Sidebar.css";
 // Para agregar un módulo nuevo basta con añadir un ítem aquí.
 // - ruta: a dónde lleva (sin ruta + pronto: true = deshabilitado)
 // - roles: si se indica, solo esos roles lo ven
+// - externo: true = se abre en una pestaña nueva (páginas públicas)
 const SECCIONES = [
   {
     titulo: null,
@@ -53,7 +54,12 @@ const SECCIONES = [
     titulo: "Institución",
     items: [
       { etiqueta: "Matrícula", icono: ICONOS.matricula, pronto: true },
-      { etiqueta: "Blog", icono: ICONOS.blog, pronto: true },
+      {
+        ruta: "/noticias",
+        etiqueta: "Blog",
+        icono: ICONOS.blog,
+        externo: true,
+      },
       { etiqueta: "Reportes", icono: ICONOS.reportes, pronto: true },
     ],
   },
@@ -99,6 +105,24 @@ function Sidebar({ colapsado, abiertoMovil, onCerrar }) {
                     <span className="sidebar-etiqueta">{item.etiqueta}</span>
                     <span className="sidebar-pronto">Pronto</span>
                   </span>
+                ) : item.externo ? (
+                  <a
+                    key={item.ruta}
+                    href={item.ruta}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={onCerrar}
+                    title={
+                      colapsado
+                        ? item.etiqueta
+                        : `${item.etiqueta} (se abre en otra pestaña)`
+                    }
+                    className="sidebar-item"
+                  >
+                    <Icon icon={item.icono} className="sidebar-icono" />
+                    <span className="sidebar-etiqueta">{item.etiqueta}</span>
+                    <Icon icon={ICONOS.externo} className="sidebar-externo" />
+                  </a>
                 ) : (
                   <NavLink
                     key={item.ruta}

@@ -67,6 +67,14 @@
   text-overflow: ellipsis;
 }
 
+/* Ícono de "se abre en otra pestaña" */
+.sidebar-externo {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 1rem;
+  opacity: 0.45;
+}
+
 /* Módulos que todavía no existen */
 .sidebar-item--pronto {
   opacity: 0.55;
@@ -97,7 +105,8 @@
 
   .sidebar--colapsado .sidebar-titulo,
   .sidebar--colapsado .sidebar-etiqueta,
-  .sidebar--colapsado .sidebar-pronto {
+  .sidebar--colapsado .sidebar-pronto,
+  .sidebar--colapsado .sidebar-externo {
     display: none;
   }
 
