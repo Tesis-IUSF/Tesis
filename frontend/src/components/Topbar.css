@@ -109,6 +109,7 @@
   }
 }
 
+/* ---------- Barra con menú lateral ---------- */
 .topbar-izquierda {
   display: flex;
   align-items: center;
@@ -146,7 +147,7 @@
   color: var(--azul);
 }
 
-/* Barra con menú lateral: altura fija para alinear el menú debajo */
+/* Altura fija para alinear el menú lateral debajo */
 .topbar--con-menu {
   height: var(--topbar-alto, 70px);
   padding-top: 0;
@@ -168,5 +169,35 @@
 @media (max-width: 480px) {
   .topbar--con-menu .topbar-brand-text {
     display: none;
+  }
+}
+
+/* ---------- "Cerrar sesión" compacto en celular ---------- */
+.btn-logout-icono {
+  display: none;
+  font-size: 1.3rem;
+}
+
+@media (max-width: 600px) {
+  .topbar--con-menu {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .btn-logout {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+  }
+
+  .btn-logout-texto {
+    display: none;
+  }
+
+  .btn-logout-icono {
+    display: block;
   }
 }

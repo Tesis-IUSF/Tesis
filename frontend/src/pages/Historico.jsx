@@ -152,22 +152,22 @@ function Historico() {
 
         {error && <p className="error-msg">{error}</p>}
 
-        <div className="stats-row">
-          <div className="stat-card stat-card--verde">
-            <div className="stat-value">{diasTrabajados}</div>
-            <div className="stat-label">Días trabajados</div>
+        <div className="hist-stats-row">
+          <div className="hist-stat-card hist-stat-card--verde">
+            <div className="hist-stat-value">{diasTrabajados}</div>
+            <div className="hist-stat-label">Días trabajados</div>
           </div>
-          <div className="stat-card stat-card--rojo">
-            <div className="stat-value">{inasistencias}</div>
-            <div className="stat-label">Inasistencias</div>
+          <div className="hist-stat-card hist-stat-card--rojo">
+            <div className="hist-stat-value">{inasistencias}</div>
+            <div className="hist-stat-label">Inasistencias</div>
           </div>
-          <div className="stat-card stat-card--naranja">
-            <div className="stat-value">{tardanzas}</div>
-            <div className="stat-label">Tardanzas</div>
+          <div className="hist-stat-card hist-stat-card--naranja">
+            <div className="hist-stat-value">{tardanzas}</div>
+            <div className="hist-stat-label">Tardanzas</div>
           </div>
-          <div className="stat-card stat-card--azul">
-            <div className="stat-value">{horasTotales}</div>
-            <div className="stat-label">Horas totales</div>
+          <div className="hist-stat-card hist-stat-card--azul">
+            <div className="hist-stat-value">{horasTotales}</div>
+            <div className="hist-stat-label">Horas totales</div>
           </div>
         </div>
 
