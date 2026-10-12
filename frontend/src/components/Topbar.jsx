@@ -64,8 +64,14 @@ function Topbar({ onToggleMenu }) {
             <span className="topbar-nombre">{nombre}</span>
           </span>
         )}
-        <button className="btn-logout" onClick={handleLogout}>
-          Cerrar sesión
+        <button
+          className="btn-logout"
+          onClick={handleLogout}
+          aria-label="Cerrar sesión"
+          title="Cerrar sesión"
+        >
+          <Icon icon={ICONOS.salir} className="btn-logout-icono" />
+          <span className="btn-logout-texto">Cerrar sesión</span>
         </button>
       </div>
     </header>
