@@ -169,3 +169,17 @@
     flex-shrink: 0;
   }
 }
+
+.login-enlace {
+  display: block;
+  margin-top: 1.25rem;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #6b2410;
+  text-decoration: none;
+}
+
+.login-enlace:hover {
+  text-decoration: underline;
+}
