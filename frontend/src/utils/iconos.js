@@ -32,4 +32,9 @@ export const ICONOS = {
   externo: "mdi:open-in-new",
   salir: "mdi:logout",
   fecha: "mdi:calendar-blank-outline",
+  mision: "mdi:target",
+  vision: "mdi:eye-outline",
+  valores: "mdi:heart-outline",
+  instagram: "mdi:instagram",
+  facebook: "mdi:facebook",
 };

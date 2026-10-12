@@ -126,6 +126,25 @@ function PublicLayout() {
             </div>
           </div>
 
+          <nav className="publico-interes" aria-label="De interés">
+            <h3>De interés</h3>
+            <ul>
+              <li>
+                <Link to="/#mision" onClick={(e) => irASeccion(e, "mision")}>
+                  Misión y Visión
+                </Link>
+              </li>
+              <li>
+                <Link to="/#galeria" onClick={(e) => irASeccion(e, "galeria")}>
+                  Galería
+                </Link>
+              </li>
+              <li>
+                <Link to="/noticias">Noticias</Link>
+              </li>
+            </ul>
+          </nav>
+
           <ul className="publico-contacto">
             <li>
               <Icon icon={ICONOS.telefono} />

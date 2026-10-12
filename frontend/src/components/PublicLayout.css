@@ -193,6 +193,37 @@
   color: rgba(255, 255, 255, 0.4);
 }
 
+.publico-interes h3 {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-titulos);
+  font-size: 1rem;
+  color: var(--blanco);
+}
+
+.publico-interes ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.publico-interes a {
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: none;
+}
+
+.publico-interes a:hover {
+  color: var(--blanco);
+  text-decoration: underline;
+}
+
+.publico-interes a:focus-visible {
+  outline: 2px solid var(--blanco);
+  outline-offset: 3px;
+}
+
 /* Celular: el menú pasa a ser un desplegable bajo la barra */
 @media (max-width: 768px) {
   .publico-header {
@@ -249,7 +280,7 @@
   }
 
   .publico-footer-top {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1.2fr 1fr 1.4fr;
   }
 }
 
