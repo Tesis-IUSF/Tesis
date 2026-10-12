@@ -1,4 +1,5 @@
-import { Link, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, Outlet, useLocation } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { getRol, isAuthenticated } from "../utils/auth";
 import { ROLES } from "../constants/roles";
@@ -6,6 +7,9 @@ import { ICONOS } from "../utils/iconos";
 import "./PublicLayout.css";
 
 function PublicLayout() {
+  const { pathname, hash } = useLocation();
+  const [menuAbierto, setMenuAbierto] = useState(false);
+
   const hayConSesion = isAuthenticated();
   const destino = !hayConSesion
     ? "/login"
@@ -13,10 +17,36 @@ function PublicLayout() {
       ? "/escaner"
       : "/dashboard";
 
+  // Al llegar a una ruta con #ancla (por ejemplo "/#galeria") baja hasta esa
+  // sección; en cualquier otra navegación vuelve arriba.
+  useEffect(() => {
+    if (!hash) {
+      window.scrollTo(0, 0);
+      return;
+    }
+    const temporizador = setTimeout(() => {
+      document
+        .getElementById(hash.slice(1))
+        ?.scrollIntoView({ behavior: "smooth" });
+    }, 50);
+    return () => clearTimeout(temporizador);
+  }, [pathname, hash]);
+
+  const cerrarMenu = () => setMenuAbierto(false);
+
+  // Enlace a una sección del inicio: si ya estamos ahí, solo se desplaza.
+  const irASeccion = (e, id) => {
+    setMenuAbierto(false);
+    if (pathname === "/") {
+      e.preventDefault();
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   return (
     <div className="publico">
       <header className="publico-header">
-        <Link className="publico-brand" to="/noticias">
+        <Link className="publico-brand" to="/" onClick={cerrarMenu}>
           <img
             src="/img/logo_asansa.jpeg"
             alt="Escudo institucional"
@@ -28,11 +58,46 @@ function PublicLayout() {
           </div>
         </Link>
 
-        <nav className="publico-nav">
-          <Link to="/noticias" className="publico-link">
+        <button
+          type="button"
+          className="publico-toggle"
+          onClick={() => setMenuAbierto((abierto) => !abierto)}
+          aria-label={menuAbierto ? "Cerrar menú" : "Abrir menú"}
+          aria-expanded={menuAbierto}
+          aria-controls="publico-nav"
+        >
+          <Icon icon={menuAbierto ? ICONOS.cerrar : ICONOS.menu} />
+        </button>
+
+        <nav
+          id="publico-nav"
+          className={`publico-nav${menuAbierto ? " publico-nav--abierto" : ""}`}
+        >
+          <Link
+            to="/#mision"
+            className="publico-link"
+            onClick={(e) => irASeccion(e, "mision")}
+          >
+            Nosotros
+          </Link>
+          <Link
+            to="/#galeria"
+            className="publico-link"
+            onClick={(e) => irASeccion(e, "galeria")}
+          >
+            Galería
+          </Link>
+          <Link to="/noticias" className="publico-link" onClick={cerrarMenu}>
             Noticias
           </Link>
-          <Link to={destino} className="publico-acceso">
+          <Link
+            to="/#contacto"
+            className="publico-link"
+            onClick={(e) => irASeccion(e, "contacto")}
+          >
+            Contacto
+          </Link>
+          <Link to={destino} className="publico-acceso" onClick={cerrarMenu}>
             <Icon icon={ICONOS.usuario} />
             <span>{hayConSesion ? "Ir al sistema" : "Acceder"}</span>
           </Link>
@@ -43,7 +108,7 @@ function PublicLayout() {
         <Outlet />
       </main>
 
-      <footer className="publico-footer">
+      <footer className="publico-footer" id="contacto">
         <div className="publico-footer-top">
           <div className="publico-footer-marca">
             <img

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ToastProvider } from "./context/ToastContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -17,6 +17,7 @@ import TurnoForm from "./pages/TurnoForm";
 import Carnets from "./pages/Carnets";
 import Noticias from "./pages/Noticias";
 import NoticiaDetalle from "./pages/NoticiaDetalle";
+import Inicio from "./pages/Inicio";
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
 
           {/* Páginas públicas (sin sesión) */}
           <Route element={<PublicLayout />}>
+            <Route path="/" element={<Inicio />} />
             <Route path="/noticias" element={<Noticias />} />
             <Route path="/noticias/:id" element={<NoticiaDetalle />} />
           </Route>
@@ -72,8 +74,6 @@ function App() {
               <Route path="/turnos/:id/editar" element={<TurnoForm />} />
             </Route>
           </Route>
-
-          <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
     </ToastProvider>

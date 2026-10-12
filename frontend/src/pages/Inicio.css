@@ -1,0 +1,280 @@
+/* ══════════════════════════════════════════
+   PÁGINA DE INICIO
+   Todas las clases llevan el prefijo "ini-" para no pisar
+   los estilos de otras pantallas (todos los CSS son globales).
+══════════════════════════════════════════ */
+.inicio {
+  --ini-vino: var(--vino, #3d1a1a);
+  --ini-vino-medio: var(--vino-medio, #5c2a2a);
+  --ini-dorado: var(--dorado, #e8b84b);
+  --ini-dorado-oscuro: var(--dorado-oscuro, #b8891e);
+  font-family: var(--font-texto);
+  overflow-x: clip;
+}
+
+/* ── Hero ── */
+.ini-hero {
+  position: relative;
+  height: calc(100vh - 72px);
+  height: calc(100svh - 72px);
+  min-height: 560px;
+  overflow: hidden;
+  scroll-margin-top: 72px;
+}
+
+.ini-hero-slides {
+  position: absolute;
+  inset: 0;
+}
+
+.ini-hero-slide {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+
+.ini-hero-slide.activa {
+  opacity: 1;
+}
+
+.ini-hero-slide::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(15, 30, 55, 0.25) 0%,
+    rgba(15, 30, 55, 0.55) 50%,
+    rgba(15, 30, 55, 0.82) 100%
+  );
+}
+
+.ini-hero-contenido {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+}
+
+.ini-hero-titulo {
+  margin: 0 0 1rem;
+  font-family: var(--font-titulos);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--blanco);
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+  animation: ini-subir 0.7s 0.35s both;
+}
+
+.ini-hero-frase-caja {
+  position: absolute;
+  bottom: 130px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  width: 90%;
+  max-width: 700px;
+  text-align: center;
+}
+
+.ini-hero-frase {
+  margin: 0;
+  font-family: var(--font-titulos);
+  font-style: italic;
+  font-weight: 600;
+  font-size: clamp(1.1rem, 3vw, 1.6rem);
+  color: var(--blanco);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  animation: ini-aparecer 0.8s ease both;
+}
+
+.ini-hero-flecha {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  font-size: 1.6rem;
+  color: var(--blanco);
+  background: rgba(61, 26, 26, 0.55);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    transform 0.2s;
+}
+
+.ini-hero-flecha--prev {
+  left: 1.5rem;
+}
+
+.ini-hero-flecha--sig {
+  right: 1.5rem;
+}
+
+.ini-hero-flecha:hover {
+  background: var(--ini-dorado);
+  color: var(--ini-vino);
+  transform: translateY(-50%) scale(1.08);
+}
+
+.ini-hero-flecha:focus-visible,
+.ini-hero-punto:focus-visible {
+  outline: 3px solid var(--ini-dorado);
+  outline-offset: 3px;
+}
+
+.ini-hero-puntos {
+  position: absolute;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  gap: 0.6rem;
+}
+
+.ini-hero-punto {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition:
+    background 0.3s,
+    transform 0.3s;
+}
+
+/* Área de toque más grande que el punto visible */
+.ini-hero-punto::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+}
+
+.ini-hero-punto.activo {
+  background: var(--ini-dorado);
+  transform: scale(1.4);
+}
+
+.ini-hero-rapido {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.ini-rapido-tarjeta {
+  padding: 1.1rem 1.5rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.85);
+  background: var(--ini-vino);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background 0.2s;
+}
+
+.ini-rapido-tarjeta:last-child {
+  border-right: none;
+}
+
+.ini-rapido-tarjeta:hover {
+  background: var(--ini-vino-medio);
+}
+
+.ini-rapido-tarjeta strong {
+  display: block;
+  margin-bottom: 0.2rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--blanco);
+}
+
+.ini-rapido-tarjeta span {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ── Animaciones ── */
+@keyframes ini-subir {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ini-aparecer {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ini-hero-slide {
+    transition: none;
+  }
+
+  .ini-hero-titulo,
+  .ini-hero-frase {
+    animation: none;
+  }
+}
+
+/* ── Celular ── */
+@media (max-width: 768px) {
+  .ini-hero-rapido {
+    display: none;
+  }
+
+  .ini-hero-puntos {
+    bottom: 24px;
+  }
+
+  .ini-hero-frase-caja {
+    bottom: 64px;
+  }
+
+  .ini-hero-flecha {
+    width: 40px;
+    height: 40px;
+    font-size: 1.3rem;
+  }
+
+  .ini-hero-flecha--prev {
+    left: 0.75rem;
+  }
+
+  .ini-hero-flecha--sig {
+    right: 0.75rem;
+  }
+}
