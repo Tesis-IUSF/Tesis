@@ -1,0 +1,21 @@
+/* src/pages/BlogComunicados.css — prefijo bcom- */
+
+.badge.bcom-estado--publicado {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge.bcom-estado--programado {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.badge.bcom-estado--vencido {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.badge.bcom-estado--borrador {
+  background: #e5e7eb;
+  color: #374151;
+}

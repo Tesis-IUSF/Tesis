@@ -18,6 +18,9 @@ import Carnets from "./pages/Carnets";
 import Noticias from "./pages/Noticias";
 import NoticiaDetalle from "./pages/NoticiaDetalle";
 import Inicio from "./pages/Inicio";
+import BlogCategorias from "./pages/BlogCategorias";
+import BlogComunicados from "./pages/BlogComunicados";
+import BlogComunicadoForm from "./pages/BlogComunicadoForm";
 
 function App() {
   return (
@@ -72,6 +75,16 @@ function App() {
               <Route path="/turnos" element={<Turnos />} />
               <Route path="/turnos/nuevo" element={<TurnoForm />} />
               <Route path="/turnos/:id/editar" element={<TurnoForm />} />
+              <Route path="/blog/categorias" element={<BlogCategorias />} />
+              <Route path="/blog/comunicados" element={<BlogComunicados />} />
+              <Route
+                path="/blog/comunicados/nuevo"
+                element={<BlogComunicadoForm />}
+              />
+              <Route
+                path="/blog/comunicados/:id/editar"
+                element={<BlogComunicadoForm />}
+              />
             </Route>
           </Route>
         </Routes>

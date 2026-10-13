@@ -54,13 +54,28 @@ const SECCIONES = [
     titulo: "Institución",
     items: [
       { etiqueta: "Matrícula", icono: ICONOS.matricula, pronto: true },
+      { etiqueta: "Reportes", icono: ICONOS.reportes, pronto: true },
+    ],
+  },
+  {
+    titulo: "Blog",
+    items: [
+      {
+        ruta: "/blog/comunicados",
+        etiqueta: "Comunicados",
+        icono: ICONOS.comunicados,
+      },
+      {
+        ruta: "/blog/categorias",
+        etiqueta: "Categorías",
+        icono: ICONOS.categorias,
+      },
       {
         ruta: "/noticias",
-        etiqueta: "Blog",
+        etiqueta: "Ver blog público",
         icono: ICONOS.blog,
         externo: true,
       },
-      { etiqueta: "Reportes", icono: ICONOS.reportes, pronto: true },
     ],
   },
 ];

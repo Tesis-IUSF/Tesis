@@ -37,4 +37,6 @@ export const ICONOS = {
   valores: "mdi:heart-outline",
   instagram: "mdi:instagram",
   facebook: "mdi:facebook",
+  categorias: "mdi:tag-outline",
+  comunicados: "mdi:bullhorn-outline",
 };
