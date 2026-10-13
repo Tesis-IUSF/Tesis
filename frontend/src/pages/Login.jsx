@@ -64,7 +64,8 @@ function Login() {
         <div className="login-panel-left">
           <div className="login-panel-overlay">
             <p className="login-side-tagline">
-              Sistema de Control de Asistencia
+              Sitio web para la gestión de preinscripción, inscripción y
+              asistencia
             </p>
           </div>
         </div>

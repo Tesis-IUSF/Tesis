@@ -41,7 +41,7 @@ function Topbar({ onToggleMenu }) {
           />
           <div className="topbar-brand-text">
             <strong>C.E.N. Roraima</strong>
-            <span>Control de asistencia</span>
+            <span>gestión de preinscripción, inscripción y asistencia</span>
           </div>
         </Link>
       </div>
