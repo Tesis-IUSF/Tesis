@@ -1,18 +1,64 @@
 // src/pages/Dashboard.jsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import api from "../utils/api";
 import "./Dashboard.css";
 
+// Fecha local en formato YYYY-MM-DD (toISOString usaría UTC y adelantaría el día de noche)
+const fmt = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+// De lunes a HOY: los días que aún no llegan no cuentan como ausencias.
 function getSemanaActual() {
   const hoy = new Date();
   const diaSemana = hoy.getDay() || 7;
   const lunes = new Date(hoy);
   lunes.setDate(hoy.getDate() - (diaSemana - 1));
-  const domingo = new Date(lunes);
-  domingo.setDate(lunes.getDate() + 6);
-  const fmt = (d) => d.toISOString().split("T")[0];
-  return { desde: fmt(lunes), hasta: fmt(domingo) };
+  return { desde: fmt(lunes), hasta: fmt(hoy) };
 }
+
+// Total de una respuesta: lista paginada (totalElements) o arreglo simple.
+function contar(resultado) {
+  if (resultado.status !== "fulfilled") return "—";
+  const data = resultado.value.data;
+  return data?.totalElements ?? data?.length ?? "—";
+}
+
+// Si no tiene "ruta" se muestra como "Próximamente".
+const MODULOS = [
+  {
+    ruta: "/empleados",
+    titulo: "Empleados",
+    texto: "Ver y administrar empleados del plantel.",
+    enlace: "Ir a Empleados",
+  },
+  {
+    ruta: "/asistencia/historico",
+    titulo: "Asistencia",
+    texto: "Registrar y consultar asistencias del personal.",
+    enlace: "Ir a Asistencia",
+  },
+  {
+    ruta: "/turnos",
+    titulo: "Turnos",
+    texto: "Crear y editar los horarios de trabajo.",
+    enlace: "Ir a Turnos",
+  },
+  {
+    ruta: "/blog/comunicados",
+    titulo: "Blog",
+    texto: "Publicar comunicados y avisos para la comunidad.",
+    enlace: "Ir a Comunicados",
+  },
+  {
+    titulo: "Departamentos",
+    texto: "Administrar las áreas institucionales.",
+  },
+  {
+    titulo: "Cargos",
+    texto: "Crear, editar y eliminar cargos vinculados a departamentos.",
+  },
+];
 
 function Dashboard() {
   const [nombre] = useState(() => localStorage.getItem("nombre") || "");
@@ -32,47 +78,53 @@ function Dashboard() {
 
   const { desde, hasta } = getSemanaActual();
 
-  const cargarEstadisticas = useCallback(async () => {
-    const d = new Date();
-    const año = d.getFullYear();
-    const mes = String(d.getMonth() + 1).padStart(2, "0");
-    const dia = String(d.getDate()).padStart(2, "0");
-    const fechaLocal = `${año}-${mes}-${dia}`;
-
-    try {
-      // TODO: conectar con utils/api.js más adelante
-      console.log("Cargando estadísticas simuladas para", fechaLocal);
-    } catch (err) {
-      console.error("Error crítico en bloque de estadísticas:", err);
-      setTotales({ personal: "—", asistencias: "—", deptos: "—" });
-    }
-  }, []);
-
-  const cargarEstadisticasSemana = useCallback(async () => {
-    try {
-      // TODO: conectar con utils/api.js más adelante
-      console.log("Cargando estadísticas de semana", desde, hasta);
-    } catch (err) {
-      console.error("Error cargando estadisticas de semana:", err);
-      setSemana({
-        presentes: "—",
-        ausentes: "—",
-        tardanzas: "—",
-        permisos: "—",
-      });
-    }
-  }, [desde, hasta]);
-
   useEffect(() => {
-    cargarEstadisticas();
-    cargarEstadisticasSemana();
-  }, [cargarEstadisticas, cargarEstadisticasSemana]);
+    let activo = true;
+
+    // Cada petición es independiente: si una falla, solo su tarjeta muestra "—".
+    Promise.allSettled([
+      api.get("/empleados", { params: { page: 0, size: 1 } }),
+      api.get("/asistencias/hoy"),
+      api.get("/catalogos/departamentos", { params: { page: 0, size: 1 } }),
+    ]).then(([empleados, hoy, departamentos]) => {
+      if (!activo) return;
+      setTotales({
+        personal: contar(empleados),
+        asistencias: contar(hoy),
+        deptos: contar(departamentos),
+      });
+    });
+
+    Promise.allSettled([
+      api.get("/asistencias/historico", { params: { desde, hasta } }),
+      api.get("/asistencias/ausencias", { params: { desde, hasta } }),
+    ]).then(([historico, ausencias]) => {
+      if (!activo) return;
+      const registros =
+        historico.status === "fulfilled" ? historico.value.data : null;
+      const cuenta = (...estados) =>
+        registros
+          ? registros.filter((r) => estados.includes(r.estado)).length
+          : "—";
+
+      setSemana({
+        presentes: cuenta("presente", "tardanza", "salida_anticipada"),
+        ausentes:
+          ausencias.status === "fulfilled" ? ausencias.value.data.length : "—",
+        tardanzas: cuenta("tardanza"),
+        permisos: cuenta("permiso"),
+      });
+    });
+
+    return () => {
+      activo = false;
+    };
+  }, [desde, hasta]);
 
   return (
     <>
       <main className="dash-main">
         <div className="dash-heading">
-          <p className="eyebrow"></p>
           <h1>Panel principal</h1>
           <p id="bienvenida-texto">
             {nombre
@@ -98,10 +150,7 @@ function Dashboard() {
 
         <div className="semana-heading">
           <p className="modules-title">Asistencia esta semana</p>
-          <Link
-            to={`/asistencia?fechaDesde=${desde}&fechaHasta=${hasta}`}
-            className="link-detalle-semana"
-          >
+          <Link to="/asistencia/historico" className="link-detalle-semana">
             Ver a detalle
           </Link>
         </div>
@@ -127,35 +176,25 @@ function Dashboard() {
 
         <p className="modules-title">Accesos rápidos</p>
         <div className="modules-grid">
-          <Link className="module-card" to="/empleados">
-            <h3>Empleados</h3>
-            <p>Ver y administrar empleados del plantel.</p>
-            <span className="module-link">Ir a Empleados</span>
-          </Link>
-
-          <Link className="module-card" to="/departamentos">
-            <h3>Departamentos</h3>
-            <p>Administrar las áreas institucionales.</p>
-            <span className="module-link">Ir a Departamentos</span>
-          </Link>
-
-          <Link className="module-card" to="/cargos">
-            <h3>Cargos</h3>
-            <p>Crear, editar y eliminar cargos vinculados a departamentos.</p>
-            <span className="module-link">Ir a Cargos</span>
-          </Link>
-
-          <Link className="module-card" to="/asistencia/historico">
-            <h3>Asistencia</h3>
-            <p>Registrar y consultar asistencias del personal.</p>
-            <span className="module-link">Ir a Asistencia</span>
-          </Link>
-
-          <Link className="module-card" to="/escaner">
-            <h3>Escáner QR</h3>
-            <p>Registrar entrada y salida escaneando el QR del empleado.</p>
-            <span className="module-link">Ir al Escáner</span>
-          </Link>
+          {MODULOS.map((m) =>
+            m.ruta ? (
+              <Link key={m.titulo} className="module-card" to={m.ruta}>
+                <h3>{m.titulo}</h3>
+                <p>{m.texto}</p>
+                <span className="module-link">{m.enlace}</span>
+              </Link>
+            ) : (
+              <div
+                key={m.titulo}
+                className="module-card module-card--pronto"
+                aria-disabled="true"
+              >
+                <h3>{m.titulo}</h3>
+                <p>{m.texto}</p>
+                <span className="module-pronto">Próximamente</span>
+              </div>
+            ),
+          )}
         </div>
       </main>
     </>

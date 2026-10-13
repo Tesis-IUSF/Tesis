@@ -261,3 +261,40 @@
     padding: 1.25rem 1rem 2rem;
   }
 }
+/* Accesos rápidos 4 a 6: misma entrada escalonada */
+.module-card:nth-child(4) {
+  animation-delay: 0.51s;
+}
+.module-card:nth-child(5) {
+  animation-delay: 0.58s;
+}
+.module-card:nth-child(6) {
+  animation-delay: 0.65s;
+}
+
+/* Módulos que todavía no existen: visibles pero sin interacción */
+.module-card--pronto {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.module-card--pronto:hover {
+  transform: none;
+  box-shadow: 0 4px 16px rgba(74, 125, 181, 0.07);
+  border-color: transparent;
+}
+
+.module-card--pronto:hover::before {
+  transform: scaleX(0);
+}
+
+.module-pronto {
+  align-self: flex-start;
+  margin-top: 0.5rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #7a8fa6;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
