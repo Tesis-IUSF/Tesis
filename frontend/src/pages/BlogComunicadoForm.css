@@ -1,0 +1,163 @@
+/* src/pages/BlogComunicadoForm.css
+   Se apoya en .empleado-form (tarjeta, etiquetas, input y select) y
+   .form-actions de EmpleadoForm.css. Aquí solo va lo propio del comunicado.
+   Se usa .empleado-form.bfrm para ganar en especificidad sin depender del orden de carga. */
+
+.empleado-form.bfrm {
+  max-width: 860px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.bfrm-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.bfrm-ancho {
+  grid-column: 1 / -1;
+}
+
+/* El textarea no estaba cubierto por .empleado-form: mismo aspecto que input/select */
+.empleado-form.bfrm textarea {
+  font-family: var(--font-texto);
+  font-size: 0.9rem;
+  padding: 0.6rem 0.75rem;
+  border: 1.5px solid #d0dcea;
+  border-radius: 8px;
+  background: var(--blanco);
+  text-transform: none;
+  resize: vertical;
+}
+
+.empleado-form.bfrm textarea:focus {
+  outline: none;
+  border-color: var(--azul);
+}
+
+/* Cuadro de HTML: monoespaciado */
+.empleado-form.bfrm textarea.bfrm-html {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+/* Textos de ayuda: no heredan las mayúsculas de la etiqueta */
+.bfrm-ayuda {
+  font-size: 0.78rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--texto-suave);
+}
+
+/* Casillas: sin el padding/borde que .empleado-form da a los input */
+.empleado-form.bfrm input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  border: 0;
+}
+
+.empleado-form.bfrm label.switch-inline-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.9rem;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--texto);
+}
+
+/* Grupos */
+.bfrm fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 1rem;
+  border: 1.5px solid #d0dcea;
+  border-radius: 10px;
+}
+
+.bfrm legend {
+  padding: 0 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+
+/* Contenido: pestañas + barra + área */
+.bfrm-pestanas {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #d0dcea;
+}
+
+.bfrm-pestanas button {
+  padding: 0.5rem 1rem;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+.bfrm-pestanas button.activa {
+  border-bottom-color: var(--azul);
+  color: var(--azul-oscuro);
+}
+
+.bfrm-barra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.bfrm-barra button {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.bfrm-vista {
+  min-height: 200px;
+  padding: 1rem;
+  border-radius: 8px;
+  background: var(--blanco);
+  border: 1.5px solid #d0dcea;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.bfrm-vista img {
+  max-width: 100%;
+  height: auto;
+}
+
+.bfrm-imagen img {
+  display: block;
+  max-width: 100%;
+  max-height: 240px;
+  border-radius: 8px;
+  border: 1px solid #e3e9f1;
+}
+
+.bfrm-nota {
+  margin: 1rem 0 0;
+  font-size: 0.88rem;
+  color: var(--texto-suave);
+}
+
+@media (max-width: 700px) {
+  .bfrm-grid {
+    grid-template-columns: 1fr;
+  }
+}

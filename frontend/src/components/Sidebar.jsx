@@ -31,8 +31,12 @@ const SECCIONES = [
         icono: ICONOS.carnet,
         roles: [ROLES.ADMIN, ROLES.DIRECTOR],
       },
-      { etiqueta: "Departamentos", icono: ICONOS.departamentos, pronto: true },
-      { etiqueta: "Cargos", icono: ICONOS.cargos, pronto: true },
+      {
+        ruta: "/departamentos",
+        etiqueta: "Departamentos",
+        icono: ICONOS.departamentos,
+      },
+      { ruta: "/cargos", etiqueta: "Cargos", icono: ICONOS.cargos },
     ],
   },
   {
@@ -54,13 +58,28 @@ const SECCIONES = [
     titulo: "Institución",
     items: [
       { etiqueta: "Matrícula", icono: ICONOS.matricula, pronto: true },
+      { etiqueta: "Reportes", icono: ICONOS.reportes, pronto: true },
+    ],
+  },
+  {
+    titulo: "Blog",
+    items: [
+      {
+        ruta: "/blog/comunicados",
+        etiqueta: "Comunicados",
+        icono: ICONOS.comunicados,
+      },
+      {
+        ruta: "/blog/categorias",
+        etiqueta: "Categorías",
+        icono: ICONOS.categorias,
+      },
       {
         ruta: "/noticias",
-        etiqueta: "Blog",
+        etiqueta: "Ver blog público",
         icono: ICONOS.blog,
         externo: true,
       },
-      { etiqueta: "Reportes", icono: ICONOS.reportes, pronto: true },
     ],
   },
 ];
