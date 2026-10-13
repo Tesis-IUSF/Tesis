@@ -31,8 +31,12 @@ const SECCIONES = [
         icono: ICONOS.carnet,
         roles: [ROLES.ADMIN, ROLES.DIRECTOR],
       },
-      { etiqueta: "Departamentos", icono: ICONOS.departamentos, pronto: true },
-      { etiqueta: "Cargos", icono: ICONOS.cargos, pronto: true },
+      {
+        ruta: "/departamentos",
+        etiqueta: "Departamentos",
+        icono: ICONOS.departamentos,
+      },
+      { ruta: "/cargos", etiqueta: "Cargos", icono: ICONOS.cargos },
     ],
   },
   {

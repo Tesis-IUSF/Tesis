@@ -51,12 +51,16 @@ const MODULOS = [
     enlace: "Ir a Comunicados",
   },
   {
+    ruta: "/departamentos",
     titulo: "Departamentos",
     texto: "Administrar las áreas institucionales.",
+    enlace: "Ir a Departamentos",
   },
   {
+    ruta: "/cargos",
     titulo: "Cargos",
     texto: "Crear, editar y eliminar cargos vinculados a departamentos.",
+    enlace: "Ir a Cargos",
   },
 ];
 
