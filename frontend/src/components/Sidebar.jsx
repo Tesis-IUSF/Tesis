@@ -57,7 +57,11 @@ const SECCIONES = [
   {
     titulo: "Institución",
     items: [
-      { etiqueta: "Matrícula", icono: ICONOS.matricula, pronto: true },
+      {
+        ruta: "/matricula/preinscripcion",
+        etiqueta: "Preinscripción",
+        icono: ICONOS.preinscripcion,
+      },
       { etiqueta: "Reportes", icono: ICONOS.reportes, pronto: true },
     ],
   },
