@@ -1,0 +1,98 @@
+/* src/pages/Matricula.css — prefijo mat-
+   Reutiliza .stats-row / .stat-card (Dashboard.css), tabla, paginación y botones globales. */
+
+/* El año escolar es texto, no una cifra grande */
+.stat-value.mat-anio {
+  font-size: 1.6rem;
+  line-height: 1.2;
+}
+
+/* ===== Pestañas ===== */
+.mat-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #d0dcea;
+}
+
+.mat-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.1rem;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+.mat-tabs button:hover {
+  color: var(--azul-oscuro);
+}
+
+.mat-tabs button.activa {
+  border-bottom-color: var(--azul);
+  color: var(--azul-oscuro);
+}
+
+.mat-tabs button:focus-visible {
+  outline: 3px solid var(--azul);
+  outline-offset: -3px;
+}
+
+.mat-tab-cuenta {
+  min-width: 1.5rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: #eef2f7;
+  font-size: 0.78rem;
+  text-align: center;
+  color: var(--texto-suave);
+}
+
+.mat-tabs button.activa .mat-tab-cuenta {
+  background: var(--azul);
+  color: #fff;
+}
+
+/* ===== Estados ===== */
+.badge.mat-estado--preinscrito {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.badge.mat-estado--en_proceso {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* ===== Progreso de requisitos ===== */
+.mat-progreso {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mat-barra {
+  width: 80px;
+  height: 8px;
+  border-radius: 999px;
+  background: #e5eaf1;
+  overflow: hidden;
+}
+
+.mat-barra > span {
+  display: block;
+  height: 100%;
+  background: #2e8b57;
+  border-radius: 999px;
+}
+
+.mat-progreso small {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
