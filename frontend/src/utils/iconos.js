@@ -39,4 +39,8 @@ export const ICONOS = {
   facebook: "mdi:facebook",
   categorias: "mdi:tag-outline",
   comunicados: "mdi:bullhorn-outline",
+  preinscripcion: "mdi:clipboard-edit-outline",
+  seccion: "mdi:view-grid-outline",
+  descargar: "mdi:download-outline",
+  check: "mdi:check",
 };

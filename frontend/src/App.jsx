@@ -23,6 +23,7 @@ import BlogComunicados from "./pages/BlogComunicados";
 import BlogComunicadoForm from "./pages/BlogComunicadoForm";
 import Departamentos from "./pages/Departamentos";
 import Cargos from "./pages/Cargos";
+import Preinscripcion from "./pages/Preinscripcion";
 
 function App() {
   return (
@@ -90,6 +91,10 @@ function App() {
                 element={<BlogComunicadoForm />}
               />
             </Route>
+            <Route
+              path="/matricula/preinscripcion"
+              element={<Preinscripcion />}
+            />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -1,0 +1,303 @@
+/* src/pages/Preinscripcion.css — prefijo wiz-
+   Se apoya en .empleado-form (tarjeta, etiquetas, input/select), .form-grid-2
+   y .form-actions de EmpleadoForm.css. */
+
+.empleado-form.wiz {
+  max-width: 780px;
+}
+
+/* ===== Indicador de progreso ===== */
+.wiz-pasos {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.wiz-paso {
+  position: relative;
+  flex: 1 1 0;
+}
+
+.wiz-paso + .wiz-paso::before {
+  content: "";
+  position: absolute;
+  top: 17px;
+  right: 50%;
+  width: 100%;
+  height: 2px;
+  background: #d0dcea;
+}
+
+.wiz-paso.hecho + .wiz-paso::before,
+.wiz-paso.activo::before {
+  background: var(--azul);
+}
+
+.wiz-paso button {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--texto-suave);
+  cursor: pointer;
+}
+
+.wiz-paso button:disabled {
+  cursor: default;
+}
+
+.wiz-paso-num {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #d0dcea;
+  background: var(--blanco);
+  font-weight: 700;
+  color: var(--texto-suave);
+}
+
+.wiz-paso.activo .wiz-paso-num {
+  border-color: var(--azul);
+  background: var(--azul);
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(47, 90, 138, 0.15);
+}
+
+.wiz-paso.hecho .wiz-paso-num {
+  border-color: var(--azul);
+  background: var(--blanco);
+  color: var(--azul);
+}
+
+.wiz-paso-titulo {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.wiz-paso.activo .wiz-paso-titulo {
+  color: var(--azul-oscuro);
+}
+
+.wiz-contador {
+  margin: 0 0 1.25rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+}
+
+/* ===== Avisos ===== */
+.wiz-aviso,
+.wiz-info {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.wiz-aviso {
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+
+.wiz-info {
+  background: #eef4fb;
+  border: 1px solid #d0dcea;
+  color: var(--azul-oscuro);
+}
+
+/* ===== Formulario ===== */
+.wiz-seccion-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.empleado-form.wiz .wiz-ancho {
+  grid-column: 1 / -1;
+}
+
+.wiz-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.empleado-form.wiz label.wiz-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--texto);
+}
+
+.empleado-form.wiz input[type="checkbox"],
+.empleado-form.wiz input[type="radio"] {
+  width: auto;
+  padding: 0;
+  border: 0;
+}
+
+/* ===== Selección de sección ===== */
+.wiz-grupos {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.wiz-grupos legend {
+  margin-bottom: 0.75rem;
+  padding: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+
+.wiz-grado + .wiz-grado {
+  margin-top: 1rem;
+}
+
+.wiz-grado h3 {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-titulos);
+  font-size: 1rem;
+  color: var(--azul-oscuro);
+}
+
+.wiz-secciones {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 0.75rem;
+}
+
+.empleado-form.wiz label.wiz-seccion {
+  position: relative;
+  gap: 0.2rem;
+  padding: 0.85rem 1rem;
+  border: 1.5px solid #d0dcea;
+  border-radius: 10px;
+  background: var(--blanco);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--texto);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.empleado-form.wiz label.wiz-seccion:hover {
+  border-color: var(--azul);
+}
+
+.empleado-form.wiz label.wiz-seccion:has(input:checked) {
+  border-color: var(--azul);
+  background: #eef4fb;
+  box-shadow: 0 0 0 3px rgba(47, 90, 138, 0.12);
+}
+
+.empleado-form.wiz label.wiz-seccion:has(input:focus-visible) {
+  outline: 3px solid var(--azul);
+  outline-offset: 2px;
+}
+
+.empleado-form.wiz label.wiz-seccion.agotada {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* El radio queda oculto: toda la tarjeta es el control */
+.empleado-form.wiz label.wiz-seccion input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.wiz-seccion-nombre {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.wiz-seccion-cupos {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--texto-suave);
+}
+
+/* ===== Resumen / resultado ===== */
+.wiz-resumen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.75rem 1.5rem;
+  margin: 0;
+  padding: 1rem;
+  border-radius: 10px;
+  background: #f5f8fc;
+}
+
+.wiz-resumen dt {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+
+.wiz-resumen dd {
+  margin: 0.15rem 0 0;
+  font-weight: 600;
+  color: var(--texto);
+}
+
+.wiz-exito {
+  text-align: center;
+}
+
+.wiz-exito h2 {
+  margin: 0.25rem 0;
+  font-family: var(--font-titulos);
+  color: var(--azul-oscuro);
+}
+
+.wiz-exito-icono {
+  color: #2e8b57;
+}
+
+.wiz-exito-texto {
+  margin: 0 0 1.25rem;
+  color: var(--texto-suave);
+}
+
+.wiz-exito .wiz-resumen {
+  text-align: left;
+}
+
+.wiz-acciones-final {
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .wiz-paso-titulo {
+    font-size: 0.72rem;
+  }
+  .wiz-acciones-final {
+    flex-direction: column-reverse;
+  }
+}
