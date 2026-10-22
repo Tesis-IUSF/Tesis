@@ -14,6 +14,7 @@ export function extractErrorMessage(
 
   switch (status) {
     case 401:
+      return "Tu sesión expiró. Inicia sesión de nuevo.";
     case 403:
       return "No tienes permiso para realizar esta acción.";
     case 404:

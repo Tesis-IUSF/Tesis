@@ -25,6 +25,7 @@ import Departamentos from "./pages/Departamentos";
 import Cargos from "./pages/Cargos";
 import Preinscripcion from "./pages/Preinscripcion";
 import Matricula from "./pages/Matricula";
+import Inscripcion from "./pages/Inscripcion";
 
 function App() {
   return (
@@ -91,12 +92,18 @@ function App() {
                 path="/blog/comunicados/:id/editar"
                 element={<BlogComunicadoForm />}
               />
+
+              {/* Matrícula */}
+              <Route
+                path="/matricula/preinscripcion"
+                element={<Preinscripcion />}
+              />
+              <Route path="/matricula" element={<Matricula />} />
+              <Route
+                path="/matricula/:id/inscripcion"
+                element={<Inscripcion />}
+              />
             </Route>
-            <Route
-              path="/matricula/preinscripcion"
-              element={<Preinscripcion />}
-            />
-            <Route path="/matricula" element={<Matricula />} />
           </Route>
         </Routes>
       </BrowserRouter>
