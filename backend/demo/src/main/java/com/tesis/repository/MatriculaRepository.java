@@ -40,6 +40,17 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
     @EntityGraph(attributePaths = {"estudiante", "seccion.grado.nivelEducativo"})
     Page<Matricula> findByEstadoMatriculaOrderByFechaSolicitudAsc(String estadoMatricula, Pageable pageable);
 
+    /** Listado por estado con búsqueda opcional por nombre, apellido o cédula del estudiante. */
+    @EntityGraph(attributePaths = {"estudiante", "seccion.grado.nivelEducativo"})
+    @Query("select m from Matricula m where m.estadoMatricula = :estado and ("
+            + ":busqueda = '' "
+            + "or lower(concat(m.estudiante.nombre, ' ', m.estudiante.apellido)) "
+            + "like lower(concat('%', :busqueda, '%')) "
+            + "or m.estudiante.cedula like concat('%', :busqueda, '%'))")
+    Page<Matricula> buscarPorEstado(@Param("estado") String estado,
+                                    @Param("busqueda") String busqueda,
+                                    Pageable pageable);
+
             java.util.Optional<Matricula> findByEstudiante_IdAndAnioEscolarAndSeccion_Id(
                     Integer estudianteId, Short anioEscolar, Integer seccionId);
 

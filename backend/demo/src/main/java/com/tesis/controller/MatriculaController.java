@@ -77,6 +77,16 @@ public class MatriculaController {
         return PaginacionDTO.Respuesta.desde(inscripcionService.listarEnProceso(pageable));
     }
 
+    @GetMapping("/listado")
+    public PaginacionDTO.Respuesta<InscripcionResponseDTO> listarPorEstado(
+            @RequestParam String estado,
+            @RequestParam(required = false) String busqueda,
+            @ModelAttribute PaginacionDTO.Solicitud paginacion) {
+        Pageable pageable = paginacion.toPageable();
+        return PaginacionDTO.Respuesta.desde(
+                inscripcionService.listarPorEstado(estado, busqueda, pageable));
+    }
+
     @GetMapping("/{matriculaId}/checklist")
     public InscripcionResponseDTO obtenerSeguimiento(@PathVariable Integer matriculaId) {
         return inscripcionService.obtenerSeguimiento(matriculaId);
