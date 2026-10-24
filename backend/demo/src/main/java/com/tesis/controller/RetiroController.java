@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
@@ -34,11 +33,15 @@ public class RetiroController {
     }
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public RetiroResponseDTO retirar(@PathVariable Integer matriculaId,
-                                     @Valid @RequestBody RetiroRequestDTO request,
-                                     Principal principal) {
-        return retiroService.retirar(matriculaId, request, principal.getName());
+    public ResponseEntity<RetiroResponseDTO> retirar(@PathVariable Integer matriculaId,
+                                                      @Valid @RequestBody RetiroRequestDTO request,
+                                                      Principal principal) {
+        RetiroResponseDTO respuesta = retiroService.retirar(
+                matriculaId, request, principal.getName());
+        if ("preinscripcion_eliminada".equals(respuesta.getOperacion())) {
+            return ResponseEntity.ok(respuesta);
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(respuesta);
     }
 
     @GetMapping

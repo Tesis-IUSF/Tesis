@@ -16,6 +16,9 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
 
     List<Matricula> findByEstudiante_IdAndAnioEscolar(Integer estudianteId, Short anioEscolar);
 
+    boolean existsByEstudiante_IdAndAnioEscolarAndEstadoMatriculaIn(
+            Integer estudianteId, Short anioEscolar, List<String> estados);
+
         boolean existsByEstudiante_IdAndAnioEscolarAndEstadoMatricula(
             Integer estudianteId, Short anioEscolar, String estadoMatricula);
 
@@ -57,6 +60,13 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
                     Integer estudianteId, Short anioEscolar, Integer seccionId);
 
     List<Matricula> findByAnioEscolarAndEstadoMatricula(Short anioEscolar, String estadoMatricula);
+
+    @EntityGraph(attributePaths = {"estudiante", "seccion.grado.nivelEducativo"})
+    @Query("select m from Matricula m where m.anioEscolar = :anioEscolar "
+            + "order by m.fechaSolicitud asc, m.id asc")
+    List<Matricula> findAllForContinuityByAnio(@Param("anioEscolar") Short anioEscolar);
+
+    boolean existsByEstudiante_IdAndAnioEscolar(Integer estudianteId, Short anioEscolar);
 
     boolean existsByAnioEscolar(Short anioEscolar);
 

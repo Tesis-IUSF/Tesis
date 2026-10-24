@@ -4,6 +4,9 @@ import com.tesis.dto.InscripcionDTO.ChecklistUpdateRequestDTO;
 import com.tesis.dto.InscripcionDTO.FormalizarInscripcionRequestDTO;
 import com.tesis.dto.InscripcionDTO.InscripcionResponseDTO;
 import com.tesis.dto.CalendarioMatriculaDTO;
+import com.tesis.dto.ContinuidadDTO.EgresoPendienteResponseDTO;
+import com.tesis.dto.ContinuidadDTO.GeneracionResponseDTO;
+import com.tesis.dto.ContinuidadDTO.ResolverEgresoRequestDTO;
 import com.tesis.dto.GestionCalendarioDTO.AnioEscolarRequestDTO;
 import com.tesis.dto.GestionCalendarioDTO.AnioEscolarResponseDTO;
 import com.tesis.dto.GestionCalendarioDTO.PeriodoRequestDTO;
@@ -15,6 +18,7 @@ import com.tesis.service.InscripcionService;
 import com.tesis.service.CalendarioMatriculaService;
 import com.tesis.service.PreinscripcionService;
 import com.tesis.service.ConstanciaService;
+import com.tesis.service.ContinuidadService;
 import jakarta.validation.Valid;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -46,15 +50,18 @@ public class MatriculaController {
     private final InscripcionService inscripcionService;
     private final ConstanciaService constanciaService;
     private final CalendarioMatriculaService calendarioService;
+    private final ContinuidadService continuidadService;
 
     public MatriculaController(PreinscripcionService preinscripcionService,
                                InscripcionService inscripcionService,
                                ConstanciaService constanciaService,
-                               CalendarioMatriculaService calendarioService) {
+                               CalendarioMatriculaService calendarioService,
+                               ContinuidadService continuidadService) {
         this.preinscripcionService = preinscripcionService;
         this.inscripcionService = inscripcionService;
         this.constanciaService = constanciaService;
         this.calendarioService = calendarioService;
+        this.continuidadService = continuidadService;
     }
 
     @GetMapping("/calendario")
@@ -90,6 +97,24 @@ public class MatriculaController {
     @PostMapping("/gestion/anios/{anio}/activar")
     public AnioEscolarResponseDTO activarAnioEscolar(@PathVariable Short anio) {
         return calendarioService.activarAnio(anio);
+    }
+
+    @PostMapping("/gestion/anios/{anio}/continuidades")
+    public GeneracionResponseDTO generarContinuidades(@PathVariable Short anio) {
+        return continuidadService.generarContinuidades(anio);
+    }
+
+    @GetMapping("/gestion/anios/{anio}/egresos-pendientes")
+    public List<EgresoPendienteResponseDTO> listarEgresosPendientes(@PathVariable Short anio) {
+        return continuidadService.listarEgresosPendientes(anio);
+    }
+
+    @PatchMapping("/gestion/egresos/{egresoId}/resolver")
+    public EgresoPendienteResponseDTO resolverEgreso(
+            @PathVariable Integer egresoId,
+            @Valid @RequestBody ResolverEgresoRequestDTO request,
+            Principal principal) {
+        return continuidadService.resolverEgreso(egresoId, request, principal.getName());
     }
 
     @PostMapping("/gestion/anios/{anio}/periodos")

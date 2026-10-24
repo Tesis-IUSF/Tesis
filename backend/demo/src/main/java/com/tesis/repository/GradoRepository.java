@@ -11,5 +11,7 @@ public interface GradoRepository extends JpaRepository<Grado, Integer> {
 
     List<Grado> findByNivelEducativo_Id(Integer nivelEducativoId);
 
+    List<Grado> findByNivelEducativo_IdAndActivoTrue(Integer nivelEducativoId);
+
     Page<Grado> findByNivelEducativo_Id(Integer nivelEducativoId, Pageable pageable);
 }
