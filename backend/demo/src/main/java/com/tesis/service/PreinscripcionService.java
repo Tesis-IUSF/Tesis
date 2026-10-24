@@ -226,6 +226,10 @@ public class PreinscripcionService {
         representante.setTelefonoSecundario(datos.getTelefonoSecundario());
         representante.setDireccion(datos.getDireccion());
         representante.setOcupacion(datos.getOcupacion());
+                // Solo se reemplaza si llega una foto nueva; así no se borra la existente
+        if (datos.getFotoUrl() != null && !datos.getFotoUrl().isBlank()) {
+            representante.setFotoUrl(datos.getFotoUrl().trim());
+        }
         representante.setActivo(true);
         return representanteRepository.save(representante);
     }

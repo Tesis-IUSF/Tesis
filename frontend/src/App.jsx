@@ -26,6 +26,7 @@ import Cargos from "./pages/Cargos";
 import Preinscripcion from "./pages/Preinscripcion";
 import Matricula from "./pages/Matricula";
 import Inscripcion from "./pages/Inscripcion";
+import Requisitos from "./pages/Requisitos";
 
 function App() {
   return (
@@ -69,6 +70,7 @@ function App() {
                 }
               >
                 <Route path="/carnets" element={<Carnets />} />
+                <Route path="/matricula/requisitos" element={<Requisitos />} />
               </Route>
 
               <Route path="/dashboard" element={<Dashboard />} />

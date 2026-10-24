@@ -145,3 +145,58 @@
   margin: 0;
   white-space: nowrap;
 }
+
+/* Nombre del estudiante como enlace al detalle */
+.mat-nombre-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--azul-oscuro);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mat-nombre-link:hover {
+  text-decoration: underline;
+}
+
+/* Ventana de detalle */
+.mat-detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.mat-detalle > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e6edf5;
+}
+
+.mat-detalle dt {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+
+.mat-detalle dd {
+  margin: 0;
+  text-align: right;
+  color: var(--texto);
+}
+
+/* Botón compacto "⋯" que abre el detalle */
+.mat-mas {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+}

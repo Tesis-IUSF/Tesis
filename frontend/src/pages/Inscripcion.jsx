@@ -47,7 +47,6 @@ function Inscripcion() {
   const [borradores, setBorradores] = useState({});
 
   const [modalFormalizar, setModalFormalizar] = useState(false);
-  const [numeroConstancia, setNumeroConstancia] = useState("");
   const [formalizando, setFormalizando] = useState(false);
   const [descargando, setDescargando] = useState("");
 
@@ -170,15 +169,11 @@ function Inscripcion() {
   // ---------- Formalizar ----------
   const formalizar = async (ev) => {
     ev.preventDefault();
-    if (numeroConstancia.trim().length > 50) {
-      toast.error("El número de constancia admite máximo 50 caracteres.");
-      return;
-    }
     setFormalizando(true);
     try {
       const { data: respuesta } = await api.post(
         `/matriculas/${id}/formalizar`,
-        { numeroConstancia: o(numeroConstancia) },
+        { numeroConstancia: null },
       );
       setData(respuesta);
       setModalFormalizar(false);
@@ -414,13 +409,7 @@ function Inscripcion() {
           </span>
           <div className="ins-exito-texto">
             <h3>Inscripción formalizada</h3>
-            <p>
-              Formalizada el {formatFechaISO(data.fechaFormalizacion)}
-              {data.numeroConstancia
-                ? ` · Constancia N.º ${data.numeroConstancia}`
-                : ""}
-              .
-            </p>
+            <p>Formalizada el {formatFechaISO(data.fechaFormalizacion)}.</p>
           </div>
           <div className="ins-acciones">
             <button
@@ -464,10 +453,7 @@ function Inscripcion() {
               type="button"
               className="btn-primary"
               disabled={faltan > 0}
-              onClick={() => {
-                setNumeroConstancia("");
-                setModalFormalizar(true);
-              }}
+              onClick={() => setModalFormalizar(true)}
             >
               Formalizar inscripción
             </button>
@@ -488,15 +474,6 @@ function Inscripcion() {
             <strong>{data.estudianteNombreCompleto}</strong>. Después de
             formalizar no se pueden modificar los requisitos.
           </p>
-          <label>
-            Número de constancia (opcional)
-            <input
-              value={numeroConstancia}
-              onChange={(e) => setNumeroConstancia(e.target.value)}
-              maxLength={50}
-              autoFocus
-            />
-          </label>
         </ModalFormulario>
       )}
     </div>

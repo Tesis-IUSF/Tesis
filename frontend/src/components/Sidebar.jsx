@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { getRol } from "../utils/auth";
 import { ROLES } from "../constants/roles";
@@ -9,6 +9,7 @@ import "./Sidebar.css";
 // - ruta: a dónde lleva (sin ruta + pronto: true = deshabilitado)
 // - roles: si se indica, solo esos roles lo ven
 // - externo: true = se abre en una pestaña nueva (páginas públicas)
+// - excluir: rutas que NO deben marcar este ítem como activo
 const SECCIONES = [
   {
     titulo: null,
@@ -57,7 +58,18 @@ const SECCIONES = [
   {
     titulo: "Institución",
     items: [
-      { ruta: "/matricula", etiqueta: "Matrícula", icono: ICONOS.matricula },
+      {
+        ruta: "/matricula",
+        etiqueta: "Matrícula",
+        icono: ICONOS.matricula,
+        excluir: ["/matricula/requisitos"],
+      },
+      {
+        ruta: "/matricula/requisitos",
+        etiqueta: "Requisitos",
+        icono: ICONOS.requisitos,
+        roles: [ROLES.ADMIN, ROLES.DIRECTOR],
+      },
       { etiqueta: "Reportes", icono: ICONOS.reportes, pronto: true },
     ],
   },
@@ -86,6 +98,7 @@ const SECCIONES = [
 
 function Sidebar({ colapsado, abiertoMovil, onCerrar }) {
   const rol = getRol();
+  const { pathname } = useLocation();
 
   const secciones = SECCIONES.map((seccion) => ({
     ...seccion,
@@ -148,9 +161,12 @@ function Sidebar({ colapsado, abiertoMovil, onCerrar }) {
                     to={item.ruta}
                     onClick={onCerrar}
                     title={colapsado ? item.etiqueta : undefined}
-                    className={({ isActive }) =>
-                      `sidebar-item${isActive ? " sidebar-item--activo" : ""}`
-                    }
+                    className={({ isActive }) => {
+                      const excluido = (item.excluir ?? []).some((p) =>
+                        pathname.startsWith(p),
+                      );
+                      return `sidebar-item${isActive && !excluido ? " sidebar-item--activo" : ""}`;
+                    }}
                   >
                     <Icon icon={item.icono} className="sidebar-icono" />
                     <span className="sidebar-etiqueta">{item.etiqueta}</span>

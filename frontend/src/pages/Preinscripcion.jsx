@@ -6,6 +6,7 @@ import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
 import { ICONOS } from "../utils/iconos";
 import { descargarArchivo, mensajeErrorBlob } from "../utils/descargas";
+import FotoCarnet from "../components/FotoCarnet";
 import "./Preinscripcion.css";
 
 const PASOS = ["Estudiante", "Representante", "Sección"];
@@ -38,6 +39,7 @@ const VACIO = {
     sexo: "",
     correo: "",
     telefono: "",
+    foto: null, // File elegido; aún no se envía al servidor
   },
   rep: {
     cedula: "",
@@ -49,6 +51,7 @@ const VACIO = {
     telefonoSecundario: "",
     direccion: "",
     ocupacion: "",
+    foto: null, // File elegido; aún no se envía al servidor
   },
   institucionProcedencia: "",
   seccionId: "",
@@ -212,6 +215,10 @@ function Preinscripcion() {
       return;
     }
     const { est, rep } = form;
+
+    // TODO(fotos): cuando exista el endpoint de subida, aquí se suben
+    // est.foto y rep.foto (File) y se agregan al payload las URL devueltas:
+    //   estudiante.fotoCarnetUrl  y  representante.fotoUrl
     const payload = {
       estudiante: {
         cedula: est.cedula.trim(),
@@ -418,93 +425,100 @@ function Preinscripcion() {
         {/* Paso 1 */}
         {paso === 0 && (
           <div className="wiz-seccion-form">
-            <div className="form-grid-2">
-              <label>
-                Cédula *
-                <input
-                  value={est.cedula}
-                  onChange={(e) => setEst("cedula", e.target.value)}
-                  maxLength={20}
-                  placeholder="12345678"
-                  autoFocus
-                />
-                {err("est.cedula")}
-              </label>
-              <label>
-                Fecha de nacimiento *
-                <input
-                  type="date"
-                  max={hoyISO()}
-                  value={est.fechaNacimiento}
-                  onChange={(e) => setEst("fechaNacimiento", e.target.value)}
-                />
-                {err("est.fechaNacimiento")}
-              </label>
-              <label>
-                Nombres *
-                <input
-                  value={est.nombre}
-                  onChange={(e) => setEst("nombre", e.target.value)}
-                  maxLength={100}
-                />
-                {err("est.nombre")}
-              </label>
-              <label>
-                Apellidos *
-                <input
-                  value={est.apellido}
-                  onChange={(e) => setEst("apellido", e.target.value)}
-                  maxLength={100}
-                />
-                {err("est.apellido")}
-              </label>
-              <label>
-                Sexo *
-                <select
-                  value={est.sexo}
-                  onChange={(e) => setEst("sexo", e.target.value)}
-                >
-                  <option value="">Selecciona...</option>
-                  {SEXOS.map((s) => (
-                    <option key={s.valor} value={s.valor}>
-                      {s.etiqueta}
-                    </option>
-                  ))}
-                </select>
-                {err("est.sexo")}
-              </label>
-              <label>
-                Teléfono
-                <input
-                  value={est.telefono}
-                  onChange={(e) => setEst("telefono", e.target.value)}
-                  maxLength={20}
-                  placeholder="04121234567"
-                />
-                {err("est.telefono")}
-              </label>
-              <label>
-                Correo
-                <input
-                  type="email"
-                  value={est.correo}
-                  onChange={(e) => setEst("correo", e.target.value)}
-                  placeholder="Opcional"
-                />
-                {err("est.correo")}
-              </label>
-              <label>
-                Institución de procedencia
-                <input
-                  value={form.institucionProcedencia}
-                  onChange={(e) =>
-                    setRaiz("institucionProcedencia", e.target.value)
-                  }
-                  maxLength={150}
-                  placeholder="Solo si viene de otra institución"
-                />
-                {err("institucionProcedencia")}
-              </label>
+            <div className="wiz-con-foto">
+              <FotoCarnet
+                etiqueta="Foto del estudiante"
+                archivo={est.foto ?? null}
+                onChange={(f) => setEst("foto", f)}
+              />
+              <div className="form-grid-2">
+                <label>
+                  Cédula *
+                  <input
+                    value={est.cedula}
+                    onChange={(e) => setEst("cedula", e.target.value)}
+                    maxLength={20}
+                    placeholder="12345678"
+                    autoFocus
+                  />
+                  {err("est.cedula")}
+                </label>
+                <label>
+                  Fecha de nacimiento *
+                  <input
+                    type="date"
+                    max={hoyISO()}
+                    value={est.fechaNacimiento}
+                    onChange={(e) => setEst("fechaNacimiento", e.target.value)}
+                  />
+                  {err("est.fechaNacimiento")}
+                </label>
+                <label>
+                  Nombres *
+                  <input
+                    value={est.nombre}
+                    onChange={(e) => setEst("nombre", e.target.value)}
+                    maxLength={100}
+                  />
+                  {err("est.nombre")}
+                </label>
+                <label>
+                  Apellidos *
+                  <input
+                    value={est.apellido}
+                    onChange={(e) => setEst("apellido", e.target.value)}
+                    maxLength={100}
+                  />
+                  {err("est.apellido")}
+                </label>
+                <label>
+                  Sexo *
+                  <select
+                    value={est.sexo}
+                    onChange={(e) => setEst("sexo", e.target.value)}
+                  >
+                    <option value="">Selecciona...</option>
+                    {SEXOS.map((s) => (
+                      <option key={s.valor} value={s.valor}>
+                        {s.etiqueta}
+                      </option>
+                    ))}
+                  </select>
+                  {err("est.sexo")}
+                </label>
+                <label>
+                  Teléfono
+                  <input
+                    value={est.telefono}
+                    onChange={(e) => setEst("telefono", e.target.value)}
+                    maxLength={20}
+                    placeholder="04121234567"
+                  />
+                  {err("est.telefono")}
+                </label>
+                <label>
+                  Correo
+                  <input
+                    type="email"
+                    value={est.correo}
+                    onChange={(e) => setEst("correo", e.target.value)}
+                    placeholder="Opcional"
+                  />
+                  {err("est.correo")}
+                </label>
+                <label>
+                  Institución de procedencia
+                  <input
+                    value={form.institucionProcedencia}
+                    onChange={(e) =>
+                      setRaiz("institucionProcedencia", e.target.value)
+                    }
+                    maxLength={150}
+                    placeholder="Solo si viene de otra institución"
+                  />
+                  {err("institucionProcedencia")}
+                </label>
+              </div>
             </div>
           </div>
         )}
@@ -512,96 +526,105 @@ function Preinscripcion() {
         {/* Paso 2 */}
         {paso === 1 && (
           <div className="wiz-seccion-form">
-            <div className="form-grid-2">
-              <label>
-                Cédula *
-                <input
-                  value={rep.cedula}
-                  onChange={(e) => setRep("cedula", e.target.value)}
-                  maxLength={20}
-                  placeholder="12345678"
-                  autoFocus
-                />
-                {err("rep.cedula")}
-              </label>
-              <label>
-                Parentesco *
-                <select
-                  value={rep.parentesco}
-                  onChange={(e) => setRep("parentesco", e.target.value)}
-                >
-                  <option value="">Selecciona...</option>
-                  {PARENTESCOS.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-                {err("rep.parentesco")}
-              </label>
-              <label>
-                Nombres *
-                <input
-                  value={rep.nombre}
-                  onChange={(e) => setRep("nombre", e.target.value)}
-                  maxLength={100}
-                />
-                {err("rep.nombre")}
-              </label>
-              <label>
-                Apellidos *
-                <input
-                  value={rep.apellido}
-                  onChange={(e) => setRep("apellido", e.target.value)}
-                  maxLength={100}
-                />
-                {err("rep.apellido")}
-              </label>
-              <label>
-                Correo *
-                <input
-                  type="email"
-                  value={rep.correo}
-                  onChange={(e) => setRep("correo", e.target.value)}
-                  placeholder="representante@correo.com"
-                />
-                {err("rep.correo")}
-              </label>
-              <label>
-                Teléfono
-                <input
-                  value={rep.telefono}
-                  onChange={(e) => setRep("telefono", e.target.value)}
-                  maxLength={20}
-                  placeholder="04121234567"
-                />
-                {err("rep.telefono")}
-              </label>
-              <label>
-                Teléfono secundario
-                <input
-                  value={rep.telefonoSecundario}
-                  onChange={(e) => setRep("telefonoSecundario", e.target.value)}
-                  maxLength={20}
-                />
-                {err("rep.telefonoSecundario")}
-              </label>
-              <label>
-                Ocupación
-                <input
-                  value={rep.ocupacion}
-                  onChange={(e) => setRep("ocupacion", e.target.value)}
-                  maxLength={100}
-                />
-              </label>
-              <label className="wiz-ancho">
-                Dirección
-                <input
-                  value={rep.direccion}
-                  onChange={(e) => setRep("direccion", e.target.value)}
-                  placeholder="Urbanización, calle, casa"
-                />
-              </label>
+            <div className="wiz-con-foto">
+              <FotoCarnet
+                etiqueta="Foto del representante"
+                archivo={rep.foto ?? null}
+                onChange={(f) => setRep("foto", f)}
+              />
+              <div className="form-grid-2">
+                <label>
+                  Cédula *
+                  <input
+                    value={rep.cedula}
+                    onChange={(e) => setRep("cedula", e.target.value)}
+                    maxLength={20}
+                    placeholder="12345678"
+                    autoFocus
+                  />
+                  {err("rep.cedula")}
+                </label>
+                <label>
+                  Parentesco *
+                  <select
+                    value={rep.parentesco}
+                    onChange={(e) => setRep("parentesco", e.target.value)}
+                  >
+                    <option value="">Selecciona...</option>
+                    {PARENTESCOS.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                  {err("rep.parentesco")}
+                </label>
+                <label>
+                  Nombres *
+                  <input
+                    value={rep.nombre}
+                    onChange={(e) => setRep("nombre", e.target.value)}
+                    maxLength={100}
+                  />
+                  {err("rep.nombre")}
+                </label>
+                <label>
+                  Apellidos *
+                  <input
+                    value={rep.apellido}
+                    onChange={(e) => setRep("apellido", e.target.value)}
+                    maxLength={100}
+                  />
+                  {err("rep.apellido")}
+                </label>
+                <label>
+                  Correo *
+                  <input
+                    type="email"
+                    value={rep.correo}
+                    onChange={(e) => setRep("correo", e.target.value)}
+                    placeholder="representante@correo.com"
+                  />
+                  {err("rep.correo")}
+                </label>
+                <label>
+                  Teléfono
+                  <input
+                    value={rep.telefono}
+                    onChange={(e) => setRep("telefono", e.target.value)}
+                    maxLength={20}
+                    placeholder="04121234567"
+                  />
+                  {err("rep.telefono")}
+                </label>
+                <label>
+                  Teléfono secundario
+                  <input
+                    value={rep.telefonoSecundario}
+                    onChange={(e) =>
+                      setRep("telefonoSecundario", e.target.value)
+                    }
+                    maxLength={20}
+                  />
+                  {err("rep.telefonoSecundario")}
+                </label>
+                <label>
+                  Ocupación
+                  <input
+                    value={rep.ocupacion}
+                    onChange={(e) => setRep("ocupacion", e.target.value)}
+                    maxLength={100}
+                  />
+                </label>
+                <label className="wiz-ancho">
+                  Dirección
+                  <input
+                    value={rep.direccion}
+                    onChange={(e) => setRep("direccion", e.target.value)}
+                    placeholder="Urbanización, calle, casa"
+                  />
+                </label>
+              </div>
             </div>
 
             <div className="wiz-checks">

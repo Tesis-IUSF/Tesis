@@ -7,9 +7,20 @@ import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
 import { ICONOS } from "../utils/iconos";
 import { descargarArchivo, mensajeErrorBlob } from "../utils/descargas";
+import ModalFormulario from "../components/ModalFormulario";
 import "./Matricula.css";
 
+// Pestaña con la que abre la pantalla. Cuando el backend acepte listar sin
+// estado ("Todos"), cambiar a "todos".
+const TAB_INICIAL = "preinscritos";
+
 const TABS = [
+  {
+    clave: "todos",
+    etiqueta: "Todos",
+    estado: null, // sin filtro de estado
+    vacio: "Todavía no hay matrículas registradas.",
+  },
   {
     clave: "preinscritos",
     etiqueta: "Preinscritos",
@@ -37,12 +48,45 @@ const TABS = [
   },
 ];
 
+// Pestañas que tienen un estado propio (para los contadores)
+const TABS_CON_ESTADO = TABS.filter((t) => t.estado);
+
 const ETIQUETA_ESTADO = {
   preinscrito: "Preinscrito",
   en_proceso: "En proceso",
   completada: "Formalizada",
   retirada: "Retirada",
 };
+
+const MOTIVOS_ANULACION = [
+  "Registro duplicado",
+  "Error en los datos",
+  "El representante desistió",
+  "Otro",
+];
+
+const MOTIVOS_RETIRO = [
+  "Cambio de institución",
+  "Cambio de residencia",
+  "Motivos personales o familiares",
+  "Otro",
+];
+
+const hoyISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+const ACCION_VACIA = {
+  motivoTipo: "",
+  motivoOtro: "",
+  fecha: "",
+  solicitanteNombre: "",
+  solicitanteApellido: "",
+  solicitanteCedula: "",
+};
+
+const o = (v) => (v && v.trim() ? v.trim() : null);
 
 // "2026-10-22" -> "22/10/2026" sin pasar por Date (evita desfase de zona horaria)
 const formatFechaISO = (v) => {
@@ -55,7 +99,7 @@ function Matricula() {
   const toast = useToast();
   const navigate = useNavigate();
 
-  const [tab, setTab] = useState("preinscritos");
+  const [tab, setTab] = useState(TAB_INICIAL);
   const [busqueda, setBusqueda] = useState("");
   const [termino, setTermino] = useState("");
   const [filas, setFilas] = useState([]);
@@ -68,6 +112,7 @@ function Matricula() {
   const [error, setError] = useState("");
 
   const [conteos, setConteos] = useState({
+    todos: "—",
     preinscritos: "—",
     proceso: "—",
     formalizadas: "—",
@@ -78,25 +123,51 @@ function Matricula() {
   const [accionId, setAccionId] = useState(null);
   const peticion = useRef(0);
 
+  // Detalle del estudiante (ventana con las acciones delicadas)
+  const [detalle, setDetalle] = useState(null);
+
+  // Anulación (preinscrito / en proceso) o retiro (formalizada, solo en Todos)
+  const [aGestionar, setAGestionar] = useState(null); // fila elegida
+  const [accion, setAccion] = useState(ACCION_VACIA);
+  const [errorAccion, setErrorAccion] = useState("");
+  const [procesando, setProcesando] = useState(false);
+
   const tabActual = TABS.find((t) => t.clave === tab);
-  const esCerrada = ["completada", "retirada"].includes(tabActual.estado);
+  const estadoTab = tabActual.estado;
+  const esCerrada = ["completada", "retirada"].includes(estadoTab);
+  // "Todos" y "Preinscritos" muestran la cédula en la cuarta columna
+  const columnaCedula = estadoTab === null || estadoTab === "preinscrito";
+  const etiquetaColumna = columnaCedula
+    ? "Cédula"
+    : esCerrada
+      ? "Formalización"
+      : "Requisitos";
+
+  const esRetiro = aGestionar?.estadoMatricula === "completada";
+  const esPreinscripcion = aGestionar?.estadoMatricula === "preinscrito";
 
   // Totales de cada pestaña (size=1: solo interesa totalElements)
   const cargarConteos = useCallback(async () => {
     const respuestas = await Promise.allSettled(
-      TABS.map((t) =>
+      TABS_CON_ESTADO.map((t) =>
         api.get("/matriculas/listado", {
           params: { estado: t.estado, page: 0, size: 1 },
         }),
       ),
     );
     const nuevos = {};
-    TABS.forEach((t, i) => {
-      nuevos[t.clave] =
-        respuestas[i].status === "fulfilled"
-          ? respuestas[i].value.data.totalElements
-          : "—";
+    let suma = 0;
+    let completo = true;
+    TABS_CON_ESTADO.forEach((t, i) => {
+      if (respuestas[i].status === "fulfilled") {
+        nuevos[t.clave] = respuestas[i].value.data.totalElements;
+        suma += respuestas[i].value.data.totalElements;
+      } else {
+        nuevos[t.clave] = "—";
+        completo = false;
+      }
     });
+    nuevos.todos = completo ? suma : "—";
     setConteos(nuevos);
   }, []);
 
@@ -137,7 +208,7 @@ function Matricula() {
       try {
         const { data } = await api.get("/matriculas/listado", {
           params: {
-            estado: tabActual.estado,
+            estado: estadoTab ?? undefined,
             busqueda: termino || undefined,
             page,
             size: 25,
@@ -160,14 +231,14 @@ function Matricula() {
         if (numero === peticion.current) setCargando(false);
       }
     },
-    [tabActual.estado, termino],
+    [estadoTab, termino],
   );
 
   useEffect(() => {
     cargar(0);
   }, [cargar]);
 
-  // ---------- Acciones ----------
+  // ---------- Descargas ----------
   const descargarPdf = async (f, ruta, nombre, mensajeError) => {
     setAccionId(f.matriculaId);
     try {
@@ -241,6 +312,139 @@ function Matricula() {
     }
   };
 
+  // ---------- Anulación / retiro ----------
+  // Qué acción delicada tiene una fila en la pestaña actual (null = ninguna).
+  // El retiro de una formalizada solo se ofrece desde la pestaña "Todos".
+  const etiquetaAccion = (f) => {
+    if (f.estadoMatricula === "preinscrito") return "Anular preinscripción";
+    if (f.estadoMatricula === "en_proceso") return "Anular inscripción";
+    if (f.estadoMatricula === "completada" && tab === "todos")
+      return "Retirar estudiante";
+    return null;
+  };
+
+  const abrirAccion = (f) => {
+    setDetalle(null);
+    setAccion({ ...ACCION_VACIA, fecha: hoyISO() });
+    setErrorAccion("");
+    setAGestionar(f);
+  };
+
+  const cerrarAccion = () => {
+    if (!procesando) setAGestionar(null);
+  };
+
+  const cambiarAccion = (campo, valor) =>
+    setAccion((p) => ({ ...p, [campo]: valor }));
+
+  const confirmarAccion = async (ev) => {
+    ev.preventDefault();
+    const motivo =
+      accion.motivoTipo === "Otro"
+        ? accion.motivoOtro.trim()
+        : accion.motivoTipo;
+
+    if (!accion.motivoTipo) {
+      setErrorAccion("Selecciona el motivo.");
+      return;
+    }
+    if (!motivo) {
+      setErrorAccion("Describe el motivo.");
+      return;
+    }
+    if (!accion.fecha) {
+      setErrorAccion("La fecha es obligatoria.");
+      return;
+    }
+    if (accion.solicitanteNombre.trim().length > 100) {
+      setErrorAccion("El nombre del solicitante admite máximo 100 caracteres.");
+      return;
+    }
+    if (accion.solicitanteApellido.trim().length > 100) {
+      setErrorAccion(
+        "El apellido del solicitante admite máximo 100 caracteres.",
+      );
+      return;
+    }
+    if (accion.solicitanteCedula.trim().length > 20) {
+      setErrorAccion("La cédula del solicitante admite máximo 20 caracteres.");
+      return;
+    }
+
+    setProcesando(true);
+    setErrorAccion("");
+    const retiro = esRetiro;
+    const preinscripcion = esPreinscripcion;
+    const matriculaId = aGestionar.matriculaId;
+    try {
+      // El backend decide qué hacer según el estado de la matrícula
+      const { data } = await api.post(`/matriculas/${matriculaId}/retiros`, {
+        motivo,
+        fechaRetiro: accion.fecha,
+        solicitanteNombre: o(accion.solicitanteNombre),
+        solicitanteApellido: o(accion.solicitanteApellido),
+        solicitanteCedula: o(accion.solicitanteCedula),
+      });
+
+      if (retiro) {
+        toast.success("Retiro registrado correctamente.");
+        // Se entrega la constancia de retiro de inmediato
+        if (data?.retiroId) {
+          try {
+            const { data: pdf } = await api.get(
+              `/matriculas/${matriculaId}/retiros/${data.retiroId}/constancia-retiro`,
+              { responseType: "blob" },
+            );
+            descargarArchivo(pdf, `constancia-retiro-${data.retiroId}.pdf`);
+          } catch (errPdf) {
+            toast.error(
+              await mensajeErrorBlob(
+                errPdf,
+                "El retiro se registró, pero no se pudo descargar la constancia. Búscala en la pestaña Retiradas.",
+              ),
+            );
+          }
+        }
+      } else {
+        toast.success(
+          preinscripcion
+            ? "Preinscripción anulada correctamente."
+            : "Inscripción anulada correctamente.",
+        );
+      }
+
+      setAGestionar(null);
+      cargarConteos();
+      cargar(0);
+    } catch (err) {
+      setErrorAccion(
+        extractErrorMessage(
+          err,
+          retiro
+            ? "No se pudo registrar el retiro."
+            : "No se pudo anular el registro.",
+        ),
+      );
+    } finally {
+      setProcesando(false);
+    }
+  };
+
+  // Botón compacto "⋯": solo si la fila tiene una acción disponible
+  const botonMas = (f) =>
+    etiquetaAccion(f) ? (
+      <button
+        type="button"
+        className="btn-secondary mat-mas"
+        title="Más acciones"
+        aria-label={`Más acciones de ${f.estudianteNombreCompleto}`}
+        onClick={() => setDetalle(f)}
+      >
+        <Icon icon="mdi:dots-horizontal" width="18" height="18" />
+      </button>
+    ) : null;
+
+  // Acciones de la fila: la principal del estado + la constancia (+ "⋯")
   const renderAcciones = (f, ocupada) => {
     const ruta = `/matricula/${f.matriculaId}/inscripcion`;
     switch (f.estadoMatricula) {
@@ -253,7 +457,7 @@ function Matricula() {
               disabled={ocupada}
               onClick={() => iniciarInscripcion(f)}
             >
-              {ocupada ? "Abriendo..." : "Iniciar inscripción"}
+              {ocupada ? "Abriendo..." : "Inscribir"}
             </button>
             <button
               type="button"
@@ -261,8 +465,9 @@ function Matricula() {
               disabled={ocupada}
               onClick={() => descargarConstanciaCupo(f)}
             >
-              Constancia de cupo
+              Constancia
             </button>
+            {botonMas(f)}
           </div>
         );
       case "en_proceso":
@@ -277,15 +482,16 @@ function Matricula() {
               disabled={ocupada}
               onClick={() => descargarConstanciaCupo(f)}
             >
-              Constancia de cupo
+              Constancia
             </button>
+            {botonMas(f)}
           </div>
         );
       case "completada":
         return (
           <div className="mat-acciones">
             <Link to={ruta} className="btn-edit">
-              Ver inscripción
+              Ver
             </Link>
             <button
               type="button"
@@ -295,13 +501,14 @@ function Matricula() {
             >
               Constancia
             </button>
+            {botonMas(f)}
           </div>
         );
       case "retirada":
         return (
           <div className="mat-acciones">
             <Link to={ruta} className="btn-edit">
-              Ver detalle
+              Ver
             </Link>
             <button
               type="button"
@@ -317,6 +524,27 @@ function Matricula() {
         return null;
     }
   };
+
+  const celdaColumna = (f, total, hechos, pct) => {
+    if (columnaCedula) return f.estudianteCedula ?? "—";
+    if (esCerrada) return formatFechaISO(f.fechaFormalizacion);
+    if (total > 0) {
+      return (
+        <span className="mat-progreso">
+          <span className="mat-barra" aria-hidden="true">
+            <span style={{ width: `${pct}%` }} />
+          </span>
+          <small>
+            {hechos}/{total}
+          </small>
+        </span>
+      );
+    }
+    return "—";
+  };
+
+  const motivos = esRetiro ? MOTIVOS_RETIRO : MOTIVOS_ANULACION;
+  const tituloAccion = aGestionar ? etiquetaAccion(aGestionar) : "";
 
   return (
     <div className="mod-main">
@@ -388,7 +616,7 @@ function Matricula() {
               <th>Estudiante</th>
               <th>Sección</th>
               <th>Solicitud</th>
-              <th>{esCerrada ? "Formalización" : "Requisitos"}</th>
+              <th>{etiquetaColumna}</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
@@ -420,34 +648,21 @@ function Matricula() {
                 return (
                   <tr key={f.matriculaId}>
                     <td data-label="Estudiante">
-                      {f.estudianteNombreCompleto}
+                      <button
+                        type="button"
+                        className="mat-nombre-link"
+                        title="Ver datos del estudiante"
+                        onClick={() => setDetalle(f)}
+                      >
+                        {f.estudianteNombreCompleto}
+                      </button>
                     </td>
                     <td data-label="Sección">{nombreSeccion(f.seccionId)}</td>
                     <td data-label="Solicitud">
                       {formatFechaISO(f.fechaSolicitud)}
                     </td>
-                    <td data-label={esCerrada ? "Formalización" : "Requisitos"}>
-                      {esCerrada ? (
-                        <span className="mat-formal">
-                          {formatFechaISO(f.fechaFormalizacion)}
-                          {f.numeroConstancia && (
-                            <small className="mat-constancia">
-                              N.º {f.numeroConstancia}
-                            </small>
-                          )}
-                        </span>
-                      ) : total > 0 ? (
-                        <span className="mat-progreso">
-                          <span className="mat-barra" aria-hidden="true">
-                            <span style={{ width: `${pct}%` }} />
-                          </span>
-                          <small>
-                            {hechos}/{total}
-                          </small>
-                        </span>
-                      ) : (
-                        "—"
-                      )}
+                    <td data-label={etiquetaColumna}>
+                      {celdaColumna(f, total, hechos, pct)}
                     </td>
                     <td data-label="Estado">
                       <span
@@ -485,6 +700,188 @@ function Matricula() {
             Siguiente →
           </button>
         </div>
+      )}
+
+      {/* Detalle del estudiante */}
+      {detalle && (
+        <div className="mf-overlay" onClick={() => setDetalle(null)}>
+          <div
+            className="mf-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mat-detalle-titulo"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="mat-detalle-titulo">{detalle.estudianteNombreCompleto}</h2>
+
+            <dl className="mat-detalle">
+              <div>
+                <dt>Cédula</dt>
+                <dd>{detalle.estudianteCedula ?? "—"}</dd>
+              </div>
+              <div>
+                <dt>Sección</dt>
+                <dd>{nombreSeccion(detalle.seccionId)}</dd>
+              </div>
+              <div>
+                <dt>Año escolar</dt>
+                <dd>{detalle.anioEscolar ?? "—"}</dd>
+              </div>
+              <div>
+                <dt>Estado</dt>
+                <dd>
+                  <span
+                    className={`badge mat-estado--${detalle.estadoMatricula}`}
+                  >
+                    {ETIQUETA_ESTADO[detalle.estadoMatricula] ??
+                      detalle.estadoMatricula}
+                  </span>
+                </dd>
+              </div>
+              <div>
+                <dt>Solicitud</dt>
+                <dd>{formatFechaISO(detalle.fechaSolicitud)}</dd>
+              </div>
+              {detalle.fechaFormalizacion && (
+                <div>
+                  <dt>Formalización</dt>
+                  <dd>{formatFechaISO(detalle.fechaFormalizacion)}</dd>
+                </div>
+              )}
+              {(detalle.requisitosObligatorios ?? 0) > 0 && (
+                <div>
+                  <dt>Requisitos obligatorios</dt>
+                  <dd>
+                    {detalle.requisitosObligatoriosCumplidos ?? 0} de{" "}
+                    {detalle.requisitosObligatorios}
+                  </dd>
+                </div>
+              )}
+            </dl>
+
+            <div className="mf-acciones">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setDetalle(null)}
+              >
+                Cerrar
+              </button>
+              {etiquetaAccion(detalle) && (
+                <button
+                  type="button"
+                  className="btn-delete"
+                  onClick={() => abrirAccion(detalle)}
+                >
+                  {etiquetaAccion(detalle)}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Anulación o retiro */}
+      {aGestionar && (
+        <ModalFormulario
+          titulo={tituloAccion}
+          onCerrar={cerrarAccion}
+          onSubmit={confirmarAccion}
+          guardando={procesando}
+          etiquetaGuardar={esRetiro ? "Registrar retiro" : tituloAccion}
+        >
+          <div className="mat-retiro-form">
+            <p className="mat-retiro-texto">
+              {esRetiro ? (
+                <>
+                  Se registrará el retiro de{" "}
+                  <strong>{aGestionar.estudianteNombreCompleto}</strong>. Al
+                  terminar se descargará su constancia de retiro.
+                </>
+              ) : (
+                <>
+                  Se anulará{" "}
+                  {esPreinscripcion ? "la preinscripción" : "la inscripción"} de{" "}
+                  <strong>{aGestionar.estudianteNombreCompleto}</strong>. Esta
+                  acción no se puede deshacer.
+                </>
+              )}
+            </p>
+
+            {errorAccion && <p className="error-msg">{errorAccion}</p>}
+
+            <label>
+              Motivo *
+              <select
+                value={accion.motivoTipo}
+                onChange={(e) => cambiarAccion("motivoTipo", e.target.value)}
+                autoFocus
+              >
+                <option value="">Selecciona...</option>
+                {motivos.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {accion.motivoTipo === "Otro" && (
+              <label>
+                Describe el motivo *
+                <textarea
+                  rows={2}
+                  value={accion.motivoOtro}
+                  onChange={(e) => cambiarAccion("motivoOtro", e.target.value)}
+                />
+              </label>
+            )}
+
+            <label>
+              {esRetiro ? "Fecha de retiro *" : "Fecha *"}
+              <input
+                type="date"
+                value={accion.fecha}
+                onChange={(e) => cambiarAccion("fecha", e.target.value)}
+              />
+            </label>
+
+            <p className="mat-retiro-subtitulo">Quien lo solicita (opcional)</p>
+
+            <label>
+              Nombres
+              <input
+                value={accion.solicitanteNombre}
+                onChange={(e) =>
+                  cambiarAccion("solicitanteNombre", e.target.value)
+                }
+                maxLength={100}
+              />
+            </label>
+
+            <label>
+              Apellidos
+              <input
+                value={accion.solicitanteApellido}
+                onChange={(e) =>
+                  cambiarAccion("solicitanteApellido", e.target.value)
+                }
+                maxLength={100}
+              />
+            </label>
+
+            <label>
+              Cédula
+              <input
+                value={accion.solicitanteCedula}
+                onChange={(e) =>
+                  cambiarAccion("solicitanteCedula", e.target.value)
+                }
+                maxLength={20}
+              />
+            </label>
+          </div>
+        </ModalFormulario>
       )}
     </div>
   );

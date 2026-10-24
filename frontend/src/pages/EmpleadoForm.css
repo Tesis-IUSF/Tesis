@@ -85,3 +85,35 @@
   text-transform: none;
   white-space: nowrap;
 }
+
+/* ===== Foto carnet junto a los datos ===== */
+.ef-con-foto {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.ef-con-foto .form-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.ef-con-foto input,
+.ef-con-foto select {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .ef-con-foto {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ef-con-foto .form-grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ef-con-foto .fc {
+    max-width: 200px;
+    margin: 0 auto;
+  }
+}
