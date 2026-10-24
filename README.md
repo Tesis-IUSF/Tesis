@@ -169,7 +169,7 @@ Actualmente los PDFs usan `app.institucion.nombre`; los demás valores quedan di
 
 ### Filtros de listados de personal
 
-- `GET /api/empleados` admite `cargoId` y `turnoId`, además de paginación. `turnoId` filtra asignaciones activas y vigentes para la fecha actual.
+- `GET /api/empleados` admite `cargoId`, `turnoId` y `activo` (`true` para personal activo, `false` para personal dado de baja), además de paginación. Si `activo` se omite, devuelve ambos estados. `turnoId` filtra asignaciones activas y vigentes para la fecha actual.
 - `GET /api/empleados/carnets` admite también `turnoId` junto con sus filtros existentes `q`, `departamentoId`, `cargoId` y `estadoQr`.
 - `GET /api/asistencias/hoy` y `GET /api/asistencias/historico` aceptan `cargoId` y `turnoId`; el histórico mantiene también sus filtros de empleado y departamento.
 - `GET /api/asistencias/ausencias` admite `cargoId` además de los filtros existentes de empleado, departamento y turno.
