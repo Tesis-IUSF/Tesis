@@ -73,6 +73,7 @@ class PreinscripcionServiceTest {
         PreinscripcionRequestDTO request = crearRequest(
                 seccion.getId(), "EST-PREINS-01", "REP-PREINS-01");
         request.getRepresentante().setNombre("Nombre actualizado");
+        request.getRepresentante().setFotoUrl("/api/fotos/representante.png");
         PreinscripcionResponseDTO response = preinscripcionService.preinscribir(request);
 
         assertEquals("preinscrito", response.getEstadoMatricula());
@@ -80,6 +81,8 @@ class PreinscripcionServiceTest {
             .orElseThrow().getTipoIngreso());
         assertEquals(1L, response.getCuposDisponibles());
         assertEquals("Nombre actualizado Apellido", response.getRepresentanteNombreCompleto());
+        assertEquals("/api/fotos/representante.png", representanteRepository
+                .findByCedula("REP-PREINS-01").orElseThrow().getFotoUrl());
         assertEquals(representante.getId(), response.getRepresentanteId());
         assertEquals(1, estudianteRepository.count());
         assertEquals(1, matriculaRepository.count());
@@ -132,6 +135,25 @@ class PreinscripcionServiceTest {
                 crearRequest(seccionNueva.getId(), "EST-CONOCIDO", "REP-CONOCIDO"));
 
         assertEquals("nuevo_ingreso", response.getTipoIngreso());
+    }
+
+    @Test
+    void actualizaSoloLaFotoDeUnEstudianteExistenteCuandoSeEnviaUnaNueva() {
+        Seccion seccionNueva = crearSeccion(2, "L");
+        Estudiante estudiante = crearEstudiante("EST-FOTO-EXISTENTE");
+        estudiante.setFotoCarnetUrl("/api/fotos/foto-anterior.jpg");
+        estudianteRepository.saveAndFlush(estudiante);
+
+        PreinscripcionRequestDTO request = crearRequest(
+                seccionNueva.getId(), "EST-FOTO-EXISTENTE", "REP-FOTO-EXISTENTE");
+        request.getEstudiante().setNombre("Nombre que no se debe actualizar");
+        request.getEstudiante().setFotoCarnetUrl("/api/fotos/foto-nueva.png");
+
+        preinscripcionService.preinscribir(request);
+
+        Estudiante actualizado = estudianteRepository.findById(estudiante.getId()).orElseThrow();
+        assertEquals("Ocupante", actualizado.getNombre());
+        assertEquals("/api/fotos/foto-nueva.png", actualizado.getFotoCarnetUrl());
     }
 
     @Test

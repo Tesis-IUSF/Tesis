@@ -24,8 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -296,6 +298,18 @@ public class CatalogoService {
     @Transactional(readOnly = true)
     public Page<Seccion> listarSeccionesPorGrado(Integer gradoId, Pageable pageable) {
         return seccionRepository.findByGrado_Id(gradoId, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Integer, Long> contarMatriculasActivasPorSecciones(List<Integer> seccionIds) {
+        if (seccionIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Integer, Long> matriculados = new HashMap<>();
+        for (Object[] fila : seccionRepository.contarMatriculasActivasPorSecciones(seccionIds)) {
+            matriculados.put((Integer) fila[0], ((Number) fila[1]).longValue());
+        }
+        return matriculados;
     }
 
     public Seccion crearSeccion(Seccion seccion) {

@@ -104,6 +104,9 @@ public class EmpleadoService {
         empleado.setTelefono(request.getTelefono());
         empleado.setFechaNacimiento(request.getFechaNacimiento());
         empleado.setSexo(request.getSexo());
+        if (request.getFotoUrl() != null) {
+            empleado.setFotoUrl(request.getFotoUrl());
+        }
         empleado.setCargo(buscarCargo(request.getCargoId()));
         empleado.setDepartamento(buscarDepartamento(request.getDepartamentoId()));
         empleado.setFechaIngreso(request.getFechaIngreso());
@@ -162,6 +165,7 @@ public class EmpleadoService {
                 empleado.getTelefono(),
                 empleado.getFechaNacimiento(),
                 empleado.getSexo(),
+                empleado.getFotoUrl(),
                 empleado.getCargo() == null ? null : empleado.getCargo().getId(),
                 empleado.getCargo() == null ? null : empleado.getCargo().getNombreCargo(),
                 empleado.getDepartamento() == null ? null : empleado.getDepartamento().getId(),

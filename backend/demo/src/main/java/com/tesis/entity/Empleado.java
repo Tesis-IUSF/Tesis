@@ -56,6 +56,9 @@ public class Empleado {
     @Column(name = "sexo", length = 4)
     private String sexo;
 
+    @Column(name = "foto_url", length = 500)
+    private String fotoUrl;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cargo_id", foreignKey = @ForeignKey(name = "fk_personal_cargo"))
     private Cargo cargo;

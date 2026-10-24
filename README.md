@@ -121,6 +121,27 @@ Instrucciones para desplegar en Producción:
 
 El proyecto incluye un script automatizado para actualizar los servicios en el entorno de producción.
 
+### Fotos de estudiantes, representantes y empleados
+
+`POST /api/fotos` recibe una imagen multipart en el campo `archivo` y devuelve una URL autenticada. Solo admite imágenes JPG, PNG o WebP verificadas por su contenido real, con un máximo de 2 MB. Para mostrar una imagen desde el frontend, solicítala con Axios usando `responseType: "blob"`; una etiqueta `<img>` no adjunta el token JWT.
+
+Las imágenes se guardan en `app.uploads.dir` (configurable mediante `UPLOADS_DIR`). Los entornos Docker montan un volumen persistente distinto para desarrollo y producción en `/app/uploads`.
+
+Antes de activar el perfil de producción, añadir la columna de foto al personal si todavía no existe:
+
+```sql
+ALTER TABLE personal
+    ADD COLUMN foto_url VARCHAR(500) NULL;
+```
+
+La entidad de representantes también usa `foto_url`; si la base de producción aún no tiene esa columna, aplicar:
+
+```sql
+ALTER TABLE representantes
+    ADD COLUMN foto_url VARCHAR(500) NULL;
+```
+
+
 ### Requisitos previos
 - Docker y Docker Compose instalados.
 - Permisos suficientes para ejecutar comandos de Docker.
