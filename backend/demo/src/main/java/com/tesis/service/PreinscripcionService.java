@@ -434,8 +434,9 @@ public class PreinscripcionService {
         }
 
         Short anioAnterior = (short) (anioEscolar - 1);
-        if (matriculaRepository.existsByEstudiante_IdAndAnioEscolarAndEstadoMatricula(
-                estudiante.getId(), anioAnterior, ESTADO_COMPLETADA)) {
+        if (matriculaRepository.existsByEstudiante_IdAndAnioEscolarAndEstadoMatriculaIn(
+                estudiante.getId(), anioAnterior,
+                List.of(ESTADO_EN_PROCESO, ESTADO_COMPLETADA))) {
             return TIPO_REGULAR;
         }
         if (matriculaRepository.tieneHistorialNoAnuladoAnteriorA(

@@ -124,13 +124,27 @@ class PreinscripcionServiceTest {
     }
 
     @Test
-    void clasificaComoRegularSiCompletoElAnioInmediatamenteAnterior() {
+    void clasificaComoRegularSiTieneMatriculaCompletadaElAnioInmediatamenteAnterior() {
         Seccion seccionNueva = crearSeccion(2, "H");
         Estudiante estudiante = crearEstudiante("EST-REGULAR-ANTERIOR");
         crearMatriculaHistorica(estudiante, (short) 2025, "completada", "A");
 
         PreinscripcionResponseDTO response = preinscripcionService.preinscribir(
                 crearRequest(seccionNueva.getId(), "EST-REGULAR-ANTERIOR", "REP-REGULAR-ANTERIOR"));
+
+        Matricula matricula = matriculaRepository.findById(response.getMatriculaId()).orElseThrow();
+        assertEquals("regular", matricula.getTipoIngreso());
+        assertNull(matricula.getInstitucionProcedencia());
+    }
+
+    @Test
+    void clasificaComoRegularSiTieneMatriculaEnProcesoElAnioInmediatamenteAnterior() {
+        Seccion seccionNueva = crearSeccion(2, "W");
+        Estudiante estudiante = crearEstudiante("EST-REGULAR-PROCESO");
+        crearMatriculaHistorica(estudiante, (short) 2025, "en_proceso", "X");
+
+        PreinscripcionResponseDTO response = preinscripcionService.preinscribir(
+                crearRequest(seccionNueva.getId(), "EST-REGULAR-PROCESO", "REP-REGULAR-PROCESO"));
 
         Matricula matricula = matriculaRepository.findById(response.getMatriculaId()).orElseThrow();
         assertEquals("regular", matricula.getTipoIngreso());
