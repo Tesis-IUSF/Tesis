@@ -151,8 +151,14 @@ public class AsistenciaService {
 
     @Transactional(readOnly = true)
     public List<AsistenciaHoyDTO> listarHoy() {
+        return listarHoy(null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AsistenciaHoyDTO> listarHoy(Integer cargoId, Integer turnoId) {
         LocalDateTime ahora = LocalDateTime.now(clock);
-        return asistenciaRepository.findAllByFechaWithPersonalOrderByHoraEntrada(ahora.toLocalDate())
+        return asistenciaRepository.findAllByFechaWithPersonalOrderByHoraEntrada(
+                        ahora.toLocalDate(), cargoId, turnoId)
                 .stream()
                 .map(asistencia -> toAsistenciaHoy(asistencia, ahora))
                 .toList();
@@ -182,6 +188,17 @@ public class AsistenciaService {
                                                        Integer departamentoId,
                                                        Integer turnoId,
                                                        String estado) {
+        return buscarHistorico(desde, hasta, empleadoId, departamentoId, null, turnoId, estado);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AsistenciaResponseDTO> buscarHistorico(LocalDate desde,
+                                                       LocalDate hasta,
+                                                       Integer empleadoId,
+                                                       Integer departamentoId,
+                                                       Integer cargoId,
+                                                       Integer turnoId,
+                                                       String estado) {
         validarRangoFechas(desde, hasta);
         String estadoNormalizado = estado == null || estado.isBlank() ? null : estado.trim();
         if (estadoNormalizado != null
@@ -190,7 +207,7 @@ public class AsistenciaService {
                 "El estado de asistencia no es válido");
         }
         return asistenciaRepository.buscarHistorico(desde, hasta, empleadoId,
-                        departamentoId, turnoId,
+                        departamentoId, cargoId, turnoId,
                         estadoNormalizado == null ? null : estadoNormalizado.toLowerCase()).stream()
                 .map(asistencia -> toResponse(asistencia, null))
                 .toList();
@@ -201,6 +218,16 @@ public class AsistenciaService {
                                               LocalDate hasta,
                                               Integer empleadoId,
                                               Integer departamentoId,
+                                              Integer turnoId) {
+        return listarAusencias(desde, hasta, empleadoId, departamentoId, null, turnoId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AusenciaDTO> listarAusencias(LocalDate desde,
+                                              LocalDate hasta,
+                                              Integer empleadoId,
+                                              Integer departamentoId,
+                                              Integer cargoId,
                                               Integer turnoId) {
         validarRangoFechas(desde, hasta);
         LocalDate hoy = LocalDate.now(clock);
@@ -216,6 +243,9 @@ public class AsistenciaService {
                 .filter(asignacion -> departamentoId == null
                         || (asignacion.getPersonal().getDepartamento() != null
                         && departamentoId.equals(asignacion.getPersonal().getDepartamento().getId())))
+                .filter(asignacion -> cargoId == null
+                        || (asignacion.getPersonal().getCargo() != null
+                        && cargoId.equals(asignacion.getPersonal().getCargo().getId())))
                 .filter(asignacion -> turnoId == null || turnoId.equals(asignacion.getTurno().getId()))
                 .toList();
         List<Asistencia> asistencias = asistenciaRepository.findAllByFechaBetween(desde, fechaFinal);
@@ -232,6 +262,8 @@ public class AsistenciaService {
                     && (empleadoId == null || empleadoId.equals(empleado.getId()))
                     && (departamentoId == null || (empleado.getDepartamento() != null
                     && departamentoId.equals(empleado.getDepartamento().getId())))
+                    && (cargoId == null || (empleado.getCargo() != null
+                    && cargoId.equals(empleado.getCargo().getId())))
                     && (turnoId == null || (turno != null && turnoId.equals(turno.getId())))) {
                 ausencias.add(new AusenciaDTO(empleado.getId(), empleado.getNombre(), empleado.getApellido(),
                         asistencia.getFecha(), turno == null ? null : turno.getId(),

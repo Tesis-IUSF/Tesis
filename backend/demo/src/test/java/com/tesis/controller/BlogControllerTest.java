@@ -131,4 +131,28 @@ class BlogControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(0));
     }
+
+    @Test
+    void limpiaHtmlPeligrosoYConservaFormatoSeguroDelComunicado() throws Exception {
+        String request = """
+                {
+                  "titulo": "Aviso",
+                  "contenidoHtml": "<p onclick=\\"alert(1)\\">Texto <strong>seguro</strong><script>alert(2)</script><a href=\\"javascript:alert(3)\\">enlace</a><img src=x onerror=alert(4)></p>",
+                  "categoriaId": %d,
+                  "imagenUrl": "/api/fotos/123e4567-e89b-12d3-a456-426614174000.webp",
+                  "publicado": true,
+                  "visiblePublico": true
+                }
+                """.formatted(categoria.getId());
+
+        mockMvc.perform(post("/api/blog/admin/comunicados")
+                        .with(user(EMAIL_EDITOR).roles("ADMINISTRATIVO"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.contenidoHtml").value(
+                        "<p>Texto <strong>seguro</strong><a>enlace</a></p>"))
+                .andExpect(jsonPath("$.imagenUrl").value(
+                        "/api/fotos/123e4567-e89b-12d3-a456-426614174000.webp"));
+    }
 }
