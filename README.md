@@ -122,36 +122,22 @@ curl -X POST http://localhost:8080/api/setup/initial-admin \
 
 La contraseña debe tener entre 12 y 72 caracteres. El endpoint solo funciona mientras no exista ningún usuario, devuelve `409` al completarse la configuración y requiere el token secreto; conserva ese token fuera del repositorio y elimínalo de `.env` después de crear el administrador. Luego inicia sesión en `/api/auth/login`. El antiguo registro público `/api/auth/registrar` está deshabilitado.
 
-Instrucciones para desplegar en Producción:
+### Despliegue en producción
 
-    Configurar las variables de entorno:
-    Copia o crea el archivo .env en el servidor de producción y define los valores reales de producción.
+En el servidor, instala Docker Engine y Docker Compose v2, clona o actualiza el repositorio y configura `.env` con valores reales de producción. No uses las credenciales de ejemplo. Si las imágenes del registro son privadas, inicia sesión antes del despliegue con `docker login`.
 
-    Descargar las imágenes y desplegar los servicios:
-    A diferencia del entorno de desarrollo, en producción se especifica de forma explícita el archivo YAML mediante la bandera -f:
-    Bash
+Desde la raíz del proyecto, ejecuta:
 
-    # Descargar las imágenes preconstruidas desde el Registry
-    docker compose -f docker-compose.prod.yml pull
+```bash
+chmod +x scripts/deploy.sh
+./scripts/deploy.sh
+```
 
-    # Iniciar los servicios en segundo plano
-    docker compose -f docker-compose.prod.yml up -d
+El script verifica `.env`, valida el archivo Compose, descarga las imágenes `backend` y `frontend` usando `DOCKER_REGISTRY` e `IMAGE_TAG` configurados, actualiza los servicios y espera hasta 180 segundos por sus healthchecks. No ejecuta `docker compose down`, por lo que evita la interrupción innecesaria que causaba la versión anterior y conserva los volúmenes persistentes de MySQL y de imágenes. Al finalizar, muestra el estado de los servicios.
 
-    Verificar el estado de los servicios y Healthchecks:
-    Bash
+Si falla, el script informa cómo revisar el estado y los últimos logs de backend/frontend. El despliegue no revierte automáticamente imágenes si un servicio queda unhealthy: revisa los logs antes de volver a intentarlo. Tampoco aplica cambios de esquema de base de datos; cualquier DDL requerido debe respaldarse y aplicarse siguiendo sus instrucciones específicas antes de desplegar una versión que lo necesite.
 
-    docker compose -f docker-compose.prod.yml ps
-
-    Los contenedores deberán mostrar la etiqueta (healthy) en la columna STATUS.
-
-    Detener el entorno de producción:
-    Bash
-
-    docker compose -f docker-compose.prod.yml down
-
-## Despliegue en Producción
-
-El proyecto incluye un script automatizado para actualizar los servicios en el entorno de producción.
+Para que un despliegue sea repetible, es preferible establecer `IMAGE_TAG` con una etiqueta inmutable publicada por CI (por ejemplo, la etiqueta con el SHA del commit) en lugar de `latest`. El mismo valor se usa para backend y frontend; confirma que ambas imágenes se publicaron con esa etiqueta.
 
 ### Fotos de estudiantes, representantes y empleados
 
@@ -231,14 +217,3 @@ Cuando el año de origen está cerrado (desactivado al activar el siguiente, o y
 - Si no existe el grado siguiente o no hay sección/cupo, no se excede la capacidad: el estudiante se devuelve en `asignacionPendiente`. Al corregir la configuración, se puede volver a ejecutar la operación; no duplica continuidades ya creadas.
 - Los estudiantes del último grado activo quedan con una resolución pendiente; estar en ese grado no los marca automáticamente como egresados. La lista está en `GET /api/matriculas/gestion/anios/{anioOrigen}/egresos-pendientes`. Administración o Dirección puede resolver cada caso como `egresar` o `repetir` mediante `PATCH /api/matriculas/gestion/egresos/{egresoId}/resolver` con `{ "decision": "egresar" }` o `{ "decision": "repetir", "seccionId": 123 }`. Repetir crea una preinscripción en el año siguiente y el mismo grado; si no se indica sección, el backend elige una sección activa con cupo. Ambas decisiones guardan quién resolvió y cuándo. El sistema no genera títulos.
 - Para una base donde aún no existen las continuidades ni los egresos pendientes, aplicar una sola vez `backend/demo/src/main/resources/db/manual/V20261024__continuidades_y_egresos_pendientes.sql`. Si ya se aplicó la versión anterior de ese DDL que creó `egresos_pendientes` con las columnas `confirmado`, `confirmado_por` y `confirmado_en`, no volver a ejecutar el `CREATE TABLE`: aplicar una sola vez `backend/demo/src/main/resources/db/manual/V20261024_1__resolver_egresos_pendientes.sql`, que conserva las confirmaciones existentes y actualiza la tabla. Hacer respaldo antes; producción usa `ddl-auto=validate`.
-
-### Requisitos previos
-- Docker y Docker Compose instalados.
-- Permisos suficientes para ejecutar comandos de Docker.
-
-### Cómo ejecutar el despliegue
-
-1. Asegúrate de estar en la raíz del proyecto.
-2. Dale permisos de ejecución al script (solo la primera vez):
-   ```bash
-   chmod +x scripts/deploy.sh
