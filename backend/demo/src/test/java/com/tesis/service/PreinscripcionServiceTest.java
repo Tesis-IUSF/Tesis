@@ -10,11 +10,15 @@ import com.tesis.entity.Matricula;
 import com.tesis.entity.NivelEducativo;
 import com.tesis.entity.AnioEscolar;
 import com.tesis.entity.PeriodoMatricula;
+import com.tesis.entity.ChecklistMatricula;
 import com.tesis.entity.Representante;
+import com.tesis.entity.RequisitoMatricula;
 import com.tesis.entity.Seccion;
 import com.tesis.entity.TipoPeriodoMatricula;
+import com.tesis.repository.ChecklistMatriculaRepository;
 import com.tesis.repository.EstudianteRepository;
 import com.tesis.repository.MatriculaRepository;
+import com.tesis.repository.RequisitoMatriculaRepository;
 import com.tesis.repository.RelacionEstudianteRepresentanteRepository;
 import com.tesis.repository.RepresentanteRepository;
 import jakarta.persistence.EntityManager;
@@ -28,6 +32,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -53,6 +58,12 @@ class PreinscripcionServiceTest {
 
     @Autowired
     private MatriculaRepository matriculaRepository;
+
+    @Autowired
+    private ChecklistMatriculaRepository checklistRepository;
+
+    @Autowired
+    private RequisitoMatriculaRepository requisitoRepository;
 
     @Autowired
     private EntityManager entityManager;
@@ -262,6 +273,221 @@ class PreinscripcionServiceTest {
             .orElseThrow().getNombre());
         assertEquals(1, estudianteRepository.count());
         assertEquals(1, matriculaRepository.count());
+    }
+
+    @Test
+    void obtieneYActualizaLosDatosDeUnaMatriculaEnProcesoSinCambiarSuEstado() {
+        Seccion seccionOriginal = crearSeccion(2, "M");
+        Seccion seccionNueva = crearSeccion(2, "N");
+        PreinscripcionResponseDTO creada = preinscripcionService.preinscribir(
+                crearRequest(seccionOriginal.getId(), "EST-EDITAR-01", "REP-EDITAR-01"));
+        Matricula matricula = matriculaRepository.findById(creada.getMatriculaId()).orElseThrow();
+        matricula.setEstadoMatricula("en_proceso");
+        matriculaRepository.saveAndFlush(matricula);
+
+        PreinscripcionRequestDTO datos = preinscripcionService
+                .obtenerDatosPreinscripcion(matricula.getId());
+        datos.getEstudiante().setNombre("Nombre corregido");
+        datos.getRepresentante().setNombre("Representante corregido");
+        datos.setSeccionId(seccionNueva.getId());
+        datos.setInstitucionProcedencia("Escuela anterior");
+
+        var respuesta = preinscripcionService.actualizarPreinscripcion(matricula.getId(), datos);
+
+        assertEquals("en_proceso", respuesta.getEstadoMatricula());
+        assertEquals(seccionNueva.getId(), respuesta.getSeccionId());
+        assertEquals("traslado", respuesta.getTipoIngreso());
+        assertEquals("Nombre corregido", estudianteRepository.findById(creada.getEstudianteId())
+                .orElseThrow().getNombre());
+        assertEquals("Representante corregido", representanteRepository.findByCedula("REP-EDITAR-01")
+                .orElseThrow().getNombre());
+        assertEquals("en_proceso", matriculaRepository.findById(matricula.getId())
+                .orElseThrow().getEstadoMatricula());
+    }
+
+    @Test
+    void actualizarPreinscripcionSinCambiosDevuelveElMismoFormulario() {
+        Seccion seccion = crearSeccion(2, "O");
+        PreinscripcionResponseDTO creada = preinscripcionService.preinscribir(
+                crearRequest(seccion.getId(), "EST-EDITAR-02", "REP-EDITAR-02"));
+
+        PreinscripcionRequestDTO datos = preinscripcionService
+                .obtenerDatosPreinscripcion(creada.getMatriculaId());
+
+        assertEquals("EST-EDITAR-02", datos.getEstudiante().getCedula());
+        assertEquals("REP-EDITAR-02", datos.getRepresentante().getCedula());
+        assertEquals(seccion.getId(), datos.getSeccionId());
+        assertEquals((short) 2026, datos.getAnioEscolar());
+        assertEquals(true, datos.getRelacionPrincipal());
+        assertEquals(true, datos.getAutorizadoRetirar());
+        assertEquals(true, datos.getRecibeComunicados());
+    }
+
+    @Test
+    void rechazaActualizarPreinscripcionSiLaMatriculaYaEstaCompletada() {
+        Seccion seccion = crearSeccion(2, "P");
+        PreinscripcionResponseDTO creada = preinscripcionService.preinscribir(
+                crearRequest(seccion.getId(), "EST-EDITAR-03", "REP-EDITAR-03"));
+        Matricula matricula = matriculaRepository.findById(creada.getMatriculaId()).orElseThrow();
+        matricula.setEstadoMatricula("completada");
+        matriculaRepository.saveAndFlush(matricula);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> preinscripcionService.actualizarPreinscripcion(
+                        matricula.getId(),
+                        preinscripcionService.obtenerDatosPreinscripcion(matricula.getId())));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals("completada", matriculaRepository.findById(matricula.getId())
+                .orElseThrow().getEstadoMatricula());
+    }
+
+    @Test
+    void rechazaActualizarPreinscripcionSiLaMatriculaFueRetirada() {
+        Seccion seccion = crearSeccion(2, "S");
+        PreinscripcionResponseDTO creada = preinscripcionService.preinscribir(
+                crearRequest(seccion.getId(), "EST-EDITAR-RETIRADA", "REP-EDITAR-RETIRADA"));
+        Matricula matricula = matriculaRepository.findById(creada.getMatriculaId()).orElseThrow();
+        matricula.setEstadoMatricula("retirada");
+        matriculaRepository.saveAndFlush(matricula);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> preinscripcionService.actualizarPreinscripcion(
+                        matricula.getId(),
+                        preinscripcionService.obtenerDatosPreinscripcion(matricula.getId())));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+    }
+
+    @Test
+    void rechazaActualizarCedulaDeEstudianteSiPerteneceAOtro() {
+        Seccion seccion = crearSeccion(2, "Q");
+        PreinscripcionResponseDTO creada = preinscripcionService.preinscribir(
+                crearRequest(seccion.getId(), "EST-EDITAR-04", "REP-EDITAR-04"));
+        crearEstudiante("EST-EDITAR-05");
+        PreinscripcionRequestDTO datos = preinscripcionService
+                .obtenerDatosPreinscripcion(creada.getMatriculaId());
+        datos.getEstudiante().setCedula("EST-EDITAR-05");
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> preinscripcionService.actualizarPreinscripcion(
+                        creada.getMatriculaId(), datos));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals("EST-EDITAR-04", estudianteRepository.findById(creada.getEstudianteId())
+                .orElseThrow().getCedula());
+    }
+
+    @Test
+    void rechazaCambiarASeccionSinCupo() {
+        Seccion seccionOriginal = crearSeccion(2, "T");
+        Seccion seccionLlena = crearSeccion(1, "U");
+        PreinscripcionResponseDTO creada = preinscripcionService.preinscribir(
+                crearRequest(seccionOriginal.getId(), "EST-EDITAR-CUPO", "REP-EDITAR-CUPO"));
+        Estudiante ocupante = crearEstudiante("EST-CUPO-OCP-01");
+        crearMatriculaEnSeccion(ocupante, seccionLlena, "preinscrito");
+        PreinscripcionRequestDTO datos = preinscripcionService
+                .obtenerDatosPreinscripcion(creada.getMatriculaId());
+        datos.setSeccionId(seccionLlena.getId());
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> preinscripcionService.actualizarPreinscripcion(
+                        creada.getMatriculaId(), datos));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals(seccionOriginal.getId(), matriculaRepository
+                .findById(creada.getMatriculaId()).orElseThrow().getSeccion().getId());
+    }
+
+    @Test
+    void rechazaCambioDeFechaDeNacimientoQueNoEsElegibleParaElGrado() {
+        Seccion seccion = crearSeccion(2, "V");
+        PreinscripcionResponseDTO creada = preinscripcionService.preinscribir(
+                crearRequest(seccion.getId(), "EST-EDITAR-EDAD", "REP-EDITAR-EDAD"));
+        PreinscripcionRequestDTO datos = preinscripcionService
+                .obtenerDatosPreinscripcion(creada.getMatriculaId());
+        datos.getEstudiante().setFechaNacimiento(LocalDate.of(2017, 1, 1));
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> preinscripcionService.actualizarPreinscripcion(
+                        creada.getMatriculaId(), datos));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
+    void regeneraChecklistAlCambiarElTipoDeIngresoConservandoRequisitosAunAplicables() {
+        Seccion seccion = crearSeccion(2, "R");
+        PreinscripcionResponseDTO creada = preinscripcionService.preinscribir(
+                crearRequest(seccion.getId(), "EST-EDITAR-06", "REP-EDITAR-06"));
+        Matricula matricula = matriculaRepository.findById(creada.getMatriculaId()).orElseThrow();
+        matricula.setEstadoMatricula("en_proceso");
+        matriculaRepository.saveAndFlush(matricula);
+
+        var nivel = seccion.getGrado().getNivelEducativo();
+        RequisitoMatricula comun = crearRequisito("REQUISITO-COMUN-EDITAR", nivel, null);
+        RequisitoMatricula soloNuevo = crearRequisito(
+                "REQUISITO-NUEVO-EDITAR", nivel, "nuevo_ingreso");
+        RequisitoMatricula soloTraslado = crearRequisito(
+                "REQUISITO-TRASLADO-EDITAR", nivel, "traslado");
+        ChecklistMatricula itemComun = crearChecklist(matricula, comun, true);
+        crearChecklist(matricula, soloNuevo, true);
+
+        PreinscripcionRequestDTO datos = preinscripcionService
+                .obtenerDatosPreinscripcion(matricula.getId());
+        datos.setInstitucionProcedencia("Escuela de origen");
+        preinscripcionService.actualizarPreinscripcion(matricula.getId(), datos);
+        entityManager.flush();
+        entityManager.clear();
+
+        List<ChecklistMatricula> actualizados = checklistRepository
+                .findByMatricula_Id(matricula.getId());
+        assertEquals(1, actualizados.stream()
+                .filter(item -> item.getRequisito().getId().equals(comun.getId())
+                        && Boolean.TRUE.equals(item.getCumplido())
+                        && item.getId().equals(itemComun.getId()))
+                .count());
+        assertEquals(0, actualizados.stream()
+                .filter(item -> item.getRequisito().getId().equals(soloNuevo.getId()))
+                .count());
+        assertEquals(1, actualizados.stream()
+                .filter(item -> item.getRequisito().getId().equals(soloTraslado.getId())
+                        && Boolean.FALSE.equals(item.getCumplido()))
+                .count());
+    }
+
+    private RequisitoMatricula crearRequisito(String nombre,
+                                               NivelEducativo nivel,
+                                               String aplicaTipoIngreso) {
+        RequisitoMatricula requisito = new RequisitoMatricula();
+        requisito.setNombre(nombre);
+        requisito.setObligatorio(true);
+        requisito.setActivo(true);
+        requisito.setNivelEducativo(nivel);
+        requisito.setAplicaTipoIngreso(aplicaTipoIngreso);
+        return requisitoRepository.saveAndFlush(requisito);
+    }
+
+    private ChecklistMatricula crearChecklist(Matricula matricula,
+                                               RequisitoMatricula requisito,
+                                               boolean cumplido) {
+        ChecklistMatricula item = new ChecklistMatricula();
+        item.setMatricula(matricula);
+        item.setRequisito(requisito);
+        item.setCumplido(cumplido);
+        return checklistRepository.saveAndFlush(item);
+    }
+
+    private Matricula crearMatriculaEnSeccion(Estudiante estudiante,
+                                               Seccion seccion,
+                                               String estado) {
+        Matricula matricula = new Matricula();
+        matricula.setEstudiante(estudiante);
+        matricula.setSeccion(seccion);
+        matricula.setAnioEscolar(seccion.getAnioEscolar());
+        matricula.setFechaSolicitud(LocalDate.now(clock));
+        matricula.setEstadoMatricula(estado);
+        return matriculaRepository.saveAndFlush(matricula);
     }
 
     private Seccion crearSeccion(int capacidad, String letra) {

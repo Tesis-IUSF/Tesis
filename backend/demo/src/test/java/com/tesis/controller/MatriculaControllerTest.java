@@ -1,7 +1,14 @@
 package com.tesis.controller;
 
 import com.tesis.entity.AnioEscolar;
+import com.tesis.entity.Estudiante;
+import com.tesis.entity.Grado;
+import com.tesis.entity.Matricula;
+import com.tesis.entity.NivelEducativo;
 import com.tesis.entity.PeriodoMatricula;
+import com.tesis.entity.RelacionEstudianteRepresentante;
+import com.tesis.entity.Representante;
+import com.tesis.entity.Seccion;
 import com.tesis.entity.TipoPeriodoMatricula;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
@@ -20,6 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -62,6 +70,12 @@ class MatriculaControllerTest {
                         .andExpect(jsonPath("$.content").isArray())
                         .andExpect(jsonPath("$.content.length()").value(0))
                         .andExpect(jsonPath("$.totalElements").value(0));
+
+        mockMvc.perform(get("/api/matriculas/listado")
+                        .with(user("admin").roles("ADMINISTRADOR")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.totalElements").value(0));
     }
 
         @Test
@@ -205,4 +219,131 @@ class MatriculaControllerTest {
                                                 .with(user("admin").roles("ADMINISTRADOR")))
                                 .andExpect(status().isBadRequest());
         }
+
+    @Test
+    void obtieneYActualizaDatosDePreinscripcionYExponeCedulaEnListado() throws Exception {
+        MatriculaFixture fixture = crearMatriculaParaEdicion();
+        Integer matriculaId = fixture.matriculaId();
+
+        mockMvc.perform(get("/api/matriculas/{id}/preinscripcion", matriculaId)
+                        .with(user("admin").roles("ADMINISTRADOR")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estudiante.cedula").value("EST-API-EDITAR"))
+                .andExpect(jsonPath("$.representante.cedula").value("REP-API-EDITAR"))
+                .andExpect(jsonPath("$.seccionId").value(fixture.seccionId()))
+                .andExpect(jsonPath("$.anioEscolar").value(2026))
+                .andExpect(jsonPath("$.relacionPrincipal").value(true))
+                .andExpect(jsonPath("$.autorizadoRetirar").value(true))
+                .andExpect(jsonPath("$.recibeComunicados").value(false));
+
+        mockMvc.perform(put("/api/matriculas/{id}/preinscripcion", matriculaId)
+                        .with(user("admin").roles("ADMINISTRADOR"))
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(String.format("""
+                                {
+                                  "estudiante": {
+                                    "cedula": "EST-API-EDITAR",
+                                    "nombre": "Nombre corregido",
+                                    "apellido": "Estudiante",
+                                    "fechaNacimiento": "2017-01-01",
+                                    "sexo": "F"
+                                  },
+                                  "representante": {
+                                    "cedula": "REP-API-EDITAR",
+                                    "nombre": "Representante corregido",
+                                    "apellido": "Prueba",
+                                    "parentesco": "Madre",
+                                    "correo": "representante@example.com"
+                                  },
+                                  "seccionId": %d,
+                                  "anioEscolar": 2026,
+                                  "institucionProcedencia": null,
+                                  "relacionPrincipal": true,
+                                  "autorizadoRetirar": true,
+                                  "recibeComunicados": false
+                                }
+                                """, fixture.seccionId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estadoMatricula").value("preinscrito"))
+                .andExpect(jsonPath("$.estudianteNombreCompleto").value("Nombre corregido Estudiante"));
+
+        mockMvc.perform(get("/api/matriculas/preinscripciones")
+                        .with(user("admin").roles("ADMINISTRADOR")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].estudianteCedula").value("EST-API-EDITAR"));
+
+        mockMvc.perform(get("/api/matriculas/listado")
+                        .param("estado", "")
+                        .param("q", "EST-API-EDITAR")
+                        .with(user("admin").roles("ADMINISTRADOR")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].estudianteCedula").value("EST-API-EDITAR"));
+
+        mockMvc.perform(get("/api/matriculas/listado")
+                        .param("estado", "no-es-valido")
+                        .with(user("admin").roles("ADMINISTRADOR")))
+                .andExpect(status().isBadRequest());
+    }
+
+    private MatriculaFixture crearMatriculaParaEdicion() {
+        NivelEducativo nivel = new NivelEducativo();
+        nivel.setNombre("Nivel API edición");
+        nivel.setOrdinal((short) 99);
+        entityManager.persist(nivel);
+
+        Grado grado = new Grado();
+        grado.setNivelEducativo(nivel);
+        grado.setNumeroGrado((short) 1);
+        grado.setEdadMinima((short) 0);
+        grado.setEdadMaxima((short) 120);
+        entityManager.persist(grado);
+
+        Seccion seccion = new Seccion();
+        seccion.setGrado(grado);
+        seccion.setLetraSeccion("Z");
+        seccion.setCapacidadMaxima((short) 10);
+        seccion.setAnioEscolar((short) 2026);
+        seccion.setActivo(true);
+        entityManager.persist(seccion);
+
+        Estudiante estudiante = new Estudiante();
+        estudiante.setCedula("EST-API-EDITAR");
+        estudiante.setNombre("Nombre anterior");
+        estudiante.setApellido("Estudiante");
+        estudiante.setFechaNacimiento(LocalDate.of(2017, 1, 1));
+        estudiante.setSexo("F");
+        entityManager.persist(estudiante);
+
+        Representante representante = new Representante();
+        representante.setCedula("REP-API-EDITAR");
+        representante.setNombre("Representante anterior");
+        representante.setApellido("Prueba");
+        representante.setParentesco("Madre");
+        representante.setCorreo("representante@example.com");
+        entityManager.persist(representante);
+
+        RelacionEstudianteRepresentante relacion = new RelacionEstudianteRepresentante();
+        relacion.setEstudiante(estudiante);
+        relacion.setRepresentante(representante);
+        relacion.setRelacionPrincipal(true);
+        relacion.setAutorizadoRetirar(true);
+        relacion.setRecibeComunicados(false);
+        relacion.setFechaVinculacion(LocalDate.now(clock));
+        entityManager.persist(relacion);
+
+        Matricula matricula = new Matricula();
+        matricula.setEstudiante(estudiante);
+        matricula.setSeccion(seccion);
+        matricula.setAnioEscolar((short) 2026);
+        matricula.setTipoIngreso("nuevo_ingreso");
+        matricula.setEstadoMatricula("preinscrito");
+        matricula.setFechaSolicitud(LocalDate.now(clock));
+        entityManager.persist(matricula);
+        entityManager.flush();
+        return new MatriculaFixture(matricula.getId(), seccion.getId());
+    }
+
+    private record MatriculaFixture(Integer matriculaId, Integer seccionId) {
+    }
 }

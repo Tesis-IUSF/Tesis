@@ -24,7 +24,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -35,6 +37,8 @@ public class InscripcionService {
     private static final String PREINSCRITO = "preinscrito";
     private static final String EN_PROCESO = "en_proceso";
     private static final String COMPLETADA = "completada";
+    private static final Set<String> ESTADOS_MATRICULA = Set.of(
+            PREINSCRITO, EN_PROCESO, COMPLETADA, "retirada", "anulada");
 
     private final MatriculaRepository matriculaRepository;
     private final ChecklistMatriculaRepository checklistRepository;
@@ -65,6 +69,20 @@ public class InscripcionService {
             @Transactional(readOnly = true)
     public Page<InscripcionResponseDTO> listarEnProceso(Pageable pageable) {
         return toResponses(matriculaRepository.findByEstadoMatriculaOrderByFechaSolicitudAsc(EN_PROCESO, pageable));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<InscripcionResponseDTO> listar(String estado, String busqueda, Pageable pageable) {
+        String estadoNormalizado = estado == null || estado.isBlank()
+                ? null : estado.trim().toLowerCase(Locale.ROOT);
+        if (estadoNormalizado != null && !ESTADOS_MATRICULA.contains(estadoNormalizado)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El estado de matrícula no es válido");
+        }
+        String busquedaNormalizada = busqueda == null || busqueda.isBlank()
+                ? null : busqueda.trim();
+        return toResponses(matriculaRepository.buscarListado(
+                estadoNormalizado, busquedaNormalizada, pageable));
     }
 
     @Transactional(readOnly = true)
@@ -257,6 +275,7 @@ public class InscripcionService {
                 matricula.getEstudiante().getId(),
                 matricula.getEstudiante().getNombre() + " "
                         + matricula.getEstudiante().getApellido(),
+                matricula.getEstudiante().getCedula(),
                 matricula.getSeccion().getId(),
                 matricula.getAnioEscolar(),
                 totalObligatorios,

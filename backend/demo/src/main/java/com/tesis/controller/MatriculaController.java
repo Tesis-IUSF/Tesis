@@ -130,6 +130,18 @@ public class MatriculaController {
         return preinscripcionService.preinscribir(request);
     }
 
+    @GetMapping("/{matriculaId}/preinscripcion")
+    public PreinscripcionRequestDTO obtenerDatosPreinscripcion(@PathVariable Integer matriculaId) {
+        return preinscripcionService.obtenerDatosPreinscripcion(matriculaId);
+    }
+
+    @PutMapping("/{matriculaId}/preinscripcion")
+    public PreinscripcionResponseDTO actualizarPreinscripcion(
+            @PathVariable Integer matriculaId,
+            @Valid @RequestBody PreinscripcionRequestDTO request) {
+        return preinscripcionService.actualizarPreinscripcion(matriculaId, request);
+    }
+
     @GetMapping("/preinscripciones")
     public PaginacionDTO.Respuesta<InscripcionResponseDTO> listarPreinscritas(
             @ModelAttribute PaginacionDTO.Solicitud paginacion) {
@@ -142,6 +154,15 @@ public class MatriculaController {
             @ModelAttribute PaginacionDTO.Solicitud paginacion) {
         Pageable pageable = paginacion.toPageable();
         return PaginacionDTO.Respuesta.desde(inscripcionService.listarEnProceso(pageable));
+    }
+
+    @GetMapping("/listado")
+    public PaginacionDTO.Respuesta<InscripcionResponseDTO> listarMatriculas(
+            @RequestParam(required = false) String estado,
+            @RequestParam(required = false) String q,
+            @ModelAttribute PaginacionDTO.Solicitud paginacion) {
+        return PaginacionDTO.Respuesta.desde(
+                inscripcionService.listar(estado, q, paginacion.toPageable()));
     }
 
     @GetMapping("/{matriculaId}/checklist")
