@@ -170,6 +170,8 @@ Actualmente los PDFs usan `app.institucion.nombre`; los demás valores quedan di
 ### Filtros de listados de personal
 
 - `GET /api/empleados` admite `cargoId`, `turnoId` y `activo` (`true` para personal activo, `false` para personal dado de baja), además de paginación. Si `activo` se omite, devuelve ambos estados. `turnoId` filtra asignaciones activas y vigentes para la fecha actual.
+- `POST /api/empleados` requiere `turnoId` y `fechaIngreso`; el turno debe estar activo. Al guardar el empleado, el backend crea su asignación en la misma transacción, con `fechaDesde = fechaIngreso` y `fechaHasta = null`.
+- `DELETE /api/empleados/{id}` realiza una baja lógica: marca `activo = false`, establece `fechaEgreso` si no estaba definida, cierra en esa fecha las asignaciones vigentes y revoca las credenciales QR activas. En `PUT /api/empleados/{id}`, enviar `activo = false` aplica la misma baja. El registro del empleado y su historial se conservan.
 - `GET /api/empleados/carnets` admite también `turnoId` junto con sus filtros existentes `q`, `departamentoId`, `cargoId` y `estadoQr`.
 - `GET /api/asistencias/hoy` y `GET /api/asistencias/historico` aceptan `cargoId` y `turnoId`; el histórico mantiene también sus filtros de empleado y departamento.
 - `GET /api/asistencias/ausencias` admite `cargoId` además de los filtros existentes de empleado, departamento y turno.

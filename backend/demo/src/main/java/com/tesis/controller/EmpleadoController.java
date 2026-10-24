@@ -2,6 +2,7 @@ package com.tesis.controller;
 
 import com.tesis.dto.EmpleadoDTO.EmpleadoRequestDTO;
 import com.tesis.dto.EmpleadoDTO.EmpleadoResponseDTO;
+import com.tesis.dto.EmpleadoDTO.CrearEmpleado;
 import com.tesis.dto.PaginacionDTO;
 import com.tesis.service.EmpleadoService;
 import jakarta.validation.Valid;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.annotation.Validated;
 
 @RestController
 @RequestMapping("/api/empleados")
@@ -45,7 +47,8 @@ public class EmpleadoController {
     }
 
     @PostMapping
-    public ResponseEntity<EmpleadoResponseDTO> crear(@Valid @RequestBody EmpleadoRequestDTO request) {
+    public ResponseEntity<EmpleadoResponseDTO> crear(@Validated(CrearEmpleado.class)
+                                                      @RequestBody EmpleadoRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(empleadoService.crear(request));
     }
 

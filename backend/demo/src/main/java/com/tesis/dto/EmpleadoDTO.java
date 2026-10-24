@@ -2,8 +2,10 @@ package com.tesis.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.groups.Default;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -12,6 +14,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public class EmpleadoDTO {
+
+    public interface CrearEmpleado extends Default {
+    }
 
     @Data
     @NoArgsConstructor
@@ -46,10 +51,14 @@ public class EmpleadoDTO {
 
         private Integer cargoId;
         private Integer departamentoId;
+        @NotNull(message = "La fecha de ingreso es obligatoria")
         private LocalDate fechaIngreso;
         private LocalDate fechaEgreso;
         private Integer usuarioId;
         private Boolean activo;
+
+        @NotNull(message = "El turno es obligatorio al crear un empleado", groups = CrearEmpleado.class)
+        private Integer turnoId;
     }
 
     @Data
