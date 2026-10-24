@@ -36,6 +36,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.isNull;
 
 @ExtendWith(MockitoExtension.class)
 class EmpleadoServiceTest {
@@ -69,7 +70,8 @@ class EmpleadoServiceTest {
     @Test
     void listarDevuelveEmpleadosConDatosDeRelaciones() {
         Empleado empleado = empleadoExistente();
-        when(empleadoRepository.findAll(any(PageRequest.class)))
+        when(empleadoRepository.buscarConFiltros(
+                isNull(), isNull(), any(LocalDate.class), any(PageRequest.class)))
             .thenReturn(new PageImpl<>(List.of(empleado), PageRequest.of(0, 25), 1));
 
         List<EmpleadoResponseDTO> respuesta = empleadoService.listar(PageRequest.of(0, 25)).getContent();
@@ -92,7 +94,8 @@ class EmpleadoServiceTest {
         AsignacionTurno asignacion = new AsignacionTurno();
         asignacion.setPersonal(empleado);
         asignacion.setTurno(turno);
-        when(empleadoRepository.findAll(any(PageRequest.class)))
+        when(empleadoRepository.buscarConFiltros(
+                isNull(), isNull(), any(LocalDate.class), any(PageRequest.class)))
                 .thenReturn(new PageImpl<>(List.of(empleado), PageRequest.of(0, 25), 1));
         when(asignacionTurnoRepository.buscarVigentesPorEmpleados(List.of(3), LocalDate.now()))
                 .thenReturn(List.of(asignacion));

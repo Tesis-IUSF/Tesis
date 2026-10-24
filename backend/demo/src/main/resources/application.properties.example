@@ -5,6 +5,12 @@
 spring.profiles.active=dev
 spring.application.name=sitio-web
 app.institucion.nombre=C.E.N. Lcda. Roraima Asansa Escandela
+app.institucion.director=${INSTITUCION_DIRECTOR:}
+app.institucion.rif=${INSTITUCION_RIF:}
+app.institucion.codigo=${INSTITUCION_CODIGO:}
+app.institucion.direccion=${INSTITUCION_DIRECCION:}
+app.institucion.telefono=${INSTITUCION_TELEFONO:}
+app.institucion.correo=${INSTITUCION_CORREO:}
 
 # ============================================================
 # SERVIDOR (Configuración común)

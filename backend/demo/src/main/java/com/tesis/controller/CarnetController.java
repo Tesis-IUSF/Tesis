@@ -42,12 +42,13 @@ public class CarnetController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) Integer departamentoId,
             @RequestParam(required = false) Integer cargoId,
+            @RequestParam(required = false) Integer turnoId,
             @RequestParam(required = false) String estadoQr,
             @RequestParam(defaultValue = "30") int diasAviso,
             @ModelAttribute PaginacionDTO.Solicitud paginacion) {
         Pageable pageable = paginacion.toPageable();
         return PaginacionDTO.Respuesta.desde(carnetConsultaService.buscar(
-                q, departamentoId, cargoId, estadoQr, diasAviso, pageable));
+                q, departamentoId, cargoId, turnoId, estadoQr, diasAviso, pageable));
     }
 
     @PostMapping("/carnets/lote")

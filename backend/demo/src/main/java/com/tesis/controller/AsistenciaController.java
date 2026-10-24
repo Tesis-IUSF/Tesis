@@ -42,8 +42,10 @@ public class AsistenciaController {
     }
 
     @GetMapping("/hoy")
-    public List<AsistenciaHoyDTO> listarHoy() {
-        return asistenciaService.listarHoy();
+    public List<AsistenciaHoyDTO> listarHoy(
+            @RequestParam(required = false) Integer cargoId,
+            @RequestParam(required = false) Integer turnoId) {
+        return asistenciaService.listarHoy(cargoId, turnoId);
     }
 
     @GetMapping("/historico")
@@ -52,10 +54,11 @@ public class AsistenciaController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
             @RequestParam(required = false) Integer empleadoId,
             @RequestParam(required = false) Integer departamentoId,
+            @RequestParam(required = false) Integer cargoId,
             @RequestParam(required = false) Integer turnoId,
             @RequestParam(required = false) String estado) {
         return asistenciaService.buscarHistorico(desde, hasta, empleadoId,
-                departamentoId, turnoId, estado);
+                departamentoId, cargoId, turnoId, estado);
     }
 
     @GetMapping("/ausencias")
@@ -64,8 +67,10 @@ public class AsistenciaController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
             @RequestParam(required = false) Integer empleadoId,
             @RequestParam(required = false) Integer departamentoId,
+            @RequestParam(required = false) Integer cargoId,
             @RequestParam(required = false) Integer turnoId) {
-        return asistenciaService.listarAusencias(desde, hasta, empleadoId, departamentoId, turnoId);
+        return asistenciaService.listarAusencias(
+                desde, hasta, empleadoId, departamentoId, cargoId, turnoId);
     }
 
     @GetMapping("/empleado/{empleadoId}")

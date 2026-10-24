@@ -48,11 +48,17 @@ public class EmpleadoService {
     }
 
     @Transactional(readOnly = true)
-    public Page<EmpleadoResponseDTO> listar(Pageable pageable) {
-        Page<Empleado> empleados = empleadoRepository.findAll(pageable);
+    public Page<EmpleadoResponseDTO> listar(Integer cargoId, Integer turnoId, Pageable pageable) {
+        Page<Empleado> empleados = empleadoRepository.buscarConFiltros(
+                cargoId, turnoId, LocalDate.now(), pageable);
         Map<Integer, AsignacionTurno> turnosVigentes = buscarTurnosVigentes(
-            empleados.getContent().stream().map(Empleado::getId).toList());
+            empleados.getContent().stream().map(empleado -> empleado.getId()).toList());
         return empleados.map(empleado -> toResponse(empleado, turnosVigentes.get(empleado.getId())));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<EmpleadoResponseDTO> listar(Pageable pageable) {
+        return listar(null, null, pageable);
     }
 
     @Transactional(readOnly = true)

@@ -1,6 +1,7 @@
 package com.tesis.service;
 
 import com.tesis.dto.CarnetDTO.EmpleadoCarnetResponseDTO;
+import com.tesis.repository.AsignacionTurnoRepository;
 import com.tesis.entity.CredencialQr;
 import com.tesis.entity.Empleado;
 import com.tesis.repository.CredencialQrRepository;
@@ -14,12 +15,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @Transactional(readOnly = true)
@@ -28,16 +32,20 @@ public class CarnetConsultaService {
     private static final int MAX_DIAS_AVISO = 365;
     private final EmpleadoRepository empleadoRepository;
     private final CredencialQrRepository credencialRepository;
+    private final AsignacionTurnoRepository asignacionTurnoRepository;
 
     public CarnetConsultaService(EmpleadoRepository empleadoRepository,
-                                 CredencialQrRepository credencialRepository) {
+                                 CredencialQrRepository credencialRepository,
+                                 AsignacionTurnoRepository asignacionTurnoRepository) {
         this.empleadoRepository = empleadoRepository;
         this.credencialRepository = credencialRepository;
+        this.asignacionTurnoRepository = asignacionTurnoRepository;
     }
 
     public Page<EmpleadoCarnetResponseDTO> buscar(String busqueda,
                                                    Integer departamentoId,
                                                    Integer cargoId,
+                                                   Integer turnoId,
                                                    String estadoQr,
                                                    int diasAviso,
                                                    Pageable pageable) {
@@ -59,6 +67,10 @@ public class CarnetConsultaService {
         for (CredencialQr credencial : credencialRepository.findByActivaTrueOrderByCreadaEnDesc()) {
             credencialesActivas.putIfAbsent(credencial.getEmpleado().getId(), credencial);
         }
+        Set<Integer> empleadosConTurno = turnoId == null
+                ? Set.of()
+                : new HashSet<>(asignacionTurnoRepository.buscarPersonalIdsVigentesPorTurno(
+                        turnoId, LocalDate.now()));
 
         List<EmpleadoCarnetResponseDTO> resultados = new ArrayList<>();
         for (Empleado empleado : empleadoRepository.findByActivoTrue(
@@ -69,6 +81,9 @@ public class CarnetConsultaService {
             }
             if (cargoId != null && (empleado.getCargo() == null
                     || !cargoId.equals(empleado.getCargo().getId()))) {
+                continue;
+            }
+            if (turnoId != null && !empleadosConTurno.contains(empleado.getId())) {
                 continue;
             }
             CredencialQr credencial = credencialesActivas.get(empleado.getId());

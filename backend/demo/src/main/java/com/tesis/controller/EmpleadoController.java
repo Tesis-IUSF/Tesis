@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -29,9 +30,12 @@ public class EmpleadoController {
     }
 
     @GetMapping
-    public PaginacionDTO.Respuesta<EmpleadoResponseDTO> listar(@ModelAttribute PaginacionDTO.Solicitud paginacion) {
+    public PaginacionDTO.Respuesta<EmpleadoResponseDTO> listar(
+            @RequestParam(required = false) Integer cargoId,
+            @RequestParam(required = false) Integer turnoId,
+            @ModelAttribute PaginacionDTO.Solicitud paginacion) {
         Pageable pageable = paginacion.toPageable();
-        return PaginacionDTO.Respuesta.desde(empleadoService.listar(pageable));
+        return PaginacionDTO.Respuesta.desde(empleadoService.listar(cargoId, turnoId, pageable));
     }
 
     @GetMapping("/{id}")

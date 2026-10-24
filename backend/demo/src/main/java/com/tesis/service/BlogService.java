@@ -7,6 +7,8 @@ import com.tesis.entity.Usuario;
 import com.tesis.repository.CategoriaComunicadoRepository;
 import com.tesis.repository.ComunicadoRepository;
 import com.tesis.repository.UsuarioRepository;
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Safelist;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -19,6 +21,16 @@ import java.time.LocalDateTime;
 @Service
 @Transactional
 public class BlogService {
+
+    private static final Safelist CONTENIDO_PERMITIDO = Safelist.none()
+            .addTags("p", "br", "strong", "b", "em", "i", "u", "s", "ul", "ol", "li",
+                    "blockquote", "h1", "h2", "h3", "h4", "h5", "h6", "pre", "code",
+                    "table", "thead", "tbody", "tfoot", "tr", "th", "td")
+            .addAttributes("th", "colspan", "rowspan")
+            .addAttributes("td", "colspan", "rowspan")
+            .addTags("a")
+            .addAttributes("a", "href", "title")
+            .addProtocols("a", "href", "http", "https", "mailto");
 
     private final CategoriaComunicadoRepository categoriaRepository;
     private final ComunicadoRepository comunicadoRepository;
@@ -150,7 +162,7 @@ public class BlogService {
             fechaPublicacion = LocalDateTime.now();
         }
         comunicado.setTitulo(request.titulo().trim());
-        comunicado.setContenidoHtml(request.contenidoHtml());
+        comunicado.setContenidoHtml(sanitizarContenido(request.contenidoHtml()));
         comunicado.setResumen(request.resumen());
         comunicado.setCategoria(categoria);
         comunicado.setPublicado(publicado);
@@ -169,11 +181,16 @@ public class BlogService {
 
     private BlogDTO.ComunicadoResponseDTO comunicadoResponse(Comunicado comunicado) {
         return new BlogDTO.ComunicadoResponseDTO(comunicado.getId(), comunicado.getTitulo(),
-                comunicado.getContenidoHtml(), comunicado.getResumen(), comunicado.getCategoria().getId(),
+                sanitizarContenido(comunicado.getContenidoHtml()), comunicado.getResumen(),
+                comunicado.getCategoria().getId(),
                 comunicado.getCategoria().getNombre(), comunicado.getCreadoPor().getId(),
                 comunicado.getPublicado(), comunicado.getFechaPublicacion(), comunicado.getFechaExpiracion(),
                 comunicado.getImagenUrl(), comunicado.getOrdenVisualizacion(), comunicado.getVisiblePublico(),
                 comunicado.getCreadoEn(), comunicado.getActualizadoEn());
+    }
+
+    private String sanitizarContenido(String contenidoHtml) {
+        return Jsoup.clean(contenidoHtml, CONTENIDO_PERMITIDO);
     }
 
     private CategoriaComunicado buscarCategoria(Integer id) {
