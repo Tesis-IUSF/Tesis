@@ -53,6 +53,8 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.DELETE, "/api/catalogos/departamentos/*",
                     "/api/catalogos/cargos/*", "/api/catalogos/requisitos-matricula/*")
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
+            .requestMatchers("/api/matriculas/gestion/**")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
             .requestMatchers(HttpMethod.POST, "/api/empleados/*/carnet")
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
             .requestMatchers(HttpMethod.GET, "/api/empleados/carnets")

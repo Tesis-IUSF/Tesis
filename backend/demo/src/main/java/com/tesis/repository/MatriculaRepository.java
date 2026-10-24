@@ -45,6 +45,8 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
 
     List<Matricula> findByAnioEscolarAndEstadoMatricula(Short anioEscolar, String estadoMatricula);
 
+    boolean existsByAnioEscolar(Short anioEscolar);
+
     List<Matricula> findBySeccion_IdAndAnioEscolar(Integer seccionId, Short anioEscolar);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
