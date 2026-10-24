@@ -43,6 +43,7 @@ build/
 # Archivos de entorno y credenciales (Aplica para la raíz y cualquier subcarpeta)
 .env
 .env.*
+!.env.example
 
 # Java / Maven (Aplica dentro de backend/demo o cualquier otra subcarpeta)
 **/target/

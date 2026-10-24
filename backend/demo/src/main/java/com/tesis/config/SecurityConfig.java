@@ -25,7 +25,7 @@ public class SecurityConfig {
         .formLogin(formLogin -> formLogin.disable())
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(authorize -> authorize
-            .requestMatchers("/api/auth/login", "/api/auth/registrar").permitAll()
+            .requestMatchers("/api/auth/login", "/api/setup/status", "/api/setup/initial-admin").permitAll()
             .requestMatchers(HttpMethod.GET, "/api/blog/categorias", "/api/blog/publicaciones/**").permitAll()
             .requestMatchers("/api/blog/admin/**")
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR", "ADMINISTRATIVO")
@@ -65,6 +65,8 @@ public class SecurityConfig {
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
             .requestMatchers("/api/matriculas/**")
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR", "ADMINISTRATIVO")
+            .requestMatchers("/api/usuarios/**")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
             .anyRequest().authenticated())
         .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(
             (request, response, exception) -> response.sendError(

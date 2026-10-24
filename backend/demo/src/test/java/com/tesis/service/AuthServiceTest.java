@@ -5,7 +5,6 @@ import com.tesis.entity.Roles;
 import com.tesis.entity.TipoUsuario;
 import com.tesis.entity.Usuario;
 import com.tesis.exception.AuthenticationException;
-import com.tesis.exception.UsuarioNotFoundException;
 import com.tesis.mapper.UsuarioMapper;
 import com.tesis.repository.UsuarioRepository;
 import com.tesis.security.JwtProvider;
@@ -120,36 +119,6 @@ class AuthServiceTest {
                 .build();
 
         assertThrows(AuthenticationException.class, () -> authService.login(solicitud));
-
-        verify(usuarioRepository, never()).save(org.mockito.ArgumentMatchers.any(Usuario.class));
-    }
-
-    @Test
-    void registroConEmailExistenteFalla() {
-        AuthDTO.RegisterRequest solicitud = AuthDTO.RegisterRequest.builder()
-                .nombreUsuario("ana")
-                .email("ana@example.com")
-                .password("clave")
-                .build();
-        when(usuarioRepository.existsByEmail("ana@example.com")).thenReturn(true);
-
-        assertThrows(AuthenticationException.class, () -> authService.registrar(solicitud));
-
-        verify(usuarioRepository, never()).save(org.mockito.ArgumentMatchers.any(Usuario.class));
-        verify(usuarioRepository, never()).existsByNombreUsuario("ana");
-    }
-
-    @Test
-    void registroConNombreDeUsuarioExistenteFalla() {
-        AuthDTO.RegisterRequest solicitud = AuthDTO.RegisterRequest.builder()
-                .nombreUsuario("ana")
-                .email("ana@example.com")
-                .password("clave")
-                .build();
-        when(usuarioRepository.existsByEmail("ana@example.com")).thenReturn(false);
-        when(usuarioRepository.existsByNombreUsuario("ana")).thenReturn(true);
-
-        assertThrows(AuthenticationException.class, () -> authService.registrar(solicitud));
 
         verify(usuarioRepository, never()).save(org.mockito.ArgumentMatchers.any(Usuario.class));
     }
