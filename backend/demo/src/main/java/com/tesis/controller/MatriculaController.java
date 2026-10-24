@@ -4,6 +4,10 @@ import com.tesis.dto.InscripcionDTO.ChecklistUpdateRequestDTO;
 import com.tesis.dto.InscripcionDTO.FormalizarInscripcionRequestDTO;
 import com.tesis.dto.InscripcionDTO.InscripcionResponseDTO;
 import com.tesis.dto.CalendarioMatriculaDTO;
+import com.tesis.dto.GestionCalendarioDTO.AnioEscolarRequestDTO;
+import com.tesis.dto.GestionCalendarioDTO.AnioEscolarResponseDTO;
+import com.tesis.dto.GestionCalendarioDTO.PeriodoRequestDTO;
+import com.tesis.dto.GestionCalendarioDTO.PeriodoResponseDTO;
 import com.tesis.dto.PaginacionDTO;
 import com.tesis.dto.PreinscripcionDTO.PreinscripcionRequestDTO;
 import com.tesis.dto.PreinscripcionDTO.PreinscripcionResponseDTO;
@@ -18,11 +22,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -30,6 +36,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/matriculas")
@@ -54,6 +61,66 @@ public class MatriculaController {
     public CalendarioMatriculaDTO obtenerCalendario(
             @RequestParam(required = false) Short anio) {
         return calendarioService.obtenerCalendario(anio);
+    }
+
+    @GetMapping("/gestion/anios")
+    public List<AnioEscolarResponseDTO> listarAniosEscolares() {
+        return calendarioService.listarAnios();
+    }
+
+    @PostMapping("/gestion/anios")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AnioEscolarResponseDTO crearAnioEscolar(
+            @Valid @RequestBody AnioEscolarRequestDTO request) {
+        return calendarioService.crearAnio(request);
+    }
+
+    @GetMapping("/gestion/anios/{anio}")
+    public AnioEscolarResponseDTO obtenerAnioEscolar(@PathVariable Short anio) {
+        return calendarioService.obtenerAnioGestion(anio);
+    }
+
+    @PutMapping("/gestion/anios/{anio}")
+    public AnioEscolarResponseDTO actualizarAnioEscolar(
+            @PathVariable Short anio,
+            @Valid @RequestBody AnioEscolarRequestDTO request) {
+        return calendarioService.actualizarAnio(anio, request);
+    }
+
+    @PostMapping("/gestion/anios/{anio}/activar")
+    public AnioEscolarResponseDTO activarAnioEscolar(@PathVariable Short anio) {
+        return calendarioService.activarAnio(anio);
+    }
+
+    @PostMapping("/gestion/anios/{anio}/periodos")
+    @ResponseStatus(HttpStatus.CREATED)
+    public PeriodoResponseDTO crearPeriodoMatricula(
+            @PathVariable Short anio,
+            @Valid @RequestBody PeriodoRequestDTO request) {
+        return calendarioService.crearPeriodo(anio, request);
+    }
+
+    @PutMapping("/gestion/periodos/{id}")
+    public PeriodoResponseDTO actualizarPeriodoMatricula(
+            @PathVariable Integer id,
+            @Valid @RequestBody PeriodoRequestDTO request) {
+        return calendarioService.actualizarPeriodo(id, request);
+    }
+
+    @PatchMapping("/gestion/periodos/{id}/activar")
+    public PeriodoResponseDTO activarPeriodoMatricula(@PathVariable Integer id) {
+        return calendarioService.activarPeriodo(id);
+    }
+
+    @PatchMapping("/gestion/periodos/{id}/desactivar")
+    public PeriodoResponseDTO desactivarPeriodoMatricula(@PathVariable Integer id) {
+        return calendarioService.desactivarPeriodo(id);
+    }
+
+    @DeleteMapping("/gestion/periodos/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void eliminarPeriodoEnPreparacion(@PathVariable Integer id) {
+        calendarioService.eliminarPeriodoEnPreparacion(id);
     }
 
     @PostMapping("/preinscripciones")

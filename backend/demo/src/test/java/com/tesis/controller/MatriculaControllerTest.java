@@ -19,6 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -101,6 +102,82 @@ class MatriculaControllerTest {
                 .andExpect(jsonPath("$.periodos").isEmpty())
                 .andExpect(jsonPath("$.mensaje")
                         .value("No hay un año escolar activo configurado"));
+    }
+
+    @Test
+    void creaAnioEscolarEnPreparacionYExponeSuListaDePeriodos() throws Exception {
+        mockMvc.perform(post("/api/matriculas/gestion/anios")
+                        .with(user("director").roles("DIRECTOR"))
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "anio": 2199,
+                                  "nombre": "2199-2200",
+                                  "fechaInicio": "2199-09-01",
+                                  "fechaFin": "2200-07-15"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.anio").value(2199))
+                .andExpect(jsonPath("$.activo").value(false))
+                .andExpect(jsonPath("$.periodos").isArray());
+    }
+
+    @Test
+    void activarAnioCierraPreinscripcionEInscripcionDelAnterior() throws Exception {
+        AnioEscolar anterior = nuevoAnio((short) 2197, true);
+        entityManager.persist(anterior);
+        AnioEscolar siguiente = nuevoAnio((short) 2198, false);
+        entityManager.persist(siguiente);
+
+        PeriodoMatricula preinscripcionAnterior = nuevoPeriodo((short) 2197,
+                TipoPeriodoMatricula.preinscripcion);
+        PeriodoMatricula inscripcionAnterior = nuevoPeriodo((short) 2197,
+                TipoPeriodoMatricula.inscripcion);
+        PeriodoMatricula extemporaneaAnterior = nuevoPeriodo((short) 2197,
+                TipoPeriodoMatricula.extemporanea);
+        entityManager.persist(preinscripcionAnterior);
+        entityManager.persist(inscripcionAnterior);
+        entityManager.persist(extemporaneaAnterior);
+
+        entityManager.persist(nuevoPeriodo((short) 2198, TipoPeriodoMatricula.preinscripcion));
+        entityManager.persist(nuevoPeriodo((short) 2198, TipoPeriodoMatricula.inscripcion));
+        entityManager.persist(nuevoPeriodo((short) 2198, TipoPeriodoMatricula.extemporanea));
+        entityManager.flush();
+
+        mockMvc.perform(post("/api/matriculas/gestion/anios/2198/activar")
+                        .with(user("admin").roles("ADMINISTRADOR")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.activo").value(true));
+
+        entityManager.refresh(anterior);
+        entityManager.refresh(preinscripcionAnterior);
+        entityManager.refresh(inscripcionAnterior);
+        entityManager.refresh(extemporaneaAnterior);
+        org.junit.jupiter.api.Assertions.assertFalse(anterior.getActivo());
+        org.junit.jupiter.api.Assertions.assertFalse(preinscripcionAnterior.getActivo());
+        org.junit.jupiter.api.Assertions.assertFalse(inscripcionAnterior.getActivo());
+        org.junit.jupiter.api.Assertions.assertTrue(extemporaneaAnterior.getActivo());
+    }
+
+    private AnioEscolar nuevoAnio(short anio, boolean activo) {
+        AnioEscolar escolar = new AnioEscolar();
+        escolar.setAnio(anio);
+        escolar.setNombre(anio + "-" + (anio + 1));
+        escolar.setFechaInicio(LocalDate.of(anio, 9, 1));
+        escolar.setFechaFin(LocalDate.of(anio + 1, 7, 15));
+        escolar.setActivo(activo);
+        return escolar;
+    }
+
+    private PeriodoMatricula nuevoPeriodo(short anio, TipoPeriodoMatricula tipo) {
+        PeriodoMatricula periodo = new PeriodoMatricula();
+        periodo.setAnioEscolar(anio);
+        periodo.setTipo(tipo);
+        periodo.setFechaInicio(LocalDate.of(anio, 5, 1));
+        periodo.setFechaFin(LocalDate.of(anio, 5, 31));
+        periodo.setActivo(true);
+        return periodo;
     }
 
     @Test
