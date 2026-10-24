@@ -127,6 +127,8 @@ El proyecto incluye un script automatizado para actualizar los servicios en el e
 
 Las imágenes se guardan en `app.uploads.dir` (configurable mediante `UPLOADS_DIR`). Los entornos Docker montan un volumen persistente distinto para desarrollo y producción en `/app/uploads`.
 
+Para las imágenes de comunicados, el frontend puede subir el archivo con `POST /api/fotos` y enviar el `url` devuelto en el campo `imagenUrl` al crear o editar el comunicado (`POST`/`PUT /api/blog/admin/comunicados`). El contenido HTML de `contenidoHtml` se limpia en escritura y también antes de incluirlo en respuestas: conserva formato básico, listas, encabezados, tablas y enlaces HTTP(S)/mailto; elimina scripts, eventos, imágenes embebidas y otros elementos/atributos no permitidos. Las imágenes se muestran por separado con `imagenUrl`.
+
 Antes de activar el perfil de producción, añadir la columna de foto al personal si todavía no existe:
 
 ```sql
@@ -140,6 +142,19 @@ La entidad de representantes también usa `foto_url`; si la base de producción 
 ALTER TABLE representantes
     ADD COLUMN foto_url VARCHAR(500) NULL;
 ```
+
+### Configuración institucional
+
+Los perfiles `dev` y `prod` definen `app.institucion.nombre`, `director`, `rif`, `codigo`, `direccion`, `telefono` y `correo`, con valores provistos mediante las variables de entorno `INSTITUCION_NOMBRE`, `INSTITUCION_DIRECTOR`, `INSTITUCION_RIF`, `INSTITUCION_CODIGO`, `INSTITUCION_DIRECCION`, `INSTITUCION_TELEFONO` e `INSTITUCION_CORREO`. El nombre tiene como valor predeterminado el nombre configurado para el plantel; los demás datos deben completarse con los valores oficiales en `.env`/el entorno de despliegue. Docker Compose de producción reenvía esas variables al backend. No se inventaron los datos del director, RIF ni dirección.
+
+Actualmente los PDFs usan `app.institucion.nombre`; los demás valores quedan disponibles como configuración para plantillas institucionales. Los escudos/logos existentes están en `src/main/resources/constancias/`.
+
+### Filtros de listados de personal
+
+- `GET /api/empleados` admite `cargoId` y `turnoId`, además de paginación. `turnoId` filtra asignaciones activas y vigentes para la fecha actual.
+- `GET /api/empleados/carnets` admite también `turnoId` junto con sus filtros existentes `q`, `departamentoId`, `cargoId` y `estadoQr`.
+- `GET /api/asistencias/hoy` y `GET /api/asistencias/historico` aceptan `cargoId` y `turnoId`; el histórico mantiene también sus filtros de empleado y departamento.
+- `GET /api/asistencias/ausencias` admite `cargoId` además de los filtros existentes de empleado, departamento y turno.
 
 ### Gestión de años y períodos de matrícula
 
@@ -183,7 +198,7 @@ Cuando el año de origen está cerrado (desactivado al activar el siguiente, o y
 - Las continuidades se crean como `preinscrito`, tipo de ingreso `regular`, ligadas a su matrícula de origen y ocupan cupo. Se pueden corregir de grado/sección con `PUT /api/matriculas/{id}/preinscripcion` antes de formalizar.
 - Si no existe el grado siguiente o no hay sección/cupo, no se excede la capacidad: el estudiante se devuelve en `asignacionPendiente`. Al corregir la configuración, se puede volver a ejecutar la operación; no duplica continuidades ya creadas.
 - Los estudiantes del último grado activo quedan con una resolución pendiente; estar en ese grado no los marca automáticamente como egresados. La lista está en `GET /api/matriculas/gestion/anios/{anioOrigen}/egresos-pendientes`. Administración o Dirección puede resolver cada caso como `egresar` o `repetir` mediante `PATCH /api/matriculas/gestion/egresos/{egresoId}/resolver` con `{ "decision": "egresar" }` o `{ "decision": "repetir", "seccionId": 123 }`. Repetir crea una preinscripción en el año siguiente y el mismo grado; si no se indica sección, el backend elige una sección activa con cupo. Ambas decisiones guardan quién resolvió y cuándo. El sistema no genera títulos.
-- Aplicar una sola vez en producción `backend/demo/src/main/resources/db/manual/V20261024__continuidades_y_egresos_pendientes.sql` antes de desplegar, porque producción usa `ddl-auto=validate`.
+- Para una base donde aún no existen las continuidades ni los egresos pendientes, aplicar una sola vez `backend/demo/src/main/resources/db/manual/V20261024__continuidades_y_egresos_pendientes.sql`. Si ya se aplicó la versión anterior de ese DDL que creó `egresos_pendientes` con las columnas `confirmado`, `confirmado_por` y `confirmado_en`, no volver a ejecutar el `CREATE TABLE`: aplicar una sola vez `backend/demo/src/main/resources/db/manual/V20261024_1__resolver_egresos_pendientes.sql`, que conserva las confirmaciones existentes y actualiza la tabla. Hacer respaldo antes; producción usa `ddl-auto=validate`.
 
 ### Requisitos previos
 - Docker y Docker Compose instalados.

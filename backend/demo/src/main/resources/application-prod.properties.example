@@ -5,6 +5,13 @@ server.port=${PORT:8080}
 spring.servlet.multipart.max-file-size=2MB
 spring.servlet.multipart.max-request-size=2MB
 app.uploads.dir=${UPLOADS_DIR:/app/uploads}
+app.institucion.nombre=${INSTITUCION_NOMBRE:C.E.N. Lcda. Roraima Asansa Escandela}
+app.institucion.director=${INSTITUCION_DIRECTOR:}
+app.institucion.rif=${INSTITUCION_RIF:}
+app.institucion.codigo=${INSTITUCION_CODIGO:}
+app.institucion.direccion=${INSTITUCION_DIRECCION:}
+app.institucion.telefono=${INSTITUCION_TELEFONO:}
+app.institucion.correo=${INSTITUCION_CORREO:}
 
 # Base de Datos MySQL (Obligatorio proveer credenciales reales vía variables de entorno)
 spring.datasource.url=jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${MYSQL_DATABASE:tesis}?useSSL=true&serverTimezone=UTC

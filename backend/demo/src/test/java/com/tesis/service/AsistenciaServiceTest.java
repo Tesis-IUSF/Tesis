@@ -5,6 +5,7 @@ import com.tesis.dto.AsistenciaDTO.AsistenciaHoyDTO;
 import com.tesis.dto.AsistenciaDTO.AusenciaDTO;
 import com.tesis.entity.AsignacionTurno;
 import com.tesis.entity.Asistencia;
+import com.tesis.entity.Cargo;
 import com.tesis.entity.CredencialQr;
 import com.tesis.entity.Empleado;
 import com.tesis.entity.Turno;
@@ -214,7 +215,8 @@ class AsistenciaServiceTest {
                 Asistencia asistencia = asistenciaExistente(empleado, turnoVigente());
                 asistencia.setHoraEntrada(LocalTime.now(clock).minusHours(2).minusMinutes(15));
                 asistencia.setHoraSalida(null);
-                when(asistenciaRepository.findAllByFechaWithPersonalOrderByHoraEntrada(LocalDate.now()))
+                when(asistenciaRepository.findAllByFechaWithPersonalOrderByHoraEntrada(
+                        LocalDate.now(), null, null))
                                 .thenReturn(List.of(asistencia));
 
                 List<AsistenciaHoyDTO> respuesta = asistenciaService.listarHoy();
@@ -233,7 +235,8 @@ class AsistenciaServiceTest {
                 Asistencia asistencia = asistenciaExistente(empleado, turnoVigente());
                 asistencia.setHoraEntrada(LocalTime.of(8, 0));
                 asistencia.setHoraSalida(LocalTime.of(16, 30));
-                when(asistenciaRepository.findAllByFechaWithPersonalOrderByHoraEntrada(LocalDate.now()))
+                when(asistenciaRepository.findAllByFechaWithPersonalOrderByHoraEntrada(
+                        LocalDate.now(), null, null))
                                 .thenReturn(List.of(asistencia));
 
                 AsistenciaHoyDTO respuesta = asistenciaService.listarHoy().getFirst();
@@ -242,18 +245,58 @@ class AsistenciaServiceTest {
                 assertEquals(510, respuesta.getMinutosTrabajados());
         }
 
+        @Test
+        void listarHoyReenviaFiltrosDeCargoYTurno() {
+                when(asistenciaRepository.findAllByFechaWithPersonalOrderByHoraEntrada(
+                        LocalDate.now(clock), 8, 2)).thenReturn(List.of());
+
+                assertEquals(List.of(), asistenciaService.listarHoy(8, 2));
+
+                verify(asistenciaRepository).findAllByFechaWithPersonalOrderByHoraEntrada(
+                        LocalDate.now(clock), 8, 2);
+        }
+
             @Test
             void historicoAplicaFiltrosYNormalizaEstado() {
                 when(asistenciaRepository.buscarHistorico(LocalDate.of(2026, 9, 1),
-                        LocalDate.of(2026, 9, 29), 7, 3, 2, "tardanza"))
+                        LocalDate.of(2026, 9, 29), 7, 3, null, 2, "tardanza"))
                         .thenReturn(List.of());
 
                 List<AsistenciaResponseDTO> respuesta = asistenciaService.buscarHistorico(
-                        LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 29), 7, 3, 2, " TARDANZA ");
+                        LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 29),
+                        7, 3, null, 2, " TARDANZA ");
 
                 assertEquals(List.of(), respuesta);
                 verify(asistenciaRepository).buscarHistorico(LocalDate.of(2026, 9, 1),
-                        LocalDate.of(2026, 9, 29), 7, 3, 2, "tardanza");
+                        LocalDate.of(2026, 9, 29), 7, 3, null, 2, "tardanza");
+            }
+
+            @Test
+            void ausenciasAceptaFiltroPorCargo() {
+                LocalDate hoy = LocalDate.now();
+                Empleado empleadoCoincidente = empleadoActivo();
+                Cargo cargoCoincidente = new Cargo();
+                cargoCoincidente.setId(8);
+                empleadoCoincidente.setCargo(cargoCoincidente);
+                Empleado empleadoOtroCargo = empleadoActivo();
+                empleadoOtroCargo.setId(9);
+                Cargo otroCargo = new Cargo();
+                otroCargo.setId(9);
+                empleadoOtroCargo.setCargo(otroCargo);
+
+                AsignacionTurno asignacionCoincidente = asignacion(turnoVigente());
+                asignacionCoincidente.setPersonal(empleadoCoincidente);
+                AsignacionTurno asignacionOtroCargo = asignacion(turnoVigente());
+                asignacionOtroCargo.setPersonal(empleadoOtroCargo);
+                when(asignacionTurnoRepository.buscarAsignacionesActivasEnRango(hoy, hoy))
+                        .thenReturn(List.of(asignacionCoincidente, asignacionOtroCargo));
+                when(asistenciaRepository.findAllByFechaBetween(hoy, hoy)).thenReturn(List.of());
+
+                List<AusenciaDTO> respuesta = asistenciaService.listarAusencias(
+                        hoy, hoy, null, null, 8, null);
+
+                assertEquals(1, respuesta.size());
+                assertEquals(7, respuesta.getFirst().getEmpleadoId());
             }
 
             @Test
