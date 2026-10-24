@@ -33,9 +33,10 @@ public class EmpleadoController {
     public PaginacionDTO.Respuesta<EmpleadoResponseDTO> listar(
             @RequestParam(required = false) Integer cargoId,
             @RequestParam(required = false) Integer turnoId,
+            @RequestParam(required = false) Boolean activo,
             @ModelAttribute PaginacionDTO.Solicitud paginacion) {
         Pageable pageable = paginacion.toPageable();
-        return PaginacionDTO.Respuesta.desde(empleadoService.listar(cargoId, turnoId, pageable));
+        return PaginacionDTO.Respuesta.desde(empleadoService.listar(cargoId, turnoId, activo, pageable));
     }
 
     @GetMapping("/{id}")

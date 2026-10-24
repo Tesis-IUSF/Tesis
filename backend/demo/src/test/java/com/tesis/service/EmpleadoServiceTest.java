@@ -32,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
@@ -71,7 +72,7 @@ class EmpleadoServiceTest {
     void listarDevuelveEmpleadosConDatosDeRelaciones() {
         Empleado empleado = empleadoExistente();
         when(empleadoRepository.buscarConFiltros(
-                isNull(), isNull(), any(LocalDate.class), any(PageRequest.class)))
+                isNull(), isNull(), isNull(), any(LocalDate.class), any(PageRequest.class)))
             .thenReturn(new PageImpl<>(List.of(empleado), PageRequest.of(0, 25), 1));
 
         List<EmpleadoResponseDTO> respuesta = empleadoService.listar(PageRequest.of(0, 25)).getContent();
@@ -95,7 +96,7 @@ class EmpleadoServiceTest {
         asignacion.setPersonal(empleado);
         asignacion.setTurno(turno);
         when(empleadoRepository.buscarConFiltros(
-                isNull(), isNull(), any(LocalDate.class), any(PageRequest.class)))
+                isNull(), isNull(), isNull(), any(LocalDate.class), any(PageRequest.class)))
                 .thenReturn(new PageImpl<>(List.of(empleado), PageRequest.of(0, 25), 1));
         when(asignacionTurnoRepository.buscarVigentesPorEmpleados(List.of(3), LocalDate.now()))
                 .thenReturn(List.of(asignacion));
@@ -104,6 +105,18 @@ class EmpleadoServiceTest {
 
         assertEquals(4, respuesta.getTurnoId());
         assertEquals("Matutino", respuesta.getTurnoNombre());
+    }
+
+    @Test
+    void listarPermiteSolicitarEmpleadosInactivos() {
+        when(empleadoRepository.buscarConFiltros(
+                isNull(), isNull(), eq(false), any(LocalDate.class), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 25), 0));
+
+        empleadoService.listar(null, null, false, PageRequest.of(0, 25));
+
+        verify(empleadoRepository).buscarConFiltros(
+                isNull(), isNull(), eq(false), any(LocalDate.class), any(PageRequest.class));
     }
 
     @Test
