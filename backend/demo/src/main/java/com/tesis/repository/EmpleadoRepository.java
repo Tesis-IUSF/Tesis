@@ -27,4 +27,8 @@ public interface EmpleadoRepository extends JpaRepository<Empleado, Integer> {
     boolean existsByUsuario_Id(Integer usuarioId);
 
     boolean existsByUsuario_IdAndIdNot(Integer usuarioId, Integer id);
+
+    boolean existsByCargo_Id(Integer cargoId);
+
+    boolean existsByDepartamento_Id(Integer departamentoId);
 }

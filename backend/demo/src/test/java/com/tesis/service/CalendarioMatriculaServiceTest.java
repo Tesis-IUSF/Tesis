@@ -14,8 +14,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -96,6 +98,18 @@ class CalendarioMatriculaServiceTest {
                 () -> service.validarGestionInscripcion(ANIO, "preinscrito"));
 
         assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
+    }
+
+    @Test
+    void devuelveCalendarioVacioConMensajeCuandoNoHayAnioActivo() {
+        when(anioRepository.findFirstByActivoTrue()).thenReturn(Optional.empty());
+
+        var calendario = service.obtenerCalendario(null);
+
+        assertNull(calendario.getAnioActivo());
+        assertNull(calendario.getAnioConsultado());
+        assertEquals(List.of(), calendario.getPeriodos());
+        assertEquals("No hay un año escolar activo configurado", calendario.getMensaje());
     }
 
     private PeriodoMatricula periodo(TipoPeriodoMatricula tipo,

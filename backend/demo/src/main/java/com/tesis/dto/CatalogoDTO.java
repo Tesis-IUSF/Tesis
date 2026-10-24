@@ -1,6 +1,7 @@
 package com.tesis.dto;
 
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -135,6 +136,14 @@ public class CatalogoDTO {
     public static class GradoRequestDTO {
         private Integer nivelEducativoId;
         private Short numeroGrado;
+        @NotNull
+        @Min(0)
+        @Max(120)
+        private Short edadMinima;
+        @NotNull
+        @Min(0)
+        @Max(120)
+        private Short edadMaxima;
         private String nombreEspecial;
         private Boolean activo;
     }
@@ -148,6 +157,8 @@ public class CatalogoDTO {
         private Integer nivelEducativoId;
         private String nivelEducativoNombre;
         private Short numeroGrado;
+        private Short edadMinima;
+        private Short edadMaxima;
         private String nombreEspecial;
         private Boolean activo;
     }

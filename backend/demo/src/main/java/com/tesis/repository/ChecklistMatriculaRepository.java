@@ -21,4 +21,6 @@ public interface ChecklistMatriculaRepository extends JpaRepository<ChecklistMat
 
     Optional<ChecklistMatricula> findByMatricula_IdAndRequisito_Id(
             Integer matriculaId, Integer requisitoId);
+
+    boolean existsByRequisito_Id(Integer requisitoId);
 }
