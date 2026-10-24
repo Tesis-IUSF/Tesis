@@ -89,6 +89,38 @@ El sistema adapta sus funciones dependiendo del rol del usuario que inicie sesi�
    ```bash
    git clone [https://github.com/tu-usuario/tu-repo.git](https://github.com/tu-usuario/tu-repo.git)```
 
+2. Crea la configuración local desde la plantilla y ajusta sus valores:
+   ```bash
+   cp .env.example .env
+   ```
+   El contrato único para la base de datos es `DB_NAME`, `DB_USER`, `DB_PASS` y `DB_ROOT_PASSWORD`. En desarrollo, `DB_PORT` es el puerto publicado en el host; el backend dentro de Compose se conecta a `db:3306`. No uses `MYSQL_DATABASE` ni `DB_PASSWORD` en `.env`: `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD` y `MYSQL_ROOT_PASSWORD` son variables internas que Compose asigna al contenedor oficial de MySQL.
+
+   Cambia las contraseñas de ejemplo antes de usar el entorno. Para producción usa credenciales fuertes y valores reales para `DOCKER_REGISTRY`, `IMAGE_TAG` y `VITE_API_URL`. Los contenedores MySQL solo aplican estas credenciales al inicializar un volumen vacío; si ya existe un volumen de base de datos, cambiar `.env` no cambia los usuarios ni contraseñas almacenados en MySQL.
+
+### Primer administrador y datos iniciales
+
+Al iniciar, el backend crea de forma idempotente los roles base (`ADMINISTRADOR`, `DIRECTOR`, `ADMINISTRATIVO` y `ESCANER`). No crea catálogos escolares ni datos del plantel, porque dependen de cada institución.
+
+Antes de iniciar el backend, configura `INITIAL_ADMIN_SETUP_TOKEN` en `.env` con un secreto aleatorio de al menos 32 caracteres. Puedes generarlo con:
+
+```bash
+openssl rand -hex 32
+```
+
+Cuando la base de datos esté disponible, consulta si todavía no hay usuarios y crea la primera cuenta:
+
+```bash
+export INITIAL_ADMIN_SETUP_TOKEN='<el mismo valor guardado en .env>'
+
+curl http://localhost:8080/api/setup/status
+
+curl -X POST http://localhost:8080/api/setup/initial-admin \
+  -H "Content-Type: application/json" \
+  -H "X-Initial-Admin-Token: $INITIAL_ADMIN_SETUP_TOKEN" \
+  -d '{"nombreUsuario":"admin","email":"admin@ejemplo.com","password":"cambia-esta-clave-segura"}'
+```
+
+La contraseña debe tener entre 12 y 72 caracteres. El endpoint solo funciona mientras no exista ningún usuario, devuelve `409` al completarse la configuración y requiere el token secreto; conserva ese token fuera del repositorio y elimínalo de `.env` después de crear el administrador. Luego inicia sesión en `/api/auth/login`. El antiguo registro público `/api/auth/registrar` está deshabilitado.
 
 Instrucciones para desplegar en Producción:
 

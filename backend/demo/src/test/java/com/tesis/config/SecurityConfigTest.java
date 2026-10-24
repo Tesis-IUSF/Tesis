@@ -108,6 +108,37 @@ class SecurityConfigTest {
     }
 
     @Test
+    void restringeAdministracionDeUsuariosAAdminYDirector() throws Exception {
+        for (String rol : new String[]{"ESCANER", "ADMINISTRATIVO"}) {
+            mockMvc.perform(get("/api/usuarios")
+                            .with(user("usuario").roles(rol)))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(post("/api/usuarios")
+                            .with(user("usuario").roles(rol))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(put("/api/usuarios/1")
+                            .with(user("usuario").roles(rol))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(delete("/api/usuarios/1")
+                            .with(user("usuario").roles(rol)))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Test
+    void permiteAdministracionDeUsuariosAAdminYDirector() throws Exception {
+        for (String rol : new String[]{"ADMINISTRADOR", "DIRECTOR"}) {
+            mockMvc.perform(get("/api/usuarios")
+                            .with(user("usuario").roles(rol)))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Test
     void limitaGestionDeAnioEscolarYPeriodosAAdminYDirector() throws Exception {
         mockMvc.perform(get("/api/matriculas/gestion/anios")
                         .with(user("administrativo").roles("ADMINISTRATIVO")))

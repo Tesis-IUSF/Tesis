@@ -10,7 +10,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASS}
     volumes:
       - db_prod_data:/var/lib/mysql
     networks:
@@ -35,10 +35,11 @@ services:
       TZ: America/Caracas
       DB_HOST: db
       DB_PORT: 3306
-      MYSQL_DATABASE: ${DB_NAME}
+      DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
       JWT_SECRET: ${JWT_SECRET}
+      APP_SETUP_INITIAL_ADMIN_TOKEN: ${INITIAL_ADMIN_SETUP_TOKEN:-}
       UPLOADS_DIR: /app/uploads
       INSTITUCION_NOMBRE: ${INSTITUCION_NOMBRE:-C.E.N. Lcda. Roraima Asansa Escandela}
       INSTITUCION_DIRECTOR: ${INSTITUCION_DIRECTOR:-}

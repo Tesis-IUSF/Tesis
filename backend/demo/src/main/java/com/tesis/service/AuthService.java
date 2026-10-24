@@ -129,48 +129,6 @@ public class AuthService {
     }
 
     /**
-     * Registra un nuevo usuario
-     */
-    @Transactional
-    public AuthDTO.LoginResponse registrar(AuthDTO.RegisterRequest registerRequest) {
-        log.info("Intento de registro para el email: {}", registerRequest.getEmail());
-
-        // Validar que no exista un usuario con el mismo email
-        if (usuarioRepository.existsByEmail(registerRequest.getEmail())) {
-            throw new AuthenticationException("El email ya está registrado");
-        }
-
-        // Validar que no exista un usuario con el mismo nombre de usuario
-        if (usuarioRepository.existsByNombreUsuario(registerRequest.getNombreUsuario())) {
-            throw new AuthenticationException("El nombre de usuario ya está en uso");
-        }
-
-        // Crear el nuevo usuario
-        Usuario nuevoUsuario = Usuario.builder()
-                .nombreUsuario(registerRequest.getNombreUsuario())
-                .email(registerRequest.getEmail())
-                .passwordHash(passwordEncoder.encode(registerRequest.getPassword()))
-                .activo(true)
-                .emailVerificado(false)
-                .build();
-
-        Usuario usuarioGuardado = usuarioRepository.save(nuevoUsuario);
-
-        // Generar token
-        String token = generarToken(usuarioGuardado);
-
-        log.info("Registro exitoso para el usuario: {}", registerRequest.getEmail());
-
-        return AuthDTO.LoginResponse.builder()
-                .token(token)
-                .usuarioId(usuarioGuardado.getId())
-                .nombreUsuario(usuarioGuardado.getNombreUsuario())
-                .email(usuarioGuardado.getEmail())
-                .activo(usuarioGuardado.getActivo())
-                .build();
-    }
-
-    /**
      * Obtiene el usuario actual desde el token
      */
     public UsuarioDTO.UsuarioResponseDTO obtenerUsuarioDelToken(String token) {
