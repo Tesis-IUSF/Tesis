@@ -108,6 +108,17 @@ class SecurityConfigTest {
     }
 
     @Test
+    void limitaGestionDeAnioEscolarYPeriodosAAdminYDirector() throws Exception {
+        mockMvc.perform(get("/api/matriculas/gestion/anios")
+                        .with(user("administrativo").roles("ADMINISTRATIVO")))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/matriculas/gestion/anios")
+                        .with(user("director").roles("DIRECTOR")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void rechazaCargaDeFotosParaRolEscaner() throws Exception {
         mockMvc.perform(multipart("/api/fotos")
                         .file(new MockMultipartFile("archivo", "foto.png", "image/png", new byte[]{1}))

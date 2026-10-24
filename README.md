@@ -141,6 +141,20 @@ ALTER TABLE representantes
     ADD COLUMN foto_url VARCHAR(500) NULL;
 ```
 
+### Gestión de años y períodos de matrícula
+
+La administración del calendario está disponible bajo `/api/matriculas/gestion/**` y requiere rol `ADMINISTRADOR` o `DIRECTOR`.
+
+- `GET /api/matriculas/gestion/anios`: lista años y sus períodos.
+- `POST /api/matriculas/gestion/anios`: crea un año en preparación con `anio`, `nombre`, `fechaInicio` y `fechaFin`. Si hay un año anterior con períodos activos, copia esas ventanas desplazando las fechas la diferencia de años. Si no hay calendario previo, los períodos se agregan manualmente.
+- `GET` y `PUT /api/matriculas/gestion/anios/{anio}`: consulta y edita nombre y fechas; el número del año es inmutable.
+- `POST /api/matriculas/gestion/anios/{anio}/periodos`: agrega un período con `tipo`, `fechaInicio` y `fechaFin`.
+- `PUT /api/matriculas/gestion/periodos/{id}`: corrige fechas o tipo. `PATCH .../{id}/activar` y `PATCH .../{id}/desactivar` habilitan o conservan una ventana como histórica.
+- `POST /api/matriculas/gestion/anios/{anio}/activar`: activa el año si tiene al menos un período activo de preinscripción, inscripción y extemporánea. Al cambiar de año activo, cierra las ventanas de preinscripción e inscripción del anterior; conserva su extemporánea.
+- `DELETE /api/matriculas/gestion/periodos/{id}` elimina permanentemente solo períodos no usados de un año futuro en preparación. En los demás casos hay que desactivarlos.
+
+Se permiten solapamientos entre tipos diferentes, pero no entre ventanas del mismo tipo dentro de un año. La preinscripción nueva solo admite el año activo; los trámites anteriores en estado `en_proceso` pueden continuar durante una ventana extemporánea. El endpoint de calendario público-interno informa el año y las ventanas activas.
+
 
 ### Requisitos previos
 - Docker y Docker Compose instalados.

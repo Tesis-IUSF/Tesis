@@ -12,4 +12,10 @@ public interface PeriodoMatriculaRepository extends JpaRepository<PeriodoMatricu
 
     List<PeriodoMatricula> findByAnioEscolarAndTipoAndActivoTrue(Short anioEscolar,
                                                                  TipoPeriodoMatricula tipo);
+
+    List<PeriodoMatricula> findByAnioEscolarOrderByFechaInicioAsc(Short anioEscolar);
+
+    List<PeriodoMatricula> findByAnioEscolarAndTipo(Short anioEscolar, TipoPeriodoMatricula tipo);
+
+    List<PeriodoMatricula> findByAnioEscolarAndActivoTrue(Short anioEscolar);
 }
