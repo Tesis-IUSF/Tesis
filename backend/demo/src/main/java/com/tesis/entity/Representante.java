@@ -52,7 +52,7 @@ public class Representante {
     @Column(name = "ocupacion", length = 100)
     private String ocupacion;
 
-        @Column(name = "foto_url", length = 500)
+    @Column(name = "foto_url", length = 500)
     private String fotoUrl;
 
     @Column(name = "activo", nullable = false)

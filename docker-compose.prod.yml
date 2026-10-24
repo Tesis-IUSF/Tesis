@@ -39,6 +39,9 @@ services:
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
       JWT_SECRET: ${JWT_SECRET}
+      UPLOADS_DIR: /app/uploads
+    volumes:
+      - uploads_prod_data:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -81,3 +84,4 @@ networks:
 
 volumes:
   db_prod_data:
+  uploads_prod_data:

@@ -2,10 +2,13 @@ package com.tesis.service;
 
 import com.tesis.entity.Departamento;
 import com.tesis.entity.NivelEducativo;
+import com.tesis.entity.Grado;
 import com.tesis.entity.RequisitoMatricula;
 import com.tesis.entity.Turno;
 import com.tesis.repository.CargoRepository;
+import com.tesis.repository.ChecklistMatriculaRepository;
 import com.tesis.repository.DepartamentoRepository;
+import com.tesis.repository.EmpleadoRepository;
 import com.tesis.repository.GradoRepository;
 import com.tesis.repository.NivelEducativoRepository;
 import com.tesis.repository.RequisitoMatriculaRepository;
@@ -27,6 +30,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,6 +41,10 @@ class CatalogoServiceTest {
     private DepartamentoRepository departamentoRepository;
     @Mock
     private CargoRepository cargoRepository;
+    @Mock
+    private ChecklistMatriculaRepository checklistMatriculaRepository;
+    @Mock
+    private EmpleadoRepository empleadoRepository;
     @Mock
     private TurnoRepository turnoRepository;
     @Mock
@@ -56,12 +65,14 @@ class CatalogoServiceTest {
         catalogoService = new CatalogoService(
                 departamentoRepository,
                 cargoRepository,
+                empleadoRepository,
                 turnoRepository,
                 rolesRepository,
                 nivelEducativoRepository,
                 gradoRepository,
                 seccionRepository,
-                requisitoMatriculaRepository
+                requisitoMatriculaRepository,
+                checklistMatriculaRepository
         );
     }
 
@@ -189,6 +200,92 @@ class CatalogoServiceTest {
         org.springframework.web.server.ResponseStatusException error = assertThrows(
                 org.springframework.web.server.ResponseStatusException.class,
                 () -> catalogoService.crearRequisitoMatricula(invalido));
+
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, error.getStatusCode());
+    }
+
+    @Test
+    void impideEliminarRequisitoYaUtilizadoYDevuelve409() {
+        when(requisitoMatriculaRepository.existsById(17)).thenReturn(true);
+        when(checklistMatriculaRepository.existsByRequisito_Id(17)).thenReturn(true);
+
+        org.springframework.web.server.ResponseStatusException error = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> catalogoService.eliminarRequisitoMatricula(17));
+
+        assertEquals(org.springframework.http.HttpStatus.CONFLICT, error.getStatusCode());
+        assertEquals("El requisito ya se usó; desactívalo", error.getReason());
+        verify(requisitoMatriculaRepository, never()).deleteById(17);
+    }
+
+    @Test
+    void eliminaRequisitoQueAunNoSeHaUtilizado() {
+        when(requisitoMatriculaRepository.existsById(18)).thenReturn(true);
+        when(checklistMatriculaRepository.existsByRequisito_Id(18)).thenReturn(false);
+
+        catalogoService.eliminarRequisitoMatricula(18);
+
+        verify(requisitoMatriculaRepository).deleteById(18);
+    }
+
+    @Test
+    void impideEliminarDepartamentoConEmpleadosOCargosAsociados() {
+        when(departamentoRepository.existsById(21)).thenReturn(true);
+        when(empleadoRepository.existsByDepartamento_Id(21)).thenReturn(false);
+        when(cargoRepository.existsByDepartamento_Id(21)).thenReturn(true);
+
+        org.springframework.web.server.ResponseStatusException error = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> catalogoService.eliminarDepartamento(21));
+
+        assertEquals(org.springframework.http.HttpStatus.CONFLICT, error.getStatusCode());
+        assertEquals("No se puede eliminar el departamento porque tiene cargos o empleados asociados",
+                error.getReason());
+        verify(departamentoRepository, never()).deleteById(21);
+    }
+
+    @Test
+    void impideEliminarCargoConEmpleadosAsociados() {
+        when(cargoRepository.existsById(31)).thenReturn(true);
+        when(empleadoRepository.existsByCargo_Id(31)).thenReturn(true);
+
+        org.springframework.web.server.ResponseStatusException error = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> catalogoService.eliminarCargo(31));
+
+        assertEquals(org.springframework.http.HttpStatus.CONFLICT, error.getStatusCode());
+        assertEquals("No se puede eliminar el cargo porque tiene empleados asociados", error.getReason());
+        verify(cargoRepository, never()).deleteById(31);
+    }
+
+    @Test
+    void eliminaDepartamentoOCargoSinDependencias() {
+        when(departamentoRepository.existsById(22)).thenReturn(true);
+        when(cargoRepository.existsById(32)).thenReturn(true);
+        when(empleadoRepository.existsByDepartamento_Id(22)).thenReturn(false);
+        when(cargoRepository.existsByDepartamento_Id(22)).thenReturn(false);
+        when(empleadoRepository.existsByCargo_Id(32)).thenReturn(false);
+
+        catalogoService.eliminarDepartamento(22);
+        catalogoService.eliminarCargo(32);
+
+        verify(departamentoRepository).deleteById(22);
+        verify(cargoRepository).deleteById(32);
+    }
+
+    @Test
+    void rechazaRangoDeEdadInvalidoAlCrearGrado() {
+        Grado grado = new Grado();
+        NivelEducativo nivel = new NivelEducativo();
+        nivel.setId(3);
+        grado.setNivelEducativo(nivel);
+        grado.setNumeroGrado((short) 1);
+        grado.setEdadMinima((short) 9);
+        grado.setEdadMaxima((short) 8);
+
+        org.springframework.web.server.ResponseStatusException error = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> catalogoService.crearGrado(grado));
 
         assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, error.getStatusCode());
     }

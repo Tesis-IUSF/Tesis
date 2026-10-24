@@ -30,6 +30,8 @@ public class SecurityConfig {
             .requestMatchers("/api/blog/admin/**")
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR", "ADMINISTRATIVO")
             .requestMatchers(HttpMethod.POST, "/api/asistencias/qr").hasRole("ESCANER")
+            .requestMatchers(HttpMethod.POST, "/api/fotos")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR", "ADMINISTRATIVO")
             .requestMatchers("/api/director/estadisticas", "/api/director/estadisticas/**")
                 .hasRole("DIRECTOR")
             .requestMatchers(HttpMethod.POST, "/api/asistencias/empleado/*/salida")
@@ -42,6 +44,15 @@ public class SecurityConfig {
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR", "ADMINISTRATIVO")
             .requestMatchers(HttpMethod.DELETE, "/api/catalogos/turnos/*")
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR", "ADMINISTRATIVO")
+            .requestMatchers(HttpMethod.POST, "/api/catalogos/departamentos",
+                    "/api/catalogos/cargos", "/api/catalogos/requisitos-matricula")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
+            .requestMatchers(HttpMethod.PUT, "/api/catalogos/departamentos/*",
+                    "/api/catalogos/cargos/*", "/api/catalogos/requisitos-matricula/*")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
+            .requestMatchers(HttpMethod.DELETE, "/api/catalogos/departamentos/*",
+                    "/api/catalogos/cargos/*", "/api/catalogos/requisitos-matricula/*")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
             .requestMatchers(HttpMethod.POST, "/api/empleados/*/carnet")
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
             .requestMatchers(HttpMethod.GET, "/api/empleados/carnets")

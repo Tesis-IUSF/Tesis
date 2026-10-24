@@ -68,6 +68,9 @@ services:
       DB_USER: ${DB_USER:-root}
       DB_PASS: ${DB_PASS:-root}
       JWT_SECRET: ${JWT_SECRET}
+      UPLOADS_DIR: /app/uploads
+    volumes:
+      - uploads_dev_data:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -91,3 +94,4 @@ services:
 
 volumes:
   db_data:
+  uploads_dev_data:

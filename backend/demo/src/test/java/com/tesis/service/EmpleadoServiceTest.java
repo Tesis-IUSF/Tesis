@@ -147,6 +147,7 @@ class EmpleadoServiceTest {
         assertEquals(10, respuesta.getCargoId());
         assertEquals(20, respuesta.getDepartamentoId());
         assertEquals(30, respuesta.getUsuarioId());
+        assertEquals("/api/fotos/empleado.png", respuesta.getFotoUrl());
         assertTrue(respuesta.getActivo());
         verify(empleadoRepository).save(any(Empleado.class));
     }
@@ -240,10 +241,12 @@ class EmpleadoServiceTest {
     }
 
     private EmpleadoRequestDTO solicitudEmpleado(Integer cargoId, Integer departamentoId, Integer usuarioId) {
-        return new EmpleadoRequestDTO(
+        EmpleadoRequestDTO solicitud = new EmpleadoRequestDTO(
                 "Ana", "Pérez", "12345678", "ana@example.com", "555-0100",
-                LocalDate.of(1990, 5, 12), "F", cargoId, departamentoId,
+                LocalDate.of(1990, 5, 12), "F", null, cargoId, departamentoId,
                 LocalDate.of(2020, 1, 15), null, usuarioId, null);
+        solicitud.setFotoUrl("/api/fotos/empleado.png");
+        return solicitud;
     }
 
     private Empleado empleadoExistente() {
@@ -252,6 +255,7 @@ class EmpleadoServiceTest {
         empleado.setNombre("Ana");
         empleado.setApellido("Pérez");
         empleado.setCedula("12345678");
+        empleado.setFotoUrl("/api/fotos/empleado.png");
         empleado.setActivo(true);
         empleado.setCargo(cargo(10, "Docente"));
         empleado.setDepartamento(departamento(20, "Académico"));

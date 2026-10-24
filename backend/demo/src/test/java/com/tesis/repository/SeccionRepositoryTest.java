@@ -37,6 +37,8 @@ class SeccionRepositoryTest {
         Grado grado = new Grado();
         grado.setNivelEducativo(nivel);
         grado.setNumeroGrado((short) 1);
+        grado.setEdadMinima((short) 6);
+        grado.setEdadMaxima((short) 7);
         entityManager.persist(grado);
 
         Seccion seccion = new Seccion();
@@ -63,6 +65,8 @@ class SeccionRepositoryTest {
         assertEquals((short) 7, seccion.getCapacidadMaxima());
         assertEquals(3L, ocupadas);
         assertEquals(4L, seccionRepository.calcularCuposDisponibles(seccion.getId()).orElseThrow());
+        assertEquals(3L, seccionRepository.contarMatriculasActivasPorSecciones(
+                java.util.List.of(seccion.getId())).getFirst()[1]);
     }
 
     private void persistirMatricula(Seccion seccion, String cedula, String estado) {

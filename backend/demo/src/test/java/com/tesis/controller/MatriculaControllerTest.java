@@ -92,6 +92,18 @@ class MatriculaControllerTest {
         }
 
     @Test
+    void respondeConCalendarioVacioYMensajeCuandoNoHayAnioActivo() throws Exception {
+        mockMvc.perform(get("/api/matriculas/calendario")
+                        .with(user("admin").roles("ADMINISTRADOR")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.anioActivo").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.anioConsultado").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.periodos").isEmpty())
+                .andExpect(jsonPath("$.mensaje")
+                        .value("No hay un año escolar activo configurado"));
+    }
+
+    @Test
     void rechazaAccesoDeUsuarioSinRolAdministrativo() throws Exception {
         mockMvc.perform(get("/api/matriculas/preinscripciones")
                         .with(user("estudiante").roles("ESTUDIANTE")))

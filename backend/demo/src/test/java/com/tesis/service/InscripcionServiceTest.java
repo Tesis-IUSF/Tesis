@@ -181,6 +181,8 @@ class InscripcionServiceTest {
         Grado grado = new Grado();
         grado.setNivelEducativo(nivel);
         grado.setNumeroGrado((short) 1);
+        grado.setEdadMinima((short) 6);
+        grado.setEdadMaxima((short) 7);
         entityManager.persist(grado);
 
         Seccion seccion = new Seccion();

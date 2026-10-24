@@ -2,6 +2,9 @@
 # PERFIL DE DESARROLLO (MySQL Local + Lectura de .env)
 # ============================================================
 server.port=8080
+spring.servlet.multipart.max-file-size=2MB
+spring.servlet.multipart.max-request-size=2MB
+app.uploads.dir=${UPLOADS_DIR:./uploads}
 
 # Variables de Base de Datos (Toma valores del .env o usa fallbacks)
 db.host=${DB_HOST:localhost}

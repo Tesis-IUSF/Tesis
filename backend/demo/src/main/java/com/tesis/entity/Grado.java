@@ -40,6 +40,12 @@ public class Grado {
     @Column(name = "numero_grado", nullable = false)
     private Short numeroGrado;
 
+    @Column(name = "edad_minima", nullable = false)
+    private Short edadMinima;
+
+    @Column(name = "edad_maxima", nullable = false)
+    private Short edadMaxima;
+
     @Column(name = "nombre_especial", length = 100)
     private String nombreEspecial;
 

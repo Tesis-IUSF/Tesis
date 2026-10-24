@@ -20,6 +20,13 @@ public interface SeccionRepository extends JpaRepository<Seccion, Integer> {
 
     List<Seccion> findByGrado_IdAndAnioEscolar(Integer gradoId, Short anioEscolar);
 
+    @Query("select m.seccion.id, count(m) from Matricula m "
+            + "where m.seccion.id in :seccionIds "
+            + "and m.anioEscolar = m.seccion.anioEscolar "
+            + "and m.estadoMatricula in ('preinscrito', 'en_proceso', 'completada') "
+            + "group by m.seccion.id")
+    List<Object[]> contarMatriculasActivasPorSecciones(@Param("seccionIds") List<Integer> seccionIds);
+
         @Lock(LockModeType.PESSIMISTIC_WRITE)
         @Query("select s from Seccion s where s.id = :seccionId")
         Optional<Seccion> findByIdForUpdate(@Param("seccionId") Integer seccionId);

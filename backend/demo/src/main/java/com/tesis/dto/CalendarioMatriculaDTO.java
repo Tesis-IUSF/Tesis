@@ -1,6 +1,7 @@
 package com.tesis.dto;
 
 import com.tesis.entity.TipoPeriodoMatricula;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,9 +14,13 @@ import java.util.List;
 @AllArgsConstructor
 public class CalendarioMatriculaDTO {
 
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     private AnioEscolarDTO anioActivo;
+
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     private AnioEscolarDTO anioConsultado;
     private List<PeriodoDTO> periodos;
+    private String mensaje;
 
     @Data
     @NoArgsConstructor
