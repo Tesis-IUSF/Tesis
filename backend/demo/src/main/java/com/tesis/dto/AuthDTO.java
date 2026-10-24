@@ -34,17 +34,6 @@ public class AuthDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
-    public static class RegisterRequest {
-        private String nombreUsuario;
-        private String email;
-        private String password;
-        private Integer rolId;
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
     public static class TokenValidationResponse {
         private boolean valid;
         private Integer usuarioId;
