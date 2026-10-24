@@ -115,6 +115,9 @@ public class PreinscripcionDTO {
 
         @Size(max = 100)
         private String ocupacion;
+
+        @Size(max = 500)
+        private String fotoUrl;
     }
 
     @Data

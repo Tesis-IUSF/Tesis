@@ -30,6 +30,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 @RestController
@@ -209,22 +211,45 @@ public class CatalogoController {
             @ModelAttribute PaginacionDTO.Solicitud paginacion) {
         Pageable pageable = paginacion.toPageable();
         if (gradoId != null) {
-            return paginar(catalogoService.listarSeccionesPorGrado(gradoId, pageable),
-                    catalogoMapper::seccionToSeccionResponseDTO);
+            return seccionesConOcupacion(catalogoService.listarSeccionesPorGrado(gradoId, pageable));
         }
-        return paginar(catalogoService.listarSecciones(pageable), catalogoMapper::seccionToSeccionResponseDTO);
+        return seccionesConOcupacion(catalogoService.listarSecciones(pageable));
+    }
+
+    private PaginacionDTO.Respuesta<CatalogoDTO.SeccionResponseDTO> seccionesConOcupacion(
+            Page<Seccion> secciones) {
+        Map<Integer, Long> matriculados = catalogoService.contarMatriculasActivasPorSecciones(
+                secciones.getContent().stream().map(Seccion::getId).toList());
+        Page<CatalogoDTO.SeccionResponseDTO> respuesta = secciones.map(seccion -> {
+            CatalogoDTO.SeccionResponseDTO dto = catalogoMapper.seccionToSeccionResponseDTO(seccion);
+            long cantidad = matriculados.getOrDefault(seccion.getId(), 0L);
+            dto.setMatriculados(cantidad);
+            dto.setCuposDisponibles(Math.max(0L, seccion.getCapacidadMaxima() - cantidad));
+            return dto;
+        });
+        return PaginacionDTO.Respuesta.desde(respuesta);
     }
 
     @PostMapping("/secciones")
     public ResponseEntity<CatalogoDTO.SeccionResponseDTO> crearSeccion(@Valid @RequestBody CatalogoDTO.SeccionRequestDTO request) {
         Seccion seccion = catalogoMapper.seccionRequestDTOToSeccion(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(catalogoMapper.seccionToSeccionResponseDTO(catalogoService.crearSeccion(seccion)));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(seccionConOcupacion(catalogoService.crearSeccion(seccion)));
     }
 
     @PutMapping("/secciones/{id}")
     public CatalogoDTO.SeccionResponseDTO actualizarSeccion(@PathVariable Integer id, @Valid @RequestBody CatalogoDTO.SeccionRequestDTO request) {
         Seccion seccion = catalogoMapper.seccionRequestDTOToSeccion(request);
-        return catalogoMapper.seccionToSeccionResponseDTO(catalogoService.actualizarSeccion(id, seccion));
+        return seccionConOcupacion(catalogoService.actualizarSeccion(id, seccion));
+    }
+
+    private CatalogoDTO.SeccionResponseDTO seccionConOcupacion(Seccion seccion) {
+        CatalogoDTO.SeccionResponseDTO dto = catalogoMapper.seccionToSeccionResponseDTO(seccion);
+        long matriculados = catalogoService.contarMatriculasActivasPorSecciones(List.of(seccion.getId()))
+                .getOrDefault(seccion.getId(), 0L);
+        dto.setMatriculados(matriculados);
+        dto.setCuposDisponibles(Math.max(0L, seccion.getCapacidadMaxima() - matriculados));
+        return dto;
     }
 
     @DeleteMapping("/secciones/{id}")

@@ -101,6 +101,10 @@ public class PreinscripcionService {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
                         "Ya existe un estudiante con esa cédula", exception);
             }
+        } else if (datosEstudiante.getFotoCarnetUrl() != null
+                && !datosEstudiante.getFotoCarnetUrl().isBlank()) {
+            estudiante.setFotoCarnetUrl(datosEstudiante.getFotoCarnetUrl());
+            estudiante = estudianteRepository.save(estudiante);
         }
 
         Matricula matricula = buscarMatriculaReactivableOValidarNueva(
@@ -226,6 +230,9 @@ public class PreinscripcionService {
         representante.setTelefonoSecundario(datos.getTelefonoSecundario());
         representante.setDireccion(datos.getDireccion());
         representante.setOcupacion(datos.getOcupacion());
+        if (datos.getFotoUrl() != null && !datos.getFotoUrl().isBlank()) {
+            representante.setFotoUrl(datos.getFotoUrl());
+        }
         representante.setActivo(true);
         return representanteRepository.save(representante);
     }
