@@ -4,14 +4,17 @@ import com.tesis.dto.EmpleadoDTO.EmpleadoRequestDTO;
 import com.tesis.dto.EmpleadoDTO.EmpleadoResponseDTO;
 import com.tesis.entity.AsignacionTurno;
 import com.tesis.entity.Cargo;
+import com.tesis.entity.CredencialQr;
 import com.tesis.entity.Departamento;
 import com.tesis.entity.Empleado;
 import com.tesis.entity.Turno;
 import com.tesis.entity.Usuario;
 import com.tesis.repository.CargoRepository;
 import com.tesis.repository.AsignacionTurnoRepository;
+import com.tesis.repository.CredencialQrRepository;
 import com.tesis.repository.DepartamentoRepository;
 import com.tesis.repository.EmpleadoRepository;
+import com.tesis.repository.TurnoRepository;
 import com.tesis.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,15 +60,22 @@ class EmpleadoServiceTest {
     @Mock
     private AsignacionTurnoRepository asignacionTurnoRepository;
 
+    @Mock
+    private TurnoRepository turnoRepository;
+
+    @Mock
+    private CredencialQrRepository credencialQrRepository;
+
     private EmpleadoService empleadoService;
 
     @BeforeEach
     void setUp() {
         empleadoService = new EmpleadoService(
             empleadoRepository, cargoRepository, departamentoRepository, usuarioRepository,
-            asignacionTurnoRepository);
+            asignacionTurnoRepository, turnoRepository, credencialQrRepository);
         lenient().when(asignacionTurnoRepository.buscarVigentesPorEmpleados(any(), any()))
             .thenReturn(List.of());
+        lenient().when(turnoRepository.findById(4)).thenReturn(Optional.of(turno(4, "Matutino")));
     }
 
     @Test
@@ -151,6 +161,8 @@ class EmpleadoServiceTest {
         when(departamentoRepository.findById(20)).thenReturn(Optional.of(departamento));
         when(empleadoRepository.existsByUsuario_Id(30)).thenReturn(false);
         when(usuarioRepository.findById(30)).thenReturn(Optional.of(usuario));
+        when(asignacionTurnoRepository.save(any(AsignacionTurno.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         when(empleadoRepository.save(any(Empleado.class))).thenAnswer(invocation -> {
             Empleado empleado = invocation.getArgument(0);
             empleado.setId(5);
@@ -165,7 +177,61 @@ class EmpleadoServiceTest {
         assertEquals(30, respuesta.getUsuarioId());
         assertEquals("/api/fotos/empleado.png", respuesta.getFotoUrl());
         assertTrue(respuesta.getActivo());
+        assertEquals(4, respuesta.getTurnoId());
         verify(empleadoRepository).save(any(Empleado.class));
+        verify(asignacionTurnoRepository).save(any(AsignacionTurno.class));
+    }
+
+    @Test
+    void crearAsignaElTurnoDesdeLaFechaDeIngreso() {
+        EmpleadoRequestDTO solicitud = solicitudEmpleado(10, null, null);
+        when(empleadoRepository.existsByCedula("12345678")).thenReturn(false);
+        when(cargoRepository.findById(10)).thenReturn(Optional.of(cargo(10, "Docente")));
+        when(asignacionTurnoRepository.save(any(AsignacionTurno.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(empleadoRepository.save(any(Empleado.class))).thenAnswer(invocation -> {
+            Empleado empleado = invocation.getArgument(0);
+            empleado.setId(5);
+            return empleado;
+        });
+
+        empleadoService.crear(solicitud);
+
+        org.mockito.ArgumentCaptor<AsignacionTurno> captor =
+                org.mockito.ArgumentCaptor.forClass(AsignacionTurno.class);
+        verify(asignacionTurnoRepository).save(captor.capture());
+        assertEquals(4, captor.getValue().getTurno().getId());
+        assertEquals(solicitud.getFechaIngreso(), captor.getValue().getFechaDesde());
+        assertNull(captor.getValue().getFechaHasta());
+    }
+
+    @Test
+    void crearSinTurnoLanzaBadRequestSinGuardar() {
+        EmpleadoRequestDTO solicitud = solicitudEmpleado(10, null, null);
+        solicitud.setTurnoId(null);
+        when(empleadoRepository.existsByCedula("12345678")).thenReturn(false);
+
+        ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
+                () -> empleadoService.crear(solicitud));
+
+        assertEquals(HttpStatus.BAD_REQUEST, excepcion.getStatusCode());
+        verify(empleadoRepository, never()).save(any(Empleado.class));
+        verify(asignacionTurnoRepository, never()).save(any(AsignacionTurno.class));
+    }
+
+    @Test
+    void crearConTurnoInactivoLanzaConflictSinGuardar() {
+        Turno turnoInactivo = turno(4, "Matutino");
+        turnoInactivo.setActivo(false);
+        when(empleadoRepository.existsByCedula("12345678")).thenReturn(false);
+        when(turnoRepository.findById(4)).thenReturn(Optional.of(turnoInactivo));
+
+        ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
+                () -> empleadoService.crear(solicitudEmpleado(10, null, null)));
+
+        assertEquals(HttpStatus.CONFLICT, excepcion.getStatusCode());
+        verify(empleadoRepository, never()).save(any(Empleado.class));
+        verify(asignacionTurnoRepository, never()).save(any(AsignacionTurno.class));
     }
 
     @Test
@@ -236,13 +302,65 @@ class EmpleadoServiceTest {
     }
 
     @Test
-    void eliminarBorraEmpleadoExistente() {
+    void eliminarDaDeBajaEmpleadoYCierraSuAsignacion() {
         Empleado empleado = empleadoExistente();
+        AsignacionTurno asignacion = new AsignacionTurno();
+        asignacion.setPersonal(empleado);
+        asignacion.setFechaDesde(LocalDate.now().minusMonths(1));
+        CredencialQr credencial = new CredencialQr();
+        credencial.setActiva(true);
         when(empleadoRepository.findById(3)).thenReturn(Optional.of(empleado));
+        when(asignacionTurnoRepository.buscarVigentesEnFecha(3, LocalDate.now()))
+                .thenReturn(List.of(asignacion));
+        when(credencialQrRepository.findByEmpleado_IdAndActivaTrue(3)).thenReturn(List.of(credencial));
 
         empleadoService.eliminar(3);
 
-        verify(empleadoRepository).delete(empleado);
+        assertEquals(false, empleado.getActivo());
+        assertEquals(LocalDate.now(), empleado.getFechaEgreso());
+        assertEquals(LocalDate.now(), asignacion.getFechaHasta());
+        assertEquals(false, credencial.getActiva());
+        assertTrue(credencial.getRevocadaEn() != null);
+        verify(empleadoRepository).save(empleado);
+        verify(asignacionTurnoRepository).save(asignacion);
+        verify(empleadoRepository, never()).delete(any(Empleado.class));
+    }
+
+    @Test
+    void eliminarNoModificaAsignacionesNoVigentes() {
+        Empleado empleado = empleadoExistente();
+        when(empleadoRepository.findById(3)).thenReturn(Optional.of(empleado));
+        when(asignacionTurnoRepository.buscarVigentesEnFecha(3, LocalDate.now())).thenReturn(List.of());
+        when(credencialQrRepository.findByEmpleado_IdAndActivaTrue(3)).thenReturn(List.of());
+
+        empleadoService.eliminar(3);
+
+        verify(asignacionTurnoRepository, never()).save(any(AsignacionTurno.class));
+        verify(empleadoRepository).save(empleado);
+    }
+
+    @Test
+    void actualizarConEstadoInactivoCierraAsignacionYRegistraFechaDeEgreso() {
+        Empleado empleado = empleadoExistente();
+        AsignacionTurno asignacion = new AsignacionTurno();
+        asignacion.setPersonal(empleado);
+        asignacion.setFechaDesde(LocalDate.now().minusMonths(1));
+        when(empleadoRepository.findById(3)).thenReturn(Optional.of(empleado));
+        when(empleadoRepository.existsByCedulaAndIdNot("12345678", 3)).thenReturn(false);
+        when(asignacionTurnoRepository.buscarVigentesEnFecha(3, LocalDate.now()))
+                .thenReturn(List.of(asignacion));
+        when(credencialQrRepository.findByEmpleado_IdAndActivaTrue(3)).thenReturn(List.of());
+        when(empleadoRepository.save(any(Empleado.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        EmpleadoRequestDTO solicitud = solicitudEmpleado(null, null, null);
+        solicitud.setActivo(false);
+
+        empleadoService.actualizar(3, solicitud);
+
+        assertEquals(false, empleado.getActivo());
+        assertEquals(LocalDate.now(), empleado.getFechaEgreso());
+        assertEquals(LocalDate.now(), asignacion.getFechaHasta());
+        verify(asignacionTurnoRepository).save(asignacion);
+        verify(empleadoRepository).save(empleado);
     }
 
     @Test
@@ -254,13 +372,14 @@ class EmpleadoServiceTest {
 
         assertEquals(HttpStatus.NOT_FOUND, excepcion.getStatusCode());
         verify(empleadoRepository, never()).delete(any(Empleado.class));
+        verify(empleadoRepository, never()).save(any(Empleado.class));
     }
 
     private EmpleadoRequestDTO solicitudEmpleado(Integer cargoId, Integer departamentoId, Integer usuarioId) {
         EmpleadoRequestDTO solicitud = new EmpleadoRequestDTO(
                 "Ana", "Pérez", "12345678", "ana@example.com", "555-0100",
                 LocalDate.of(1990, 5, 12), "F", null, cargoId, departamentoId,
-                LocalDate.of(2020, 1, 15), null, usuarioId, null);
+                LocalDate.of(2020, 1, 15), null, usuarioId, null, 4);
         solicitud.setFotoUrl("/api/fotos/empleado.png");
         return solicitud;
     }
@@ -293,5 +412,13 @@ class EmpleadoServiceTest {
         departamento.setId(id);
         departamento.setNombre(nombre);
         return departamento;
+    }
+
+    private Turno turno(Integer id, String nombre) {
+        Turno turno = new Turno();
+        turno.setId(id);
+        turno.setNombre(nombre);
+        turno.setActivo(true);
+        return turno;
     }
 }
