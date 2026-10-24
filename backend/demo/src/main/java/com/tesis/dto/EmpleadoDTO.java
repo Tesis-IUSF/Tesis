@@ -41,6 +41,9 @@ public class EmpleadoDTO {
         @Pattern(regexp = "M|F|Otro")
         private String sexo;
 
+        @Size(max = 500)
+        private String fotoUrl;
+
         private Integer cargoId;
         private Integer departamentoId;
         private LocalDate fechaIngreso;
@@ -61,6 +64,7 @@ public class EmpleadoDTO {
         private String telefono;
         private LocalDate fechaNacimiento;
         private String sexo;
+        private String fotoUrl;
         private Integer cargoId;
         private String cargoNombre;
         private Integer departamentoId;

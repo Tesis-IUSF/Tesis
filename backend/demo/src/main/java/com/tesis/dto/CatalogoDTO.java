@@ -180,6 +180,8 @@ public class CatalogoDTO {
         private Integer turnoId;
         private Short anioEscolar;
         private Boolean activo;
+        private Long matriculados;
+        private Long cuposDisponibles;
     }
 
     @Data
