@@ -154,10 +154,41 @@ class AsistenciaRepositoryTest {
         asignacionTurnoRepository.saveAndFlush(asignacion);
 
         var resultado = empleadoRepository.buscarConFiltros(
-                cargo.getId(), turno.getId(), hoy, PageRequest.of(0, 10));
+                cargo.getId(), turno.getId(), true, hoy, PageRequest.of(0, 10));
 
         assertEquals(1, resultado.getTotalElements());
         assertEquals(empleado.getId(), resultado.getContent().getFirst().getId());
+    }
+
+    @Test
+    void filtraEmpleadosActivosEInactivosYPermiteTodosLosEstados() {
+        Empleado activo = guardarEmpleado("ESTADO-ACTIVO-01", true);
+        Empleado inactivo = guardarEmpleado("ESTADO-INACTIVO-01", false);
+        LocalDate hoy = LocalDate.now();
+        var pageable = PageRequest.of(0, 10);
+
+        var activos = empleadoRepository.buscarConFiltros(null, null, true, hoy, pageable);
+        var inactivos = empleadoRepository.buscarConFiltros(null, null, false, hoy, pageable);
+        var todos = empleadoRepository.buscarConFiltros(null, null, null, hoy, pageable);
+
+        assertTrue(activos.getContent().stream().anyMatch(e -> e.getId().equals(activo.getId())));
+        assertFalse(activos.getContent().stream().anyMatch(e -> e.getId().equals(inactivo.getId())));
+        assertTrue(inactivos.getContent().stream().anyMatch(e -> e.getId().equals(inactivo.getId())));
+        assertFalse(inactivos.getContent().stream().anyMatch(e -> e.getId().equals(activo.getId())));
+        assertTrue(todos.getContent().stream().anyMatch(e -> e.getId().equals(activo.getId())));
+        assertTrue(todos.getContent().stream().anyMatch(e -> e.getId().equals(inactivo.getId())));
+    }
+
+    private Empleado guardarEmpleado(String cedula, boolean activo) {
+        Empleado empleado = new Empleado();
+        empleado.setNombre("Personal");
+        empleado.setApellido("Prueba");
+        empleado.setCedula(cedula);
+        empleado.setActivo(activo);
+        if (!activo) {
+            empleado.setFechaEgreso(LocalDate.now());
+        }
+        return empleadoRepository.saveAndFlush(empleado);
     }
 
     private void guardarAsistencia(Empleado empleado, Turno turno, LocalDate fecha) {

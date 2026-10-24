@@ -29,11 +29,13 @@ public interface EmpleadoRepository extends JpaRepository<Empleado, Integer> {
     @EntityGraph(attributePaths = {"cargo", "departamento", "usuario"})
     @Query("select e from Empleado e where "
             + "(:cargoId is null or e.cargo.id = :cargoId) and "
+            + "(:activo is null or e.activo = :activo) and "
             + "(:turnoId is null or exists (select a.id from AsignacionTurno a "
             + "where a.personal = e and a.turno.id = :turnoId and a.turno.activo = true "
             + "and a.fechaDesde <= :fecha and (a.fechaHasta is null or a.fechaHasta >= :fecha)))")
     Page<Empleado> buscarConFiltros(@Param("cargoId") Integer cargoId,
                                     @Param("turnoId") Integer turnoId,
+                                    @Param("activo") Boolean activo,
                                     @Param("fecha") LocalDate fecha,
                                     Pageable pageable);
 
