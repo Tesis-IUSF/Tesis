@@ -42,21 +42,32 @@ class EdadMatriculaServiceTest {
     }
 
     @Test
-        void rechazaSextoAnioDeMediaTecnica() {
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> service.validarElegibilidad(
-                LocalDate.of(2008, 12, 31), crearGrado("Educación Media Técnica", 6), (short) 2026));
-
-        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    void validaTambienGradosFueraDeLaDuracionAnteriorSiTienenRangoConfigurado() {
+        assertDoesNotThrow(() -> service.validarElegibilidad(
+                LocalDate.of(2009, 12, 31), crearGrado("Educación Media Técnica", 6), (short) 2026));
     }
 
-    private Grado crearGrado(String nombreNivel, int numeroGrado) {
-        NivelEducativo nivel = new NivelEducativo();
-        nivel.setNombre(nombreNivel);
+        @Test
+        void usaElRangoConfiguradoAunqueCambieElNombreDelNivel() {
+            Grado grado = crearGrado("Ciclo renombrado", 1);
+            grado.setEdadMinima((short) 7);
+            grado.setEdadMaxima((short) 9);
 
-        Grado grado = new Grado();
-        grado.setNivelEducativo(nivel);
-        grado.setNumeroGrado((short) numeroGrado);
-        return grado;
+            assertDoesNotThrow(() -> service.validarElegibilidad(
+                    LocalDate.of(2018, 12, 31), grado, (short) 2026));
     }
+
+        private Grado crearGrado(String nombreNivel, int numeroGrado) {
+            NivelEducativo nivel = new NivelEducativo();
+            nivel.setNombre(nombreNivel);
+
+            Grado grado = new Grado();
+            grado.setNivelEducativo(nivel);
+            grado.setNumeroGrado((short) numeroGrado);
+            short edadMinima = (short) (nombreNivel.startsWith("Educación Primaria")
+                    ? 6 + numeroGrado - 1 : 12 + numeroGrado - 1);
+            grado.setEdadMinima(edadMinima);
+            grado.setEdadMaxima((short) (edadMinima + 1));
+            return grado;
+        }
 }

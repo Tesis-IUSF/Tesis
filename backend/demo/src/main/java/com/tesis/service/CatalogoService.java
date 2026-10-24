@@ -9,7 +9,9 @@ import com.tesis.entity.Roles;
 import com.tesis.entity.Seccion;
 import com.tesis.entity.Turno;
 import com.tesis.repository.CargoRepository;
+import com.tesis.repository.ChecklistMatriculaRepository;
 import com.tesis.repository.DepartamentoRepository;
+import com.tesis.repository.EmpleadoRepository;
 import com.tesis.repository.GradoRepository;
 import com.tesis.repository.NivelEducativoRepository;
 import com.tesis.repository.RequisitoMatriculaRepository;
@@ -41,29 +43,35 @@ public class CatalogoService {
 
     private final DepartamentoRepository departamentoRepository;
     private final CargoRepository cargoRepository;
+    private final EmpleadoRepository empleadoRepository;
     private final TurnoRepository turnoRepository;
     private final RolesRepository rolesRepository;
     private final NivelEducativoRepository nivelEducativoRepository;
     private final GradoRepository gradoRepository;
     private final SeccionRepository seccionRepository;
     private final RequisitoMatriculaRepository requisitoMatriculaRepository;
+    private final ChecklistMatriculaRepository checklistMatriculaRepository;
 
     public CatalogoService(DepartamentoRepository departamentoRepository,
                            CargoRepository cargoRepository,
+                           EmpleadoRepository empleadoRepository,
                            TurnoRepository turnoRepository,
                            RolesRepository rolesRepository,
                            NivelEducativoRepository nivelEducativoRepository,
                            GradoRepository gradoRepository,
                            SeccionRepository seccionRepository,
-                           RequisitoMatriculaRepository requisitoMatriculaRepository) {
+                           RequisitoMatriculaRepository requisitoMatriculaRepository,
+                           ChecklistMatriculaRepository checklistMatriculaRepository) {
         this.departamentoRepository = departamentoRepository;
         this.cargoRepository = cargoRepository;
+        this.empleadoRepository = empleadoRepository;
         this.turnoRepository = turnoRepository;
         this.rolesRepository = rolesRepository;
         this.nivelEducativoRepository = nivelEducativoRepository;
         this.gradoRepository = gradoRepository;
         this.seccionRepository = seccionRepository;
         this.requisitoMatriculaRepository = requisitoMatriculaRepository;
+        this.checklistMatriculaRepository = checklistMatriculaRepository;
     }
 
     @Transactional(readOnly = true)
@@ -86,6 +94,11 @@ public class CatalogoService {
     public void eliminarDepartamento(Integer id) {
         if (!departamentoRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Departamento no encontrado");
+        }
+        if (empleadoRepository.existsByDepartamento_Id(id)
+                || cargoRepository.existsByDepartamento_Id(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede eliminar el departamento porque tiene cargos o empleados asociados");
         }
         departamentoRepository.deleteById(id);
     }
@@ -111,6 +124,10 @@ public class CatalogoService {
     public void eliminarCargo(Integer id) {
         if (!cargoRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cargo no encontrado");
+        }
+        if (empleadoRepository.existsByCargo_Id(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede eliminar el cargo porque tiene empleados asociados");
         }
         cargoRepository.deleteById(id);
     }
@@ -263,6 +280,7 @@ public class CatalogoService {
         if (grado.getNumeroGrado() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe indicar el número de grado");
         }
+        validarRangoEdad(grado);
         buscarNivelEducativo(grado.getNivelEducativo().getId());
         return gradoRepository.save(grado);
     }
@@ -275,12 +293,24 @@ public class CatalogoService {
         if (grado.getNumeroGrado() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe indicar el número de grado");
         }
+        validarRangoEdad(grado);
         buscarNivelEducativo(grado.getNivelEducativo().getId());
         actual.setNivelEducativo(grado.getNivelEducativo());
         actual.setNumeroGrado(grado.getNumeroGrado());
+        actual.setEdadMinima(grado.getEdadMinima());
+        actual.setEdadMaxima(grado.getEdadMaxima());
         actual.setNombreEspecial(grado.getNombreEspecial());
         actual.setActivo(grado.getActivo());
         return gradoRepository.save(actual);
+    }
+
+    private void validarRangoEdad(Grado grado) {
+        Short minima = grado.getEdadMinima();
+        Short maxima = grado.getEdadMaxima();
+        if (minima == null || maxima == null || minima < 0 || maxima > 120 || minima > maxima) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Debe indicar un rango de edad válido entre 0 y 120 años");
+        }
     }
 
     public void eliminarGrado(Integer id) {
@@ -409,6 +439,10 @@ public class CatalogoService {
     public void eliminarRequisitoMatricula(Integer id) {
         if (!requisitoMatriculaRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Requisito no encontrado");
+        }
+        if (checklistMatriculaRepository.existsByRequisito_Id(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "El requisito ya se usó; desactívalo");
         }
         requisitoMatriculaRepository.deleteById(id);
     }

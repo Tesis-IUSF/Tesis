@@ -292,6 +292,8 @@ class PreinscripcionServiceTest {
                 Grado nuevoGrado = new Grado();
                 nuevoGrado.setNivelEducativo(nivel);
                 nuevoGrado.setNumeroGrado((short) 1);
+                nuevoGrado.setEdadMinima((short) 6);
+                nuevoGrado.setEdadMaxima((short) 7);
                 entityManager.persist(nuevoGrado);
                 return nuevoGrado;
             });

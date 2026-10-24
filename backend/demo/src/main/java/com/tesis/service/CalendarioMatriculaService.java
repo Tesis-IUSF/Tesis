@@ -16,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional(readOnly = true)
@@ -71,7 +72,12 @@ public class CalendarioMatriculaService {
     }
 
     public CalendarioMatriculaDTO obtenerCalendario(Short anioSolicitado) {
-        AnioEscolar activo = obtenerAnioActivo();
+        Optional<AnioEscolar> anioActivo = anioRepository.findFirstByActivoTrue();
+        if (anioActivo.isEmpty()) {
+            return new CalendarioMatriculaDTO(null, null, List.of(),
+                    "No hay un año escolar activo configurado");
+        }
+        AnioEscolar activo = anioActivo.get();
         Short anioSeleccionado = anioSolicitado == null ? activo.getAnio() : anioSolicitado;
         AnioEscolar consultado = anioRepository.findByAnio(anioSeleccionado).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.NOT_FOUND,
@@ -81,7 +87,7 @@ public class CalendarioMatriculaService {
                 .findByAnioEscolarAndActivoTrueOrderByFechaInicioAsc(anioSeleccionado).stream()
                 .map(periodo -> toPeriodoDTO(periodo, hoy))
                 .toList();
-        return new CalendarioMatriculaDTO(toAnioDTO(activo), toAnioDTO(consultado), periodos);
+        return new CalendarioMatriculaDTO(toAnioDTO(activo), toAnioDTO(consultado), periodos, null);
     }
 
     private boolean hayPeriodoVigente(Short anio, TipoPeriodoMatricula tipo) {
