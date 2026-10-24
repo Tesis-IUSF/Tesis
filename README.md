@@ -155,6 +155,14 @@ La administración del calendario está disponible bajo `/api/matriculas/gestion
 
 Se permiten solapamientos entre tipos diferentes, pero no entre ventanas del mismo tipo dentro de un año. La preinscripción nueva solo admite el año activo; los trámites anteriores en estado `en_proceso` pueden continuar durante una ventana extemporánea. El endpoint de calendario público-interno informa el año y las ventanas activas.
 
+### Corrección de datos de matrícula
+
+- `GET /api/matriculas/{id}/preinscripcion` devuelve el cuerpo de `PreinscripcionRequestDTO` para rellenar el formulario existente.
+- `PUT /api/matriculas/{id}/preinscripcion` actualiza estudiante, representante, relación principal, institución de procedencia y sección. Solo admite matrículas `preinscrito` o `en_proceso`; este último estado se conserva porque representa una matrícula ya iniciada con requisitos pendientes.
+- El cambio valida cédula duplicada, sección activa y del mismo año, cupo disponible y edad para el grado elegido. La matrícula no puede cambiar de año escolar.
+- Si cambia el nivel o el tipo de ingreso, se sincroniza el checklist: los requisitos que siguen aplicando conservan su avance, los nuevos se agregan pendientes y los que dejan de aplicar se quitan.
+- Las respuestas de los listados de matrícula incluyen `estudianteCedula`.
+- `GET /api/matriculas/listado` lista todos los estados con búsqueda opcional `q`, paginación (`page`, `size`) y filtro opcional `estado`. Un `estado` vacío equivale a no filtrar; los valores aceptados son `preinscrito`, `en_proceso`, `completada`, `retirada` y `anulada`.
 
 ### Requisitos previos
 - Docker y Docker Compose instalados.
