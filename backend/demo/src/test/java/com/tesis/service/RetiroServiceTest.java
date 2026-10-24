@@ -3,11 +3,13 @@ package com.tesis.service;
 import com.tesis.dto.RetiroDTO.HistorialRetirosResponseDTO;
 import com.tesis.dto.RetiroDTO.RetiroRequestDTO;
 import com.tesis.dto.RetiroDTO.RetiroResponseDTO;
+import com.tesis.entity.ChecklistMatricula;
 import com.tesis.entity.Estudiante;
 import com.tesis.entity.Grado;
 import com.tesis.entity.Matricula;
 import com.tesis.entity.NivelEducativo;
 import com.tesis.entity.RelacionEstudianteRepresentante;
+import com.tesis.entity.RequisitoMatricula;
 import com.tesis.entity.Representante;
 import com.tesis.entity.Roles;
 import com.tesis.entity.Seccion;
@@ -15,6 +17,7 @@ import com.tesis.entity.Usuario;
 import com.tesis.repository.MatriculaRepository;
 import com.tesis.repository.RelacionEstudianteRepresentanteRepository;
 import com.tesis.repository.RepresentanteRepository;
+import com.tesis.repository.RetiroMatriculaRepository;
 import com.tesis.repository.SeccionRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
@@ -44,6 +47,9 @@ class RetiroServiceTest {
     private MatriculaRepository matriculaRepository;
 
     @Autowired
+    private RetiroMatriculaRepository retiroRepository;
+
+    @Autowired
     private SeccionRepository seccionRepository;
 
     @Autowired
@@ -69,6 +75,7 @@ class RetiroServiceTest {
         RetiroResponseDTO response = retiroService.retirar(matricula.getId(), request, "procesador@test.local");
 
         assertEquals("retirada", response.getEstadoMatricula());
+        assertEquals("retiro_formal", response.getOperacion());
         assertEquals("Carla", response.getSolicitanteNombre());
         assertEquals("CED-EXT-01", response.getSolicitanteCedula());
         assertNotNull(response.getProcesadoPorId());
@@ -111,17 +118,110 @@ class RetiroServiceTest {
     }
 
     @Test
-    void rechazaRetirarMatriculaNoCompletada() {
+    void permiteRetirarFormalmenteUnaMatriculaEnProceso() {
         crearProcesador();
         Matricula matricula = crearMatricula("en_proceso", "RETIRO-PEND-01", "C");
         RetiroRequestDTO request = new RetiroRequestDTO(
                 "Solicitud", LocalDate.now(clock), null, "Persona", "Externa", "CED-02");
 
+        RetiroResponseDTO response = retiroService.retirar(
+                matricula.getId(), request, "procesador@test.local");
+
+        assertEquals("retiro_formal", response.getOperacion());
+        assertEquals("retirada", response.getEstadoMatricula());
+        assertEquals("retirada", matriculaRepository.findById(matricula.getId())
+                .orElseThrow().getEstadoMatricula());
+        assertEquals(1, retiroService.obtenerHistorial(matricula.getId()).getRetiros().size());
+    }
+
+    @Test
+    void registraRetiroFormalDeContinuidadAunqueEstePreinscrita() {
+        crearProcesador();
+        Matricula origen = crearMatricula("en_proceso", "RET-CONT-01", "G");
+        Matricula continuidad = crearMatricula("preinscrito", "RET-CONT-02", "H");
+        continuidad.setContinuidadDeMatricula(origen);
+        continuidad.setEstudiante(origen.getEstudiante());
+        continuidad.setAnioEscolar((short) 2027);
+        continuidad = matriculaRepository.saveAndFlush(continuidad);
+        RetiroRequestDTO request = new RetiroRequestDTO(
+                "No continuará", LocalDate.now(clock), null, "Persona", "Externa", "CED-CONT-01");
+
+        RetiroResponseDTO response = retiroService.retirar(
+                continuidad.getId(), request, "procesador@test.local");
+
+        assertEquals("retiro_formal", response.getOperacion());
+        assertEquals("retirada", response.getEstadoMatricula());
+        assertEquals(true, matriculaRepository.existsById(continuidad.getId()));
+        assertEquals("en_proceso", matriculaRepository.findById(origen.getId())
+                .orElseThrow().getEstadoMatricula());
+        assertEquals(1, retiroService.obtenerHistorial(continuidad.getId()).getRetiros().size());
+    }
+
+    @Test
+    void eliminaSoloLaMatriculaPreinscritaYConservaElEstudiante() {
+        crearProcesador();
+        Matricula matricula = crearMatricula("preinscrito", "PREINS-ELIMINAR-01", "D");
+        Integer estudianteId = matricula.getEstudiante().getId();
+        RetiroRequestDTO request = new RetiroRequestDTO(
+                "Carga equivocada", LocalDate.now(clock), null, "Persona", "Externa", "CED-03");
+
+        RetiroResponseDTO response = retiroService.retirar(
+                matricula.getId(), request, "procesador@test.local");
+
+        assertEquals("preinscripcion_eliminada", response.getOperacion());
+        assertEquals("preinscrito", response.getEstadoMatricula());
+        assertEquals(null, response.getRetiroId());
+        assertEquals(false, matriculaRepository.existsById(matricula.getId()));
+        assertEquals(true, entityManager.find(Estudiante.class, estudianteId) != null);
+        assertEquals(0, retiroRepository.count());
+    }
+
+    @Test
+    void rechazaEliminarPreinscripcionConChecklistAsociado() {
+        crearProcesador();
+        Matricula matricula = crearMatricula("preinscrito", "PREINS-CHECK-01", "E");
+        RequisitoMatricula requisito = new RequisitoMatricula();
+        requisito.setNombre("Requisito");
+        requisito.setActivo(true);
+        entityManager.persist(requisito);
+        ChecklistMatricula checklist = new ChecklistMatricula();
+        checklist.setMatricula(matricula);
+        checklist.setRequisito(requisito);
+        checklist.setCumplido(false);
+        entityManager.persist(checklist);
+        entityManager.flush();
+        RetiroRequestDTO request = new RetiroRequestDTO(
+                "Cancelación", LocalDate.now(clock), null, "Persona", "Externa", "CED-04");
+
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> retiroService.retirar(matricula.getId(), request, "procesador@test.local"));
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals(true, matriculaRepository.existsById(matricula.getId()));
         assertEquals(0, retiroService.obtenerHistorial(matricula.getId()).getRetiros().size());
+    }
+
+    @Test
+    void rechazaEliminarPreinscripcionConRetiroPrevioAsociado() {
+        crearProcesador();
+        Matricula matricula = crearMatricula("completada", "PREINS-RETIRO-PREVIO", "F");
+        RetiroRequestDTO retiroFormal = new RetiroRequestDTO(
+                "Retiro anterior", LocalDate.now(clock), null, "Persona", "Externa", "CED-05");
+        retiroService.retirar(matricula.getId(), retiroFormal, "procesador@test.local");
+        matricula.setEstadoMatricula("preinscrito");
+        matricula.setFechaFormalizacion(null);
+        matriculaRepository.saveAndFlush(matricula);
+
+        RetiroRequestDTO cancelacion = new RetiroRequestDTO(
+                "Cancelación", LocalDate.now(clock), null, "Persona", "Externa", "CED-06");
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> retiroService.retirar(
+                        matricula.getId(), cancelacion, "procesador@test.local"));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals(true, matriculaRepository.existsById(matricula.getId()));
+        assertEquals(1, retiroRepository.findByMatricula_IdOrderByFechaRetiroDesc(
+                matricula.getId()).size());
     }
 
         private void crearProcesador() {
@@ -171,7 +271,9 @@ class RetiroServiceTest {
         matricula.setSeccion(seccion);
         matricula.setAnioEscolar((short) 2026);
         matricula.setFechaSolicitud(LocalDate.of(2026, 1, 1));
-        matricula.setFechaFormalizacion(LocalDate.of(2026, 1, 15));
+        if ("completada".equals(estado)) {
+            matricula.setFechaFormalizacion(LocalDate.of(2026, 1, 15));
+        }
         matricula.setEstadoMatricula(estado);
         entityManager.persist(matricula);
         entityManager.flush();

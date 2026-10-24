@@ -54,6 +54,7 @@ public class RetiroDTO {
         private String solicitanteCedula;
         private Integer procesadoPorId;
         private LocalDateTime creadoEn;
+        private String operacion;
     }
 
     @Data

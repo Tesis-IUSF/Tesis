@@ -163,6 +163,27 @@ Se permiten solapamientos entre tipos diferentes, pero no entre ventanas del mis
 - Si cambia el nivel o el tipo de ingreso, se sincroniza el checklist: los requisitos que siguen aplicando conservan su avance, los nuevos se agregan pendientes y los que dejan de aplicar se quitan.
 - Las respuestas de los listados de matrícula incluyen `estudianteCedula`.
 - `GET /api/matriculas/listado` lista todos los estados con búsqueda opcional `q`, paginación (`page`, `size`) y filtro opcional `estado`. Un `estado` vacío equivale a no filtrar; los valores aceptados son `preinscrito`, `en_proceso`, `completada`, `retirada` y `anulada`.
+- `en_proceso` se asigna al iniciar el checklist o actualizar un requisito; puede mantenerse mientras falten requisitos obligatorios. La formalización solo se permite cuando todos los obligatorios aplicables están cumplidos; los opcionales pendientes no la bloquean. Para clasificar una nueva matrícula como `regular`, basta una matrícula `en_proceso` o `completada` del año escolar inmediatamente anterior (salvo que se indique una institución de procedencia, que se clasifica como traslado).
+
+### Retiros y cancelación de preinscripciones
+
+`POST /api/matriculas/{id}/retiros` distingue la acción por el estado de la matrícula actual, no por el tipo de ingreso ni por el historial académico:
+
+- Si está `preinscrito`, elimina únicamente la fila de esa matrícula pendiente. No elimina al estudiante ni al representante. Por ahora no guarda el motivo ni el solicitante como historial permanente; la respuesta devuelve `operacion: "preinscripcion_eliminada"` con HTTP 200.
+- Si está `en_proceso` o `completada`, registra el retiro formal y cambia la matrícula a `retirada`; responde con `operacion: "retiro_formal"` y HTTP 201.
+- Las continuidades generadas automáticamente también nacen como `preinscrito`, pero se distinguen por su matrícula de origen. Al retirarlas, se conserva esa continuidad con estado `retirada` y se registra el retiro formal, sin bloquear por requisitos pendientes del año anterior.
+- Una matrícula preinscrita con checklist o retiros anteriores asociados no se elimina; responde HTTP 409 para proteger el historial.
+- El estado `en_proceso` significa que el estudiante ya está inscrito, aunque aún pueda tener requisitos pendientes.
+
+### Continuidades y egresos de fin de año
+
+Cuando el año de origen está cerrado (desactivado al activar el siguiente, o ya pasó su `fechaFin`), un usuario `ADMINISTRADOR` o `DIRECTOR` puede ejecutar `POST /api/matriculas/gestion/anios/{anioOrigen}/continuidades`. El año de destino inmediato debe existir. El backend prepara continuidades para los estudiantes cuya matrícula más reciente del año de origen esté `en_proceso` o `completada`; estudiantes cuya matrícula más reciente esté `retirada` quedan excluidos.
+
+- Promueve automáticamente un grado dentro del mismo nivel. Se asigna a una sección activa del año siguiente con cupo; entre varias, se elige la de mayor disponibilidad y se va balanceando la distribución.
+- Las continuidades se crean como `preinscrito`, tipo de ingreso `regular`, ligadas a su matrícula de origen y ocupan cupo. Se pueden corregir de grado/sección con `PUT /api/matriculas/{id}/preinscripcion` antes de formalizar.
+- Si no existe el grado siguiente o no hay sección/cupo, no se excede la capacidad: el estudiante se devuelve en `asignacionPendiente`. Al corregir la configuración, se puede volver a ejecutar la operación; no duplica continuidades ya creadas.
+- Los estudiantes del último grado activo quedan con una resolución pendiente; estar en ese grado no los marca automáticamente como egresados. La lista está en `GET /api/matriculas/gestion/anios/{anioOrigen}/egresos-pendientes`. Administración o Dirección puede resolver cada caso como `egresar` o `repetir` mediante `PATCH /api/matriculas/gestion/egresos/{egresoId}/resolver` con `{ "decision": "egresar" }` o `{ "decision": "repetir", "seccionId": 123 }`. Repetir crea una preinscripción en el año siguiente y el mismo grado; si no se indica sección, el backend elige una sección activa con cupo. Ambas decisiones guardan quién resolvió y cuándo. El sistema no genera títulos.
+- Aplicar una sola vez en producción `backend/demo/src/main/resources/db/manual/V20261024__continuidades_y_egresos_pendientes.sql` antes de desplegar, porque producción usa `ddl-auto=validate`.
 
 ### Requisitos previos
 - Docker y Docker Compose instalados.

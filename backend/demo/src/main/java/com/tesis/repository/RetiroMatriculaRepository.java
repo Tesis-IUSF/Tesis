@@ -8,4 +8,6 @@ import java.util.List;
 public interface RetiroMatriculaRepository extends JpaRepository<RetiroMatricula, Integer> {
 
     List<RetiroMatricula> findByMatricula_IdOrderByFechaRetiroDesc(Integer matriculaId);
+
+    boolean existsByMatricula_Id(Integer matriculaId);
 }
