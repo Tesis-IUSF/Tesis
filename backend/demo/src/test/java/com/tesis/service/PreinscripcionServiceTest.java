@@ -25,6 +25,7 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -71,11 +73,139 @@ class PreinscripcionServiceTest {
     @Autowired
     private Clock clock;
 
+    @Autowired
+    private EstudianteService estudianteService;
+
+    @Autowired
+    private RepresentanteService representanteService;
+
+    @Test
+    void normalizaCedulaDelRepresentanteEnElCrudDirecto() {
+        Representante representante = new Representante();
+        representante.setCedula(" v-18.456.789 ");
+        representante.setNombre("Nombre");
+        representante.setApellido("Apellido");
+        representante.setCorreo("representante@example.com");
+        representante.setTelefono(" 0412-1234567 ");
+
+        Representante creado = representanteService.crear(representante);
+
+        assertEquals("V-18456789", creado.getCedula());
+        assertEquals("0412-1234567", creado.getTelefono());
+    }
+
+    @Test
+    void exigeTelefonoPrincipalEnElCrudDeRepresentante() {
+        Representante representante = new Representante();
+        representante.setCedula("V-18456789");
+        representante.setNombre("Nombre");
+        representante.setApellido("Apellido");
+        representante.setCorreo("representante@example.com");
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> representanteService.crear(representante));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
+    void buscaRepresentantesActivosPorNombreOCedulaConPaginacion() {
+        Representante activo = nuevoRepresentante("V-18456789", "Ana", "Pérez");
+        Representante inactivo = nuevoRepresentante("V-18456790", "Ana", "Gómez");
+        inactivo.setActivo(false);
+        representanteRepository.saveAndFlush(inactivo);
+
+        var porNombre = representanteService.buscarActivos("Ana", PageRequest.of(0, 1));
+        var porCedula = representanteService.buscarActivos("V-18456789", PageRequest.of(0, 10));
+
+        assertEquals(1, porNombre.getTotalElements());
+        assertEquals(activo.getId(), porNombre.getContent().getFirst().getId());
+        assertEquals(1, porCedula.getTotalElements());
+        assertEquals(activo.getId(), porCedula.getContent().getFirst().getId());
+    }
+
+    private Representante nuevoRepresentante(String cedula, String nombre, String apellido) {
+        Representante representante = new Representante();
+        representante.setCedula(cedula);
+        representante.setNombre(nombre);
+        representante.setApellido(apellido);
+        representante.setCorreo("representante@example.com");
+        representante.setTelefono("04121234567");
+        return representanteRepository.saveAndFlush(representante);
+    }
+
+    @Test
+    void conservaCedulaHistoricaDelRepresentanteMientrasNoSeCambie() {
+        Representante historico = new Representante();
+        historico.setCedula("7654321");
+        historico.setNombre("Nombre");
+        historico.setApellido("Anterior");
+        historico.setCorreo("representante@example.com");
+        representanteRepository.saveAndFlush(historico);
+
+        Representante actualizacion = new Representante();
+        actualizacion.setCedula("7654321");
+        actualizacion.setNombre("Nombre");
+        actualizacion.setApellido("Actualizado");
+        actualizacion.setCorreo("representante@example.com");
+        actualizacion.setTelefono("04121234567");
+
+        Representante actualizado =
+                representanteService.actualizar(historico.getId(), actualizacion);
+
+        assertEquals("7654321", actualizado.getCedula());
+        assertEquals("Actualizado", actualizado.getApellido());
+    }
+
+    @Test
+    void normalizaYValidaCedulaEstudiantilEnElCrudDirecto() {
+        Estudiante estudiante = new Estudiante();
+        estudiante.setCedula(" v-18.456.789 ");
+        estudiante.setNombre("Ana");
+        estudiante.setApellido("Estudiante");
+        estudiante.setFechaNacimiento(LocalDate.of(2018, 1, 1));
+        estudiante.setSexo("F");
+
+        Estudiante creado = estudianteService.crear(estudiante);
+
+        assertEquals("V-18456789", creado.getCedula());
+    }
+
+    @Test
+    void noPermiteCrearManualmenteUnaCedulaEscolar() {
+        Estudiante estudiante = new Estudiante();
+        estudiante.setCedula("CE-V11818456789");
+        estudiante.setNombre("Ana");
+        estudiante.setApellido("Estudiante");
+        estudiante.setFechaNacimiento(LocalDate.of(2018, 1, 1));
+        estudiante.setSexo("F");
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> estudianteService.crear(estudiante));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
+    void rechazaCedulaEstudiantilQueNoRespetaElFormato() {
+        Estudiante estudiante = new Estudiante();
+        estudiante.setCedula("12345678");
+        estudiante.setNombre("Ana");
+        estudiante.setApellido("Estudiante");
+        estudiante.setFechaNacimiento(LocalDate.of(2018, 1, 1));
+        estudiante.setSexo("F");
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> estudianteService.crear(estudiante));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
     @Test
     void preinscribeEstudianteYActualizaRepresentanteExistente() {
         Seccion seccion = crearSeccion(2, "A");
         Representante representante = new Representante();
-        representante.setCedula("REP-PREINS-01");
+        representante.setCedula(cedulaRepresentanteDeClave("REP-PREINS-01"));
         representante.setNombre("Nombre anterior");
         representante.setApellido("Apellido anterior");
         representante.setCorreo("anterior@example.com");
@@ -83,6 +213,7 @@ class PreinscripcionServiceTest {
 
         PreinscripcionRequestDTO request = crearRequest(
                 seccion.getId(), "EST-PREINS-01", "REP-PREINS-01");
+        request.getRepresentante().setId(representante.getId());
         request.getRepresentante().setNombre("Nombre actualizado");
         request.getRepresentante().setFotoUrl("/api/fotos/representante.png");
         PreinscripcionResponseDTO response = preinscripcionService.preinscribir(request);
@@ -92,14 +223,77 @@ class PreinscripcionServiceTest {
             .orElseThrow().getTipoIngreso());
         assertEquals(1L, response.getCuposDisponibles());
         assertEquals("Nombre actualizado Apellido", response.getRepresentanteNombreCompleto());
+        assertEquals("04121234567", representanteRepository
+                .findById(representante.getId()).orElseThrow().getTelefono());
         assertEquals("/api/fotos/representante.png", representanteRepository
-                .findByCedula("REP-PREINS-01").orElseThrow().getFotoUrl());
+                .findByCedula(cedulaRepresentanteDeClave("REP-PREINS-01"))
+                .orElseThrow().getFotoUrl());
         assertEquals(representante.getId(), response.getRepresentanteId());
         assertEquals(1, estudianteRepository.count());
         assertEquals(1, matriculaRepository.count());
         assertEquals(1, relacionRepository.findByEstudiante_IdAndActivoTrue(
                 response.getEstudianteId()).size());
         assertNotNull(matriculaRepository.findAll().getFirst().getFechaSolicitud());
+    }
+
+    @Test
+    void generaLaCedulaEstudiantilDesdeLosDatosDelEstudianteYRepresentante() {
+        Seccion seccion = crearSeccion(2, "X");
+        PreinscripcionRequestDTO request = crearRequest(
+                seccion.getId(), "EST-CI-GENERADA", "REP-CI-GENERADA");
+        request.getEstudiante().setCedula(null);
+        request.getEstudiante().setTieneCedulaIdentidad(false);
+        request.getEstudiante().setNacionalidad("v");
+        request.getEstudiante().setOrdenNacimiento(1);
+        request.getEstudiante().setFechaNacimiento(LocalDate.of(2019, 1, 1));
+        request.getRepresentante().setCedula("V-18.456.789");
+
+        PreinscripcionResponseDTO response = preinscripcionService.preinscribir(request);
+
+        assertEquals("CE-V11918456789", response.getEstudianteCedula());
+        assertEquals("CE-V11918456789", estudianteRepository.findById(response.getEstudianteId())
+                .orElseThrow().getCedula());
+        assertEquals("V-18456789", representanteRepository
+                .findById(response.getRepresentanteId()).orElseThrow().getCedula());
+    }
+
+    @Test
+    void rechazaOrdenDeNacimientoFueraDelFormatoDeUnDigito() {
+        Seccion seccion = crearSeccion(2, "Y");
+        PreinscripcionRequestDTO request = crearRequest(
+                seccion.getId(), "EST-CI-INVALIDA", "REP-CI-INVALIDA");
+        request.getEstudiante().setCedula(null);
+        request.getEstudiante().setTieneCedulaIdentidad(false);
+        request.getEstudiante().setOrdenNacimiento(10);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> preinscripcionService.preinscribir(request));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertEquals(0, estudianteRepository.count());
+    }
+
+    @Test
+    void actualizaCedulaEscolarAIdentidadRealAlEditarLaPreinscripcion() {
+        Seccion seccion = crearSeccion(2, "W");
+        PreinscripcionRequestDTO solicitud = crearRequest(
+                seccion.getId(), "EST-CI-A-IDENTIDAD", "REP-CI-A-IDENTIDAD");
+        solicitud.getEstudiante().setTieneCedulaIdentidad(false);
+        solicitud.getEstudiante().setCedula(null);
+        solicitud.getEstudiante().setNacionalidad("V");
+        solicitud.getEstudiante().setOrdenNacimiento(1);
+        PreinscripcionResponseDTO creada = preinscripcionService.preinscribir(solicitud);
+        PreinscripcionRequestDTO edicion = preinscripcionService
+                .obtenerDatosPreinscripcion(creada.getMatriculaId());
+        edicion.getEstudiante().setTieneCedulaIdentidad(true);
+        edicion.getEstudiante().setCedula("E-81234567");
+
+        PreinscripcionResponseDTO actualizada = preinscripcionService
+                .actualizarPreinscripcion(creada.getMatriculaId(), edicion);
+
+        assertEquals("E-81234567", actualizada.getEstudianteCedula());
+        assertEquals("E-81234567", estudianteRepository.findById(creada.getEstudianteId())
+                .orElseThrow().getCedula());
     }
 
     @Test
@@ -214,10 +408,12 @@ class PreinscripcionServiceTest {
         Seccion segundaSeccion = crearSeccion(3, "E");
         PreinscripcionResponseDTO primera = preinscripcionService.preinscribir(
                 crearRequest(primeraSeccion.getId(), "EST-ANUAL-01", "REP-ANUAL-01"));
+        PreinscripcionRequestDTO segundaSolicitud = crearRequest(
+                segundaSeccion.getId(), "EST-ANUAL-01", "REP-ANUAL-02");
+        segundaSolicitud.getEstudiante().setCedula(primera.getEstudianteCedula());
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> preinscripcionService.preinscribir(
-                        crearRequest(segundaSeccion.getId(), "EST-ANUAL-01", "REP-ANUAL-02")));
+                () -> preinscripcionService.preinscribir(segundaSolicitud));
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
         assertEquals(primera.getMatriculaId(), matriculaRepository.findAll().getFirst().getId());
@@ -313,7 +509,8 @@ class PreinscripcionServiceTest {
         assertEquals("traslado", respuesta.getTipoIngreso());
         assertEquals("Nombre corregido", estudianteRepository.findById(creada.getEstudianteId())
                 .orElseThrow().getNombre());
-        assertEquals("Representante corregido", representanteRepository.findByCedula("REP-EDITAR-01")
+        assertEquals("Representante corregido", representanteRepository
+                .findByCedula(cedulaRepresentanteDeClave("REP-EDITAR-01"))
                 .orElseThrow().getNombre());
         assertEquals("en_proceso", matriculaRepository.findById(matricula.getId())
                 .orElseThrow().getEstadoMatricula());
@@ -328,8 +525,9 @@ class PreinscripcionServiceTest {
         PreinscripcionRequestDTO datos = preinscripcionService
                 .obtenerDatosPreinscripcion(creada.getMatriculaId());
 
-        assertEquals("EST-EDITAR-02", datos.getEstudiante().getCedula());
-        assertEquals("REP-EDITAR-02", datos.getRepresentante().getCedula());
+        assertEquals(creada.getEstudianteCedula(), datos.getEstudiante().getCedula());
+        assertEquals(cedulaRepresentanteDeClave("REP-EDITAR-02"),
+                datos.getRepresentante().getCedula());
         assertEquals(seccion.getId(), datos.getSeccionId());
         assertEquals((short) 2026, datos.getAnioEscolar());
         assertEquals(true, datos.getRelacionPrincipal());
@@ -381,14 +579,15 @@ class PreinscripcionServiceTest {
         crearEstudiante("EST-EDITAR-05");
         PreinscripcionRequestDTO datos = preinscripcionService
                 .obtenerDatosPreinscripcion(creada.getMatriculaId());
-        datos.getEstudiante().setCedula("EST-EDITAR-05");
+        datos.getEstudiante().setCedula(cedulaEstudianteDeClave("EST-EDITAR-05"));
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> preinscripcionService.actualizarPreinscripcion(
                         creada.getMatriculaId(), datos));
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
-        assertEquals("EST-EDITAR-04", estudianteRepository.findById(creada.getEstudianteId())
+        assertEquals(creada.getEstudianteCedula(),
+                estudianteRepository.findById(creada.getEstudianteId())
                 .orElseThrow().getCedula());
     }
 
@@ -601,7 +800,7 @@ class PreinscripcionServiceTest {
 
     private Estudiante crearEstudiante(String cedula) {
         Estudiante estudiante = new Estudiante();
-        estudiante.setCedula(cedula);
+        estudiante.setCedula(cedulaEstudianteDeClave(cedula));
         estudiante.setNombre("Ocupante");
         estudiante.setApellido("Prueba");
         estudiante.setFechaNacimiento(LocalDate.of(2020, 1, 1));
@@ -617,7 +816,8 @@ class PreinscripcionServiceTest {
         request.setAnioEscolar((short) 2026);
 
         EstudianteData estudiante = new EstudianteData();
-        estudiante.setCedula(cedulaEstudiante);
+        estudiante.setCedula(cedulaEstudianteDeClave(cedulaEstudiante));
+        estudiante.setTieneCedulaIdentidad(true);
         estudiante.setNombre("Ana");
         estudiante.setApellido("Estudiante");
         estudiante.setFechaNacimiento(LocalDate.of(2020, 1, 1));
@@ -625,12 +825,23 @@ class PreinscripcionServiceTest {
         request.setEstudiante(estudiante);
 
         RepresentanteData representante = new RepresentanteData();
-        representante.setCedula(cedulaRepresentante);
+        representante.setCedula(cedulaRepresentanteDeClave(cedulaRepresentante));
         representante.setNombre("Nombre");
         representante.setApellido("Apellido");
         representante.setParentesco("Madre");
         representante.setCorreo("representante@example.com");
+        representante.setTelefono("04121234567");
         request.setRepresentante(representante);
         return request;
+    }
+
+    private String cedulaRepresentanteDeClave(String clave) {
+        int numero = 60_000_000 + Math.floorMod(clave.hashCode(), 20_000_000);
+        return String.format(Locale.ROOT, "V-%08d", numero);
+    }
+
+    private String cedulaEstudianteDeClave(String clave) {
+        int numero = 60_000_000 + Math.floorMod(clave.hashCode(), 20_000_000);
+        return String.format(Locale.ROOT, "V-%08d", numero);
     }
 }

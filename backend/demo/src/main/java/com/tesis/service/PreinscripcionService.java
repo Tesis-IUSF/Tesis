@@ -18,6 +18,8 @@ import com.tesis.repository.RequisitoMatriculaRepository;
 import com.tesis.repository.RelacionEstudianteRepresentanteRepository;
 import com.tesis.repository.RepresentanteRepository;
 import com.tesis.repository.SeccionRepository;
+import com.tesis.validation.CedulaEstudiantil;
+import com.tesis.validation.CedulaVenezolana;
 import org.springframework.http.HttpStatus;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -82,8 +84,11 @@ public class PreinscripcionService {
     public PreinscripcionResponseDTO preinscribir(PreinscripcionRequestDTO request) {
         calendarioService.validarAnioExistente(request.getAnioEscolar());
         EstudianteData datosEstudiante = request.getEstudiante();
-        Estudiante estudianteExistente = estudianteRepository.findByCedulaForUpdate(datosEstudiante.getCedula())
-            .orElse(null);
+        String cedulaRepresentante =
+                normalizarCedulaRepresentante(request.getRepresentante());
+        datosEstudiante.setCedula(resolverCedulaNueva(datosEstudiante, cedulaRepresentante));
+        Estudiante estudianteExistente = estudianteRepository
+                .findByCedulaForUpdate(datosEstudiante.getCedula()).orElse(null);
 
         Seccion seccion = seccionRepository.findByIdForUpdate(request.getSeccionId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
@@ -157,7 +162,8 @@ public class PreinscripcionService {
                 seccion.getId(),
                 matricula.getAnioEscolar(),
                 cuposDisponibles - 1,
-                matricula.getTipoIngreso());
+                matricula.getTipoIngreso(),
+                estudiante.getCedula());
     }
 
     @Transactional(readOnly = true)
@@ -178,6 +184,9 @@ public class PreinscripcionService {
 
         EstudianteData datosEstudiante = new EstudianteData(
                 estudiante.getCedula(),
+                !esCedulaEscolar(estudiante.getCedula()),
+                null,
+                null,
                 estudiante.getNombre(),
                 estudiante.getApellido(),
                 estudiante.getFechaNacimiento(),
@@ -187,6 +196,7 @@ public class PreinscripcionService {
                 estudiante.getFotoCarnetUrl(),
                 estudiante.getNumeroExpediente());
         RepresentanteData datosRepresentante = new RepresentanteData(
+                representante.getId(),
                 representante.getCedula(),
                 representante.getNombre(),
                 representante.getApellido(),
@@ -225,14 +235,9 @@ public class PreinscripcionService {
         }
 
         Estudiante estudiante = matricula.getEstudiante();
-        Estudiante estudianteConCedula = estudianteRepository
-                .findByCedulaForUpdate(request.getEstudiante().getCedula())
-                .orElse(null);
-        if (estudianteConCedula != null
-                && !estudianteConCedula.getId().equals(estudiante.getId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Ya existe otro estudiante con esa cédula");
-        }
+        request.getEstudiante().setCedula(resolverCedulaActualizada(
+                request.getEstudiante(), estudiante, request.getRepresentante()));
+        normalizarCedulaRepresentante(request.getRepresentante());
 
         Seccion nuevaSeccion = seccionRepository.findByIdForUpdate(request.getSeccionId())
                 .orElseThrow(() -> new ResponseStatusException(
@@ -317,11 +322,14 @@ public class PreinscripcionService {
                 nuevaSeccion.getId(),
                 matricula.getAnioEscolar(),
                 cuposDisponibles,
-                matricula.getTipoIngreso());
+                matricula.getTipoIngreso(),
+                estudiante.getCedula());
     }
 
     private void actualizarEstudiante(Estudiante estudiante, EstudianteData datos) {
-        estudiante.setCedula(datos.getCedula());
+        estudiante.setCedula(CedulaVenezolana.esValida(datos.getCedula())
+                ? CedulaVenezolana.normalizarFormato(datos.getCedula())
+                : CedulaEstudiantil.normalizar(datos.getCedula()));
         estudiante.setNombre(datos.getNombre());
         estudiante.setApellido(datos.getApellido());
         estudiante.setFechaNacimiento(datos.getFechaNacimiento());
@@ -333,15 +341,18 @@ public class PreinscripcionService {
     }
 
     private Representante actualizarRepresentante(RepresentanteData datos) {
-        Representante representante = representanteRepository.findByCedula(datos.getCedula())
-                .orElseGet(Representante::new);
-        representante.setCedula(datos.getCedula());
+        validarTelefonoRepresentante(datos);
+        String cedulaOriginal = datos.getCedula().trim();
+        String cedula = normalizarCedulaRepresentante(datos);
+        Representante representante = buscarRepresentanteParaActualizacion(datos, cedula, cedulaOriginal);
+        representante.setCedula(cedula);
         representante.setNombre(datos.getNombre());
         representante.setApellido(datos.getApellido());
         representante.setParentesco(datos.getParentesco());
         representante.setCorreo(datos.getCorreo());
-        representante.setTelefono(datos.getTelefono());
-        representante.setTelefonoSecundario(datos.getTelefonoSecundario());
+        representante.setTelefono(datos.getTelefono().trim());
+        representante.setTelefonoSecundario(datos.getTelefonoSecundario() == null
+                ? null : datos.getTelefonoSecundario().trim());
         representante.setDireccion(datos.getDireccion());
         representante.setOcupacion(datos.getOcupacion());
         representante.setFotoUrl(datos.getFotoUrl());
@@ -488,7 +499,7 @@ public class PreinscripcionService {
 
     private Estudiante crearEstudiante(EstudianteData datos) {
         Estudiante estudiante = new Estudiante();
-        estudiante.setCedula(datos.getCedula());
+        estudiante.setCedula(CedulaEstudiantil.normalizar(datos.getCedula()));
         estudiante.setNombre(datos.getNombre());
         estudiante.setApellido(datos.getApellido());
         estudiante.setFechaNacimiento(datos.getFechaNacimiento());
@@ -502,22 +513,69 @@ public class PreinscripcionService {
     }
 
     private Representante guardarRepresentante(RepresentanteData datos) {
-        Representante representante = representanteRepository.findByCedula(datos.getCedula())
-                .orElseGet(Representante::new);
-        representante.setCedula(datos.getCedula());
+        validarTelefonoRepresentante(datos);
+        String cedulaOriginal = datos.getCedula().trim();
+        String cedula = normalizarCedulaRepresentante(datos);
+        Representante representante;
+        if (datos.getId() != null) {
+            representante = buscarRepresentanteSeleccionado(datos.getId());
+        } else {
+            if (representanteRepository.findByCedula(cedula)
+                    .or(() -> representanteRepository.findByCedula(cedulaOriginal)).isPresent()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "La cédula ya pertenece a un representante. Búscalo y selecciónalo.");
+            }
+            representante = new Representante();
+        }
+        representante.setCedula(cedula);
         representante.setNombre(datos.getNombre());
         representante.setApellido(datos.getApellido());
         representante.setParentesco(datos.getParentesco());
         representante.setCorreo(datos.getCorreo());
-        representante.setTelefono(datos.getTelefono());
-        representante.setTelefonoSecundario(datos.getTelefonoSecundario());
+        representante.setTelefono(datos.getTelefono().trim());
+        representante.setTelefonoSecundario(datos.getTelefonoSecundario() == null
+                ? null : datos.getTelefonoSecundario().trim());
         representante.setDireccion(datos.getDireccion());
         representante.setOcupacion(datos.getOcupacion());
         if (datos.getFotoUrl() != null && !datos.getFotoUrl().isBlank()) {
             representante.setFotoUrl(datos.getFotoUrl());
         }
         representante.setActivo(true);
-        return representanteRepository.save(representante);
+        try {
+            return representanteRepository.saveAndFlush(representante);
+        } catch (DataIntegrityViolationException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Ya existe otro representante con esa cédula", exception);
+        }
+    }
+
+    private Representante buscarRepresentanteParaActualizacion(RepresentanteData datos,
+                                                                String cedula,
+                                                                String cedulaOriginal) {
+        if (datos.getId() != null) {
+            return buscarRepresentanteSeleccionado(datos.getId());
+        }
+        return representanteRepository.findByCedula(cedula)
+                .or(() -> representanteRepository.findByCedula(cedulaOriginal))
+                .orElseGet(Representante::new);
+    }
+
+    private void validarTelefonoRepresentante(RepresentanteData datos) {
+        if (datos == null || datos.getTelefono() == null || datos.getTelefono().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El teléfono principal del representante es obligatorio");
+        }
+    }
+
+    private Representante buscarRepresentanteSeleccionado(Integer id) {
+        Representante representante = representanteRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "El representante seleccionado no existe"));
+        if (!Boolean.TRUE.equals(representante.getActivo())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede seleccionar un representante inactivo");
+        }
+        return representante;
     }
 
     private void guardarRelacion(PreinscripcionRequestDTO request,
@@ -540,5 +598,108 @@ public class PreinscripcionService {
 
     private String nombreCompleto(String nombre, String apellido) {
         return nombre + " " + apellido;
+    }
+
+    private String normalizarCedulaRepresentante(RepresentanteData datos) {
+        if (datos == null || datos.getCedula() == null || datos.getCedula().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "La cédula del representante es obligatoria");
+        }
+        String cedula = CedulaVenezolana.normalizarFormato(datos.getCedula());
+        if (!CedulaVenezolana.esValida(cedula)) {
+            String cedulaLegada = datos.getCedula().trim();
+            if (representanteRepository.existsByCedula(cedulaLegada)) {
+                datos.setCedula(cedulaLegada);
+                return cedulaLegada;
+            }
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    CedulaVenezolana.MENSAJE);
+        }
+        datos.setCedula(cedula);
+        return cedula;
+    }
+
+    private String resolverCedulaNueva(EstudianteData datos, String cedulaRepresentante) {
+        String cedulaEnviada = datos.getCedula();
+        if (Boolean.TRUE.equals(datos.getTieneCedulaIdentidad())) {
+            String cedulaIdentidad = CedulaVenezolana.normalizarFormato(cedulaEnviada);
+            if (CedulaVenezolana.esValida(cedulaIdentidad)) {
+                return cedulaIdentidad;
+            }
+            if (cedulaEnviada != null && estudianteRepository.existsByCedula(cedulaEnviada.trim())) {
+                return cedulaEnviada.trim();
+            }
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, CedulaVenezolana.MENSAJE);
+        }
+        if (cedulaEnviada != null && !cedulaEnviada.isBlank()
+                && estudianteRepository.existsByCedula(cedulaEnviada.trim())) {
+            return cedulaEnviada.trim();
+        }
+
+        return generarCedulaEscolar(datos, cedulaRepresentante);
+    }
+
+    private String resolverCedulaActualizada(EstudianteData datos,
+                                              Estudiante estudiante,
+                                              RepresentanteData representante) {
+        String cedulaActual = estudiante.getCedula();
+        if (Boolean.TRUE.equals(datos.getTieneCedulaIdentidad())) {
+            String cedulaIdentidad = CedulaVenezolana.normalizarFormato(datos.getCedula());
+            if (!CedulaVenezolana.esValida(cedulaIdentidad)) {
+                if (datos.getCedula() != null
+                        && datos.getCedula().trim().equalsIgnoreCase(cedulaActual)) {
+                    return cedulaActual;
+                }
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        CedulaVenezolana.MENSAJE);
+            }
+            validarCedulaDisponible(cedulaIdentidad, estudiante.getId());
+            return cedulaIdentidad;
+        }
+
+        if (esCedulaEscolar(cedulaActual)) {
+            return cedulaActual;
+        }
+        String cedulaRepresentante = normalizarCedulaRepresentante(representante);
+        String generada = generarCedulaEscolar(datos, cedulaRepresentante);
+        validarCedulaDisponible(generada, estudiante.getId());
+        return generada;
+    }
+
+    private String generarCedulaEscolar(EstudianteData datos, String cedulaRepresentante) {
+        if (datos.getNacionalidad() == null || datos.getNacionalidad().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "La nacionalidad del estudiante es obligatoria para generar su cédula escolar");
+        }
+        if (datos.getOrdenNacimiento() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El orden de nacimiento es obligatorio para generar la cédula escolar");
+        }
+
+        String generada;
+        try {
+            generada = CedulaEstudiantil.generar(
+                    datos.getNacionalidad(),
+                    datos.getOrdenNacimiento(),
+                    datos.getFechaNacimiento(),
+                    cedulaRepresentante);
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    exception.getMessage(), exception);
+        }
+        return generada;
+    }
+
+    private boolean esCedulaEscolar(String cedula) {
+        return cedula != null && cedula.regionMatches(true, 0, "CE-", 0, 3);
+    }
+
+    private void validarCedulaDisponible(String cedula, Integer estudianteId) {
+        estudianteRepository.findByCedula(cedula)
+                .filter(otro -> !otro.getId().equals(estudianteId))
+                .ifPresent(otro -> {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "La cédula ya está registrada por otro estudiante");
+                });
     }
 }

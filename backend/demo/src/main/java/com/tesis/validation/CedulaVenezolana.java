@@ -19,7 +19,13 @@ public final class CedulaVenezolana {
         return cedula == null ? null : cedula.trim().toUpperCase(Locale.ROOT);
     }
 
+    public static String normalizarFormato(String cedula) {
+        String normalizada = normalizar(cedula);
+        return normalizada == null ? null : normalizada.replaceAll("[\\s.]", "");
+    }
+
     public static boolean esValida(String cedula) {
-        return cedula != null && PATRON.matcher(cedula).matches();
+        String normalizada = normalizarFormato(cedula);
+        return normalizada != null && PATRON.matcher(normalizada).matches();
     }
 }
