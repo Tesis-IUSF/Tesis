@@ -142,6 +142,27 @@ tbody td {
 .btn-delete:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.badge-estado {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-activo {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.badge-inactivo {
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 /* Responsivo: tabla -> tarjetas apiladas en movil */

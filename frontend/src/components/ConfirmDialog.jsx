@@ -7,6 +7,8 @@ function ConfirmDialog({
   onConfirm,
   onCancel,
   cargando,
+  confirmText = "Sí, eliminar",
+  confirmLoadingText = "Eliminando...",
 }) {
   if (!open) return null;
 
@@ -39,7 +41,7 @@ function ConfirmDialog({
             onClick={onConfirm}
             disabled={cargando}
           >
-            {cargando ? "Eliminando..." : "Sí, eliminar"}
+            {cargando ? confirmLoadingText : confirmText}
           </button>
         </div>
       </div>
