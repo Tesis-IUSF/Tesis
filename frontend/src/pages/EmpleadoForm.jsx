@@ -19,6 +19,8 @@ const VACIO = {
   departamentoId: "",
   fechaIngreso: "",
   turnoId: "",
+  activo: true,
+  fechaEgreso: "",
 };
 
 const hoyISO = () => new Date().toISOString().split("T")[0];
@@ -62,6 +64,8 @@ function EmpleadoForm() {
           departamentoId: data.departamentoId ?? "",
           fechaIngreso: data.fechaIngreso || "",
           turnoId: data.turnoId ?? "",
+          activo: data.activo !== false,
+          fechaEgreso: data.fechaEgreso || "",
         });
         setTurnoIdOriginal(data.turnoId ?? "");
       })
@@ -71,6 +75,12 @@ function EmpleadoForm() {
       })
       .finally(() => setCargandoDatos(false));
   }, [id, esEdicion, navigate, toast]);
+
+  const turnosDisponibles = turnos.filter(
+    (t) =>
+      t.activo !== false ||
+      (esEdicion && String(t.id) === String(turnoIdOriginal)),
+  );
 
   const actualizarCampo = (campo, valor) => {
     setForm((prev) => ({ ...prev, [campo]: valor }));
@@ -99,6 +109,14 @@ function EmpleadoForm() {
         "Solo letras, números, puntos, guiones y guion bajo.";
     }
 
+    if (!form.fechaIngreso) {
+      nuevosErrores.fechaIngreso = "La fecha de ingreso es obligatoria.";
+    }
+
+    if (!esEdicion && !form.turnoId) {
+      nuevosErrores.turnoId = "El turno es obligatorio.";
+    }
+
     setErrores(nuevosErrores);
     return Object.keys(nuevosErrores).length === 0;
   };
@@ -118,54 +136,54 @@ function EmpleadoForm() {
       cargoId: form.cargoId ? Number(form.cargoId) : null,
       departamentoId: form.departamentoId ? Number(form.departamentoId) : null,
       fechaNacimiento: form.fechaNacimiento || null,
-      fechaIngreso: form.fechaIngreso || null,
+      fechaIngreso: form.fechaIngreso,
     };
 
     try {
-      let empleadoId = id;
       if (esEdicion) {
+        payload.activo = form.activo;
+        payload.fechaEgreso = !form.activo ? form.fechaEgreso || null : null;
         await api.put(`/empleados/${id}`, payload);
         toast.success("Empleado actualizado correctamente.");
-      } else {
-        const { data } = await api.post("/empleados", payload);
-        empleadoId = data.id;
-        toast.success("Empleado creado correctamente.");
-      }
 
-      // Asignación de turno: solo aplica en edición, y solo si cambió
-      // Asignación de turno: solo aplica en edición, y solo si cambió
-      if (
-        esEdicion &&
-        form.turnoId &&
-        String(form.turnoId) !== String(turnoIdOriginal)
-      ) {
-        try {
-          if (turnoIdOriginal) {
-            // Ya tenía turno: reemplazar la asignación vigente
-            await api.put(
-              `/asignaciones-turnos/empleado/${empleadoId}/vigente`,
-              {
+        // Asignación de turno: solo aplica en edición si sigue activo y cambió
+        if (
+          form.activo &&
+          form.turnoId &&
+          String(form.turnoId) !== String(turnoIdOriginal)
+        ) {
+          try {
+            if (turnoIdOriginal) {
+              // Ya tenía turno: reemplazar la asignación vigente
+              await api.put(
+                `/asignaciones-turnos/empleado/${id}/vigente`,
+                {
+                  turnoId: Number(form.turnoId),
+                  fechaDesde: fechaDesdeTurno,
+                },
+              );
+            } else {
+              // Primera asignación: crear una nueva
+              await api.post("/asignaciones-turnos", {
+                empleadoId: Number(id),
                 turnoId: Number(form.turnoId),
                 fechaDesde: fechaDesdeTurno,
-              },
+              });
+            }
+            toast.success("Turno actualizado correctamente.");
+          } catch (errTurno) {
+            toast.error(
+              extractErrorMessage(
+                errTurno,
+                "No se pudo actualizar el turno del empleado.",
+              ),
             );
-          } else {
-            // Primera asignación: crear una nueva
-            await api.post("/asignaciones-turnos", {
-              empleadoId: Number(empleadoId),
-              turnoId: Number(form.turnoId),
-              fechaDesde: fechaDesdeTurno,
-            });
           }
-          toast.success("Turno actualizado correctamente.");
-        } catch (errTurno) {
-          toast.error(
-            extractErrorMessage(
-              errTurno,
-              "No se pudo actualizar el turno del empleado.",
-            ),
-          );
         }
+      } else {
+        payload.turnoId = Number(form.turnoId);
+        await api.post("/empleados", payload);
+        toast.success("Empleado creado correctamente.");
       }
 
       navigate("/empleados");
@@ -295,7 +313,7 @@ function EmpleadoForm() {
             </label>
 
             <label>
-              Fecha de ingreso
+              Fecha de ingreso *
               <input
                 type="date"
                 value={form.fechaIngreso}
@@ -303,6 +321,9 @@ function EmpleadoForm() {
                   actualizarCampo("fechaIngreso", e.target.value)
                 }
               />
+              {errores.fechaIngreso && (
+                <span className="campo-error">{errores.fechaIngreso}</span>
+              )}
             </label>
 
             <label>
@@ -344,17 +365,19 @@ function EmpleadoForm() {
                   <select
                     value={form.turnoId}
                     onChange={(e) => actualizarCampo("turnoId", e.target.value)}
+                    disabled={!form.activo}
                   >
                     <option value="">Sin turno asignado</option>
-                    {turnos.map((t) => (
+                    {turnosDisponibles.map((t) => (
                       <option key={t.id} value={t.id}>
-                        {t.nombre}
+                        {t.nombre} {!t.activo ? "(Inactivo)" : ""}
                       </option>
                     ))}
                   </select>
                 </label>
 
-                {String(form.turnoId) !== String(turnoIdOriginal) &&
+                {form.activo &&
+                  String(form.turnoId) !== String(turnoIdOriginal) &&
                   form.turnoId && (
                     <label>
                       Turno efectivo desde
@@ -365,15 +388,56 @@ function EmpleadoForm() {
                       />
                     </label>
                   )}
+
+                <label>
+                  Estado
+                  <select
+                    value={form.activo ? "true" : "false"}
+                    onChange={(e) => {
+                      const nuevoActivo = e.target.value === "true";
+                      actualizarCampo("activo", nuevoActivo);
+                      if (nuevoActivo) {
+                        actualizarCampo("fechaEgreso", "");
+                      } else if (!form.fechaEgreso) {
+                        actualizarCampo("fechaEgreso", hoyISO());
+                      }
+                    }}
+                  >
+                    <option value="true">Activo</option>
+                    <option value="false">Inactivo (Dado de baja)</option>
+                  </select>
+                </label>
+
+                {!form.activo && (
+                  <label>
+                    Fecha de egreso
+                    <input
+                      type="date"
+                      value={form.fechaEgreso}
+                      onChange={(e) =>
+                        actualizarCampo("fechaEgreso", e.target.value)
+                      }
+                    />
+                  </label>
+                )}
               </>
             ) : (
               <label>
-                Turno
-                <input
-                  value="Podrás asignar el turno después de crear al empleado."
-                  readOnly
-                  disabled
-                />
+                Turno *
+                <select
+                  value={form.turnoId}
+                  onChange={(e) => actualizarCampo("turnoId", e.target.value)}
+                >
+                  <option value="">Selecciona un turno activo...</option>
+                  {turnosDisponibles.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nombre}
+                    </option>
+                  ))}
+                </select>
+                {errores.turnoId && (
+                  <span className="campo-error">{errores.turnoId}</span>
+                )}
               </label>
             )}
           </div>
