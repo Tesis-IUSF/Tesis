@@ -170,6 +170,7 @@ Actualmente los PDFs usan `app.institucion.nombre`; los demás valores quedan di
 ### Filtros de listados de personal
 
 - `GET /api/empleados` admite `cargoId`, `turnoId` y `activo` (`true` para personal activo, `false` para personal dado de baja), además de paginación. Si `activo` se omite, devuelve ambos estados. `turnoId` filtra asignaciones activas y vigentes para la fecha actual.
+- La cédula de empleado se acepta como `V-` seguido de 7 u 8 dígitos desde 6.000.000, o `E-` seguido de 8 dígitos desde 80.000.000. El backend quita espacios al inicio/final y convierte a mayúsculas antes de comprobar duplicados y guardar; por ejemplo, ` v-12345678 ` se almacena como `V-12345678`. Formatos sin prefijo o fuera de rango producen HTTP 400 y duplicados HTTP 409.
 - `POST /api/empleados` requiere `turnoId` y `fechaIngreso`; el turno debe estar activo. Al guardar el empleado, el backend crea su asignación en la misma transacción, con `fechaDesde = fechaIngreso` y `fechaHasta = null`.
 - `DELETE /api/empleados/{id}` realiza una baja lógica: marca `activo = false`, establece `fechaEgreso` si no estaba definida, cierra en esa fecha las asignaciones vigentes y revoca las credenciales QR activas. En `PUT /api/empleados/{id}`, enviar `activo = false` aplica la misma baja. El registro del empleado y su historial se conservan.
 - `GET /api/empleados/carnets` admite también `turnoId` junto con sus filtros existentes `q`, `departamentoId`, `cargoId` y `estadoQr`.
