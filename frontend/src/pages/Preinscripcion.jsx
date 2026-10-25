@@ -1,5 +1,6 @@
 // src/pages/Preinscripcion.jsx
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
@@ -16,6 +17,8 @@ const SEXOS = [
   { valor: "Otro", etiqueta: "Otro" },
 ];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CEDULA_IDENTIDAD = /^V-(?:[6-9]\d{6}|[1-9]\d{7})$/;
+const CEDULA_EXTRANJERA = /^E-[89]\d{7}$/;
 
 const hoyISO = () => {
   const d = new Date();
@@ -31,7 +34,11 @@ const formatFechaISO = (v) => {
 
 const VACIO = {
   est: {
-    cedula: "",
+    tieneCedulaIdentidad: false,
+    cedulaTipo: "V",
+    cedulaNumero: "",
+    nacionalidad: "V",
+    ordenNacimiento: "1",
     nombre: "",
     apellido: "",
     fechaNacimiento: "",
@@ -40,7 +47,9 @@ const VACIO = {
     telefono: "",
   },
   rep: {
-    cedula: "",
+    id: null,
+    cedulaTipo: "V",
+    cedulaNumero: "",
     nombre: "",
     apellido: "",
     parentesco: "",
@@ -51,6 +60,7 @@ const VACIO = {
     ocupacion: "",
   },
   institucionProcedencia: "",
+  anioEscolar: null,
   seccionId: "",
   relacionPrincipal: true,
   autorizadoRetirar: true,
@@ -59,8 +69,32 @@ const VACIO = {
 
 const o = (v) => (v.trim() ? v.trim() : null);
 
+const separarCedulaIdentidad = (cedula = "") => {
+  const coincidencia = String(cedula)
+    .trim()
+    .toUpperCase()
+    .replace(/[.\s]/g, "")
+    .match(/^([VE])-(\d+)$/);
+  return coincidencia
+    ? { cedulaTipo: coincidencia[1], cedulaNumero: coincidencia[2] }
+    : { cedulaTipo: "V", cedulaNumero: "" };
+};
+
+const separarCedulaRepresentante = (cedula = "") => {
+  const coincidencia = String(cedula)
+    .trim()
+    .toUpperCase()
+    .replace(/[.\s]/g, "")
+    .match(/^([VE])-(\d+)$/);
+  return coincidencia
+    ? { cedulaTipo: coincidencia[1], cedulaNumero: coincidencia[2] }
+    : { cedulaTipo: "V", cedulaNumero: "" };
+};
+
 function Preinscripcion() {
   const toast = useToast();
+  const navigate = useNavigate();
+  const { id } = useParams();
   const [form, setForm] = useState(VACIO);
   const [paso, setPaso] = useState(0);
   const [errores, setErrores] = useState({});
@@ -68,6 +102,18 @@ function Preinscripcion() {
   const [errorEnvio, setErrorEnvio] = useState("");
   const [resultado, setResultado] = useState(null);
   const [descargando, setDescargando] = useState(false);
+  const [modoRepresentante, setModoRepresentante] = useState(
+    id ? "seleccionado" : "buscar",
+  );
+  const [busquedaRepresentante, setBusquedaRepresentante] = useState("");
+  const [representantesEncontrados, setRepresentantesEncontrados] = useState([]);
+  const [paginaRepresentantes, setPaginaRepresentantes] = useState({
+    page: 0,
+    totalPages: 0,
+  });
+  const [buscandoRepresentantes, setBuscandoRepresentantes] = useState(false);
+  const [idEdicionCargada, setIdEdicionCargada] = useState(null);
+  const cargandoEdicion = Boolean(id) && idEdicionCargada !== id;
 
   const [calendario, setCalendario] = useState(null);
   const [secciones, setSecciones] = useState([]);
@@ -95,9 +141,104 @@ function Preinscripcion() {
     };
   }, []);
 
-  const anio = calendario?.anioActivo?.anio ?? null;
-  const anioNombre =
-    calendario?.anioActivo?.nombre ?? (anio ? String(anio) : "—");
+  useEffect(() => {
+    if (!id) return undefined;
+    let activo = true;
+    api
+      .get(`/matriculas/${id}/preinscripcion`)
+      .then(({ data }) => {
+        if (!activo) return;
+        const { estudiante, representante } = data;
+        const tieneCedulaIdentidad = !String(estudiante.cedula ?? "")
+          .toUpperCase()
+          .startsWith("CE-");
+        const cedulaIdentidad = separarCedulaIdentidad(estudiante.cedula);
+        setForm({
+          est: {
+            ...VACIO.est,
+            tieneCedulaIdentidad,
+            ...cedulaIdentidad,
+            cedulaActual: estudiante.cedula ?? "",
+            nombre: estudiante.nombre ?? "",
+            apellido: estudiante.apellido ?? "",
+            fechaNacimiento: estudiante.fechaNacimiento ?? "",
+            sexo: estudiante.sexo ?? "",
+            correo: estudiante.correo ?? "",
+            telefono: estudiante.telefono ?? "",
+          },
+          rep: {
+            ...VACIO.rep,
+            ...representante,
+            ...separarCedulaRepresentante(representante.cedula),
+          },
+          institucionProcedencia: data.institucionProcedencia ?? "",
+          anioEscolar: data.anioEscolar ?? null,
+          seccionId: String(data.seccionId ?? ""),
+          relacionPrincipal: data.relacionPrincipal ?? true,
+          autorizadoRetirar: data.autorizadoRetirar ?? true,
+          recibeComunicados: data.recibeComunicados ?? true,
+        });
+      })
+      .catch((error) => {
+        if (!activo) return;
+        setErrorDatos(
+          extractErrorMessage(error, "No se pudieron cargar los datos para editar."),
+        );
+      })
+      .finally(() => {
+        if (activo) setIdEdicionCargada(id);
+      });
+    return () => {
+      activo = false;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    if (modoRepresentante !== "buscar" || busquedaRepresentante.trim().length < 2) {
+      return undefined;
+    }
+    let activo = true;
+    const temporizador = setTimeout(() => {
+      setBuscandoRepresentantes(true);
+      api
+        .get("/representantes/buscar", {
+          params: {
+            q: busquedaRepresentante.trim(),
+            page: paginaRepresentantes.page,
+            size: 8,
+          },
+        })
+        .then(({ data }) => {
+          if (!activo) return;
+          setRepresentantesEncontrados(data.content ?? []);
+          setPaginaRepresentantes({
+            page: data.page ?? 0,
+            totalPages: data.totalPages ?? 0,
+          });
+        })
+        .catch((error) => {
+          if (!activo) return;
+          setRepresentantesEncontrados([]);
+          setErrorEnvio(
+            extractErrorMessage(error, "No se pudo buscar representantes."),
+          );
+        })
+        .finally(() => {
+          if (activo) setBuscandoRepresentantes(false);
+        });
+    }, 250);
+    return () => {
+      activo = false;
+      clearTimeout(temporizador);
+    };
+  }, [modoRepresentante, busquedaRepresentante, paginaRepresentantes.page]);
+
+  const anio = id
+    ? (form.anioEscolar ?? calendario?.anioActivo?.anio ?? null)
+    : (calendario?.anioActivo?.anio ?? null);
+  const anioNombre = id && form.anioEscolar
+    ? String(form.anioEscolar)
+    : (calendario?.anioActivo?.nombre ?? (anio ? String(anio) : "—"));
 
   const periodoVigente = useMemo(
     () =>
@@ -156,9 +297,27 @@ function Preinscripcion() {
     const e = {};
     const { est, rep } = form;
     if (n === 0) {
-      if (!est.cedula.trim()) e["est.cedula"] = "La cédula es obligatoria.";
-      else if (est.cedula.trim().length > 20)
-        e["est.cedula"] = "Máximo 20 caracteres.";
+      if (est.tieneCedulaIdentidad) {
+        const cedula = `${est.cedulaTipo}-${est.cedulaNumero.trim()}`.toUpperCase();
+        const valida =
+          est.cedulaTipo === "E"
+            ? CEDULA_EXTRANJERA.test(cedula)
+            : CEDULA_IDENTIDAD.test(cedula);
+        if (!est.cedulaNumero.trim())
+          e["est.cedula"] = "La cédula de identidad es obligatoria.";
+        else if (!valida)
+          e["est.cedula"] =
+            "Formato inválido o fuera de rango. Usa V-6000000 o E-80000000 como mínimo.";
+      } else {
+        if (!est.nacionalidad) e["est.nacionalidad"] = "Selecciona la nacionalidad.";
+        if (
+          !est.ordenNacimiento ||
+          !Number.isInteger(Number(est.ordenNacimiento)) ||
+          Number(est.ordenNacimiento) < 1 ||
+          Number(est.ordenNacimiento) > 9
+        )
+          e["est.ordenNacimiento"] = "El orden de nacimiento debe estar entre 1 y 9.";
+      }
       if (!est.nombre.trim()) e["est.nombre"] = "El nombre es obligatorio.";
       if (!est.apellido.trim())
         e["est.apellido"] = "El apellido es obligatorio.";
@@ -175,20 +334,30 @@ function Preinscripcion() {
         e.institucionProcedencia = "Máximo 150 caracteres.";
     }
     if (n === 1) {
-      if (!rep.cedula.trim()) e["rep.cedula"] = "La cédula es obligatoria.";
-      else if (rep.cedula.trim().length > 20)
-        e["rep.cedula"] = "Máximo 20 caracteres.";
-      if (!rep.nombre.trim()) e["rep.nombre"] = "El nombre es obligatorio.";
-      if (!rep.apellido.trim())
-        e["rep.apellido"] = "El apellido es obligatorio.";
-      if (!rep.parentesco) e["rep.parentesco"] = "Selecciona el parentesco.";
-      if (!rep.correo.trim()) e["rep.correo"] = "El correo es obligatorio.";
-      else if (!EMAIL.test(rep.correo.trim()))
-        e["rep.correo"] = "Correo no válido.";
-      if (rep.telefono.trim().length > 20)
-        e["rep.telefono"] = "Máximo 20 caracteres.";
-      if (rep.telefonoSecundario.trim().length > 20)
-        e["rep.telefonoSecundario"] = "Máximo 20 caracteres.";
+      if (modoRepresentante === "buscar") {
+        e["rep.seleccion"] = "Selecciona un representante o registra uno nuevo.";
+      } else {
+        const cedula = `${rep.cedulaTipo}-${rep.cedulaNumero.trim()}`.toUpperCase();
+        const cedulaValida =
+          rep.cedulaTipo === "E"
+            ? CEDULA_EXTRANJERA.test(cedula)
+            : CEDULA_IDENTIDAD.test(cedula);
+        if (!rep.cedulaNumero.trim()) e["rep.cedula"] = "La cédula es obligatoria.";
+        else if (!cedulaValida)
+          e["rep.cedula"] = "Formato inválido o fuera de rango para el prefijo seleccionado.";
+        if (!rep.nombre.trim()) e["rep.nombre"] = "El nombre es obligatorio.";
+        if (!rep.apellido.trim())
+          e["rep.apellido"] = "El apellido es obligatorio.";
+        if (!rep.parentesco) e["rep.parentesco"] = "Selecciona el parentesco.";
+        if (!rep.correo.trim()) e["rep.correo"] = "El correo es obligatorio.";
+        else if (!EMAIL.test(rep.correo.trim()))
+          e["rep.correo"] = "Correo no válido.";
+        if (!rep.telefono.trim()) e["rep.telefono"] = "El teléfono principal es obligatorio.";
+        else if (rep.telefono.trim().length > 20)
+          e["rep.telefono"] = "Máximo 20 caracteres.";
+        if (rep.telefonoSecundario.trim().length > 20)
+          e["rep.telefonoSecundario"] = "Máximo 20 caracteres.";
+      }
     }
     if (n === 2) {
       if (!form.seccionId) e.seccionId = "Selecciona una sección.";
@@ -214,7 +383,14 @@ function Preinscripcion() {
     const { est, rep } = form;
     const payload = {
       estudiante: {
-        cedula: est.cedula.trim(),
+        cedula: est.tieneCedulaIdentidad
+          ? `${est.cedulaTipo}-${est.cedulaNumero.trim()}`.toUpperCase()
+          : id && String(est.cedulaActual ?? "").startsWith("CE-")
+            ? est.cedulaActual
+            : null,
+        tieneCedulaIdentidad: est.tieneCedulaIdentidad,
+        nacionalidad: est.nacionalidad,
+        ordenNacimiento: est.ordenNacimiento ? Number(est.ordenNacimiento) : null,
         nombre: est.nombre.trim(),
         apellido: est.apellido.trim(),
         fechaNacimiento: est.fechaNacimiento,
@@ -223,7 +399,8 @@ function Preinscripcion() {
         telefono: o(est.telefono),
       },
       representante: {
-        cedula: rep.cedula.trim(),
+        id: rep.id,
+        cedula: `${rep.cedulaTipo}-${rep.cedulaNumero.trim()}`.toUpperCase(),
         nombre: rep.nombre.trim(),
         apellido: rep.apellido.trim(),
         parentesco: rep.parentesco,
@@ -234,7 +411,7 @@ function Preinscripcion() {
         ocupacion: o(rep.ocupacion),
       },
       seccionId: Number(form.seccionId),
-      anioEscolar: Number(anio),
+      anioEscolar: Number(id ? form.anioEscolar : anio),
       institucionProcedencia: o(form.institucionProcedencia),
       relacionPrincipal: form.relacionPrincipal,
       autorizadoRetirar: form.autorizadoRetirar,
@@ -244,7 +421,14 @@ function Preinscripcion() {
     setEnviando(true);
     setErrorEnvio("");
     try {
-      const { data } = await api.post("/matriculas/preinscripciones", payload);
+      const { data } = id
+        ? await api.put(`/matriculas/${id}/preinscripcion`, payload)
+        : await api.post("/matriculas/preinscripciones", payload);
+      if (id) {
+        toast.success("Preinscripción actualizada correctamente.");
+        navigate("/matricula");
+        return;
+      }
       setResultado(data);
       toast.success("Preinscripción registrada correctamente.");
     } catch (error) {
@@ -292,14 +476,59 @@ function Preinscripcion() {
     setErrorEnvio("");
     setResultado(null);
     setPaso(0);
+    setModoRepresentante("buscar");
+    setBusquedaRepresentante("");
   };
+
+  const seleccionarRepresentante = (representante) => {
+    setForm((actual) => ({
+      ...actual,
+      rep: {
+        ...actual.rep,
+        ...representante,
+        id: representante.id,
+        ...separarCedulaRepresentante(representante.cedula),
+        nombre: representante.nombre ?? "",
+        apellido: representante.apellido ?? "",
+        parentesco: representante.parentesco ?? "",
+        correo: representante.correo ?? "",
+        telefono: representante.telefono ?? "",
+        telefonoSecundario: representante.telefonoSecundario ?? "",
+        direccion: representante.direccion ?? "",
+        ocupacion: representante.ocupacion ?? "",
+      },
+    }));
+    setErrores({});
+    setModoRepresentante("seleccionado");
+    setErrorEnvio("");
+  };
+
+  const registrarNuevoRepresentante = () => {
+    setForm((actual) => ({ ...actual, rep: { ...VACIO.rep } }));
+    setModoRepresentante("nuevo");
+    setBusquedaRepresentante("");
+    setErrores({});
+    setErrorEnvio("");
+  };
+
+  const buscarOtroRepresentante = () => {
+    setForm((actual) => ({ ...actual, rep: { ...VACIO.rep } }));
+    setModoRepresentante("buscar");
+    setBusquedaRepresentante("");
+    setErrores({});
+    setErrorEnvio("");
+  };
+
+  if (cargandoEdicion) {
+    return <div className="mod-main"><p>Cargando preinscripción...</p></div>;
+  }
 
   // ---------- Pantalla de resultado ----------
   if (resultado) {
     return (
       <div className="mod-main">
         <div className="mod-heading">
-          <h1>Preinscripción</h1>
+          <h1>{id ? "Editar preinscripción" : "Preinscripción"}</h1>
         </div>
 
         <div className="empleado-form wiz wiz-exito">
@@ -313,6 +542,10 @@ function Preinscripcion() {
           </p>
 
           <dl className="wiz-resumen">
+            <div>
+              <dt>Cédula del estudiante</dt>
+              <dd>{resultado.estudianteCedula ?? "—"}</dd>
+            </div>
             <div>
               <dt>Número de solicitud</dt>
               <dd>{resultado.matriculaId}</dd>
@@ -371,7 +604,7 @@ function Preinscripcion() {
   return (
     <div className="mod-main">
       <div className="mod-heading">
-        <h1>Preinscripción</h1>
+        <h1>{id ? "Editar preinscripción" : "Preinscripción"}</h1>
       </div>
 
       <form className="empleado-form wiz" onSubmit={manejarSubmit} noValidate>
@@ -419,17 +652,83 @@ function Preinscripcion() {
         {paso === 0 && (
           <div className="wiz-seccion-form">
             <div className="form-grid-2">
-              <label>
-                Cédula *
+              <label className="wiz-check wiz-identidad-toggle">
                 <input
-                  value={est.cedula}
-                  onChange={(e) => setEst("cedula", e.target.value)}
-                  maxLength={20}
-                  placeholder="12345678"
-                  autoFocus
+                  type="checkbox"
+                  checked={est.tieneCedulaIdentidad}
+                  onChange={(e) =>
+                    setEst("tieneCedulaIdentidad", e.target.checked)
+                  }
                 />
-                {err("est.cedula")}
+                ¿Tiene cédula de identidad?
               </label>
+              {est.tieneCedulaIdentidad ? (
+                <>
+                  <label>
+                    Prefijo de cédula *
+                    <select
+                      value={est.cedulaTipo}
+                      onChange={(e) => setEst("cedulaTipo", e.target.value)}
+                    >
+                      <option value="V">Venezolana (V-)</option>
+                      <option value="E">Extranjera (E-)</option>
+                    </select>
+                  </label>
+                  <label>
+                    Número de cédula *
+                    <input
+                      inputMode="numeric"
+                      value={est.cedulaNumero}
+                      onChange={(e) =>
+                        setEst(
+                          "cedulaNumero",
+                          e.target.value.replace(/\D/g, "").slice(0, 8),
+                        )
+                      }
+                      maxLength={8}
+                      placeholder={est.cedulaTipo === "E" ? "80000000" : "6000000"}
+                      autoFocus
+                    />
+                    {err("est.cedula")}
+                  </label>
+                </>
+              ) : (
+                <>
+                  <label>
+                    Nacionalidad para CI escolar *
+                    <select
+                      value={est.nacionalidad}
+                      onChange={(e) => setEst("nacionalidad", e.target.value)}
+                    >
+                      <option value="V">Venezolano (V)</option>
+                      <option value="E">Extranjero (E)</option>
+                    </select>
+                    {err("est.nacionalidad")}
+                  </label>
+                  <label>
+                    Orden de nacimiento *
+                    <input
+                      type="number"
+                      min="1"
+                      max="9"
+                      step="1"
+                      value={est.ordenNacimiento}
+                      onChange={(e) =>
+                        setEst("ordenNacimiento", e.target.value)
+                      }
+                    />
+                    {err("est.ordenNacimiento")}
+                  </label>
+                  <p className="wiz-info wiz-identidad-ayuda">
+                    {id &&
+                    String(est.cedulaActual ?? "")
+                      .toUpperCase()
+                      .startsWith("CE-")
+                      ? "El estudiante conserva su CI escolar. Marca la opción anterior para sustituirla por una cédula real."
+                      : "El backend generará una cédula escolar con prefijo CE- al completar la preinscripción."}
+                  </p>
+                </>
+              )}
               <label>
                 Fecha de nacimiento *
                 <input
@@ -512,15 +811,144 @@ function Preinscripcion() {
         {/* Paso 2 */}
         {paso === 1 && (
           <div className="wiz-seccion-form">
+            <div className="wiz-representante-opciones">
+              {modoRepresentante === "buscar" ? (
+                <>
+                  <label className="wiz-ancho">
+                    Buscar representante activo por nombre o cédula
+                    <input
+                      value={busquedaRepresentante}
+                      onChange={(e) => {
+                        setBusquedaRepresentante(e.target.value);
+                        setRepresentantesEncontrados([]);
+                        setBuscandoRepresentantes(false);
+                        setPaginaRepresentantes({ page: 0, totalPages: 0 });
+                        setErrorEnvio("");
+                      }}
+                      placeholder="Escribe al menos 2 caracteres"
+                      autoFocus
+                    />
+                  </label>
+                  {buscandoRepresentantes && <p>Buscando representantes...</p>}
+                  {!buscandoRepresentantes &&
+                    busquedaRepresentante.trim().length >= 2 &&
+                    representantesEncontrados.length === 0 && (
+                      <p>No se encontraron representantes activos.</p>
+                    )}
+                  {representantesEncontrados.length > 0 && (
+                    <div className="wiz-representantes-resultados" role="list">
+                      {representantesEncontrados.map((representante) => (
+                        <button
+                          key={representante.id}
+                          type="button"
+                          className="wiz-representante-opcion"
+                          onClick={() =>
+                            seleccionarRepresentante(representante)
+                          }
+                        >
+                          <strong>
+                            {representante.nombre} {representante.apellido}
+                          </strong>
+                          <span>{representante.cedula}</span>
+                          <span>{representante.telefono || "Sin teléfono"}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {paginaRepresentantes.totalPages > 1 && (
+                    <div className="wiz-representantes-paginacion">
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        disabled={paginaRepresentantes.page === 0 || buscandoRepresentantes}
+                        onClick={() =>
+                          setPaginaRepresentantes((p) => ({
+                            ...p,
+                            page: p.page - 1,
+                          }))
+                        }
+                      >
+                        Anterior
+                      </button>
+                      <span>
+                        Página {paginaRepresentantes.page + 1} de{" "}
+                        {paginaRepresentantes.totalPages}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        disabled={
+                          paginaRepresentantes.page + 1 >=
+                            paginaRepresentantes.totalPages ||
+                          buscandoRepresentantes
+                        }
+                        onClick={() =>
+                          setPaginaRepresentantes((p) => ({
+                            ...p,
+                            page: p.page + 1,
+                          }))
+                        }
+                      >
+                        Siguiente
+                      </button>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    className="btn-secondary wiz-representante-cambiar"
+                    onClick={registrarNuevoRepresentante}
+                  >
+                    Registrar nuevo representante
+                  </button>
+                </>
+              ) : (
+                <>
+                  {modoRepresentante === "seleccionado" && (
+                    <p className="wiz-info">
+                      Representante seleccionado:{" "}
+                      <strong>
+                        {rep.nombre} {rep.apellido} ·{" "}
+                        {rep.id ? `ID ${rep.id}` : ""}
+                      </strong>
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    className="btn-secondary wiz-representante-cambiar"
+                    onClick={buscarOtroRepresentante}
+                  >
+                    Buscar representante existente
+                  </button>
+                </>
+              )}
+              {err("rep.seleccion")}
+              {errorEnvio && <p className="error-msg">{errorEnvio}</p>}
+            </div>
+            {modoRepresentante !== "buscar" && (
             <div className="form-grid-2">
               <label>
-                Cédula *
+                Prefijo de cédula *
+                <select
+                  value={rep.cedulaTipo}
+                  onChange={(e) => setRep("cedulaTipo", e.target.value)}
+                >
+                  <option value="V">Venezolana (V-)</option>
+                  <option value="E">Extranjera (E-)</option>
+                </select>
+              </label>
+              <label>
+                Número de cédula *
                 <input
-                  value={rep.cedula}
-                  onChange={(e) => setRep("cedula", e.target.value)}
-                  maxLength={20}
-                  placeholder="12345678"
-                  autoFocus
+                  inputMode="numeric"
+                  value={rep.cedulaNumero}
+                  onChange={(e) =>
+                    setRep(
+                      "cedulaNumero",
+                      e.target.value.replace(/\D/g, "").slice(0, 8),
+                    )
+                  }
+                  maxLength={8}
+                  placeholder={rep.cedulaTipo === "E" ? "80000000" : "6000000"}
                 />
                 {err("rep.cedula")}
               </label>
@@ -568,12 +996,13 @@ function Preinscripcion() {
                 {err("rep.correo")}
               </label>
               <label>
-                Teléfono
+                Teléfono principal *
                 <input
                   value={rep.telefono}
                   onChange={(e) => setRep("telefono", e.target.value)}
                   maxLength={20}
                   placeholder="04121234567"
+                  required
                 />
                 {err("rep.telefono")}
               </label>
@@ -603,8 +1032,9 @@ function Preinscripcion() {
                 />
               </label>
             </div>
+            )}
 
-            <div className="wiz-checks">
+            {modoRepresentante !== "buscar" && <div className="wiz-checks">
               <label className="wiz-check">
                 <input
                   type="checkbox"
@@ -635,7 +1065,7 @@ function Preinscripcion() {
                 />
                 Recibe comunicados del plantel
               </label>
-            </div>
+            </div>}
           </div>
         )}
 
@@ -699,7 +1129,13 @@ function Preinscripcion() {
                 <div>
                   <dt>Estudiante</dt>
                   <dd>
-                    {est.nombre} {est.apellido} ({est.cedula})
+                    {est.nombre} {est.apellido} (
+                    {est.tieneCedulaIdentidad
+                      ? `${est.cedulaTipo}-${est.cedulaNumero}`
+                      : id && String(est.cedulaActual ?? "").startsWith("CE-")
+                        ? est.cedulaActual
+                        : "CI escolar por generar"})
+                    )
                   </dd>
                 </div>
                 <div>
@@ -743,7 +1179,13 @@ function Preinscripcion() {
               className="btn-primary"
               disabled={enviando || !form.seccionId}
             >
-              {enviando ? "Registrando..." : "Registrar preinscripción"}
+              {enviando
+                ? id
+                  ? "Guardando..."
+                  : "Registrando..."
+                : id
+                  ? "Guardar cambios"
+                  : "Registrar preinscripción"}
             </button>
           )}
         </div>

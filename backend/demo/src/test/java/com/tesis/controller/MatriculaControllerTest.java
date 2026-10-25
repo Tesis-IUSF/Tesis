@@ -221,15 +221,47 @@ class MatriculaControllerTest {
         }
 
     @Test
-    void obtieneYActualizaDatosDePreinscripcionYExponeCedulaEnListado() throws Exception {
+        void buscaRepresentantesActivosPorElEndpointPaginado() throws Exception {
+            Representante activo = new Representante();
+            activo.setCedula("V-18456789");
+            activo.setNombre("Ana");
+            activo.setApellido("Pérez");
+            activo.setCorreo("ana@example.com");
+            activo.setTelefono("04121234567");
+            entityManager.persist(activo);
+
+            Representante inactivo = new Representante();
+            inactivo.setCedula("V-18456790");
+            inactivo.setNombre("Ana");
+            inactivo.setApellido("Gómez");
+            inactivo.setCorreo("ana2@example.com");
+            inactivo.setTelefono("04121234568");
+            inactivo.setActivo(false);
+            entityManager.persist(inactivo);
+            entityManager.flush();
+
+            mockMvc.perform(get("/api/representantes/buscar")
+                            .param("q", "Ana")
+                            .param("page", "0")
+                            .param("size", "1")
+                            .with(user("admin").roles("ADMINISTRADOR")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalElements").value(1))
+                    .andExpect(jsonPath("$.content[0].id").value(activo.getId()));
+        }
+
+        @Test
+        void obtieneYActualizaDatosDePreinscripcionYExponeCedulaEnListado() throws Exception {
         MatriculaFixture fixture = crearMatriculaParaEdicion();
         Integer matriculaId = fixture.matriculaId();
 
         mockMvc.perform(get("/api/matriculas/{id}/preinscripcion", matriculaId)
                         .with(user("admin").roles("ADMINISTRADOR")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.estudiante.cedula").value("EST-API-EDITAR"))
-                .andExpect(jsonPath("$.representante.cedula").value("REP-API-EDITAR"))
+                .andExpect(jsonPath("$.estudiante.cedula").value("V-18456789"))
+                .andExpect(jsonPath("$.estudiante.tieneCedulaIdentidad").value(true))
+                .andExpect(jsonPath("$.representante.cedula").value("V-18456789"))
+                .andExpect(jsonPath("$.representante.id").value(fixture.representanteId()))
                 .andExpect(jsonPath("$.seccionId").value(fixture.seccionId()))
                 .andExpect(jsonPath("$.anioEscolar").value(2026))
                 .andExpect(jsonPath("$.relacionPrincipal").value(true))
@@ -242,18 +274,21 @@ class MatriculaControllerTest {
                         .content(String.format("""
                                 {
                                   "estudiante": {
-                                    "cedula": "EST-API-EDITAR",
+                                    "cedula": "V-18456789",
+                                    "tieneCedulaIdentidad": true,
                                     "nombre": "Nombre corregido",
                                     "apellido": "Estudiante",
                                     "fechaNacimiento": "2017-01-01",
                                     "sexo": "F"
                                   },
                                   "representante": {
-                                    "cedula": "REP-API-EDITAR",
+                                    "id": %d,
+                                    "cedula": "V-18456789",
                                     "nombre": "Representante corregido",
                                     "apellido": "Prueba",
                                     "parentesco": "Madre",
-                                    "correo": "representante@example.com"
+                                    "correo": "representante@example.com",
+                                    "telefono": "04121234567"
                                   },
                                   "seccionId": %d,
                                   "anioEscolar": 2026,
@@ -262,7 +297,7 @@ class MatriculaControllerTest {
                                   "autorizadoRetirar": true,
                                   "recibeComunicados": false
                                 }
-                                """, fixture.seccionId())))
+                                """, fixture.representanteId(), fixture.seccionId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estadoMatricula").value("preinscrito"))
                 .andExpect(jsonPath("$.estudianteNombreCompleto").value("Nombre corregido Estudiante"));
@@ -270,15 +305,15 @@ class MatriculaControllerTest {
         mockMvc.perform(get("/api/matriculas/preinscripciones")
                         .with(user("admin").roles("ADMINISTRADOR")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].estudianteCedula").value("EST-API-EDITAR"));
+                .andExpect(jsonPath("$.content[0].estudianteCedula").value("V-18456789"));
 
         mockMvc.perform(get("/api/matriculas/listado")
                         .param("estado", "")
-                        .param("q", "EST-API-EDITAR")
+                        .param("q", "V-18456789")
                         .with(user("admin").roles("ADMINISTRADOR")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(1))
-                .andExpect(jsonPath("$.content[0].estudianteCedula").value("EST-API-EDITAR"));
+                .andExpect(jsonPath("$.content[0].estudianteCedula").value("V-18456789"));
 
         mockMvc.perform(get("/api/matriculas/listado")
                         .param("estado", "no-es-valido")
@@ -308,7 +343,7 @@ class MatriculaControllerTest {
         entityManager.persist(seccion);
 
         Estudiante estudiante = new Estudiante();
-        estudiante.setCedula("EST-API-EDITAR");
+        estudiante.setCedula("V-18456789");
         estudiante.setNombre("Nombre anterior");
         estudiante.setApellido("Estudiante");
         estudiante.setFechaNacimiento(LocalDate.of(2017, 1, 1));
@@ -316,11 +351,12 @@ class MatriculaControllerTest {
         entityManager.persist(estudiante);
 
         Representante representante = new Representante();
-        representante.setCedula("REP-API-EDITAR");
+        representante.setCedula("V-18456789");
         representante.setNombre("Representante anterior");
         representante.setApellido("Prueba");
         representante.setParentesco("Madre");
         representante.setCorreo("representante@example.com");
+        representante.setTelefono("04121234567");
         entityManager.persist(representante);
 
         RelacionEstudianteRepresentante relacion = new RelacionEstudianteRepresentante();
@@ -341,9 +377,9 @@ class MatriculaControllerTest {
         matricula.setFechaSolicitud(LocalDate.now(clock));
         entityManager.persist(matricula);
         entityManager.flush();
-        return new MatriculaFixture(matricula.getId(), seccion.getId());
+        return new MatriculaFixture(matricula.getId(), seccion.getId(), representante.getId());
     }
 
-    private record MatriculaFixture(Integer matriculaId, Integer seccionId) {
+    private record MatriculaFixture(Integer matriculaId, Integer seccionId, Integer representanteId) {
     }
 }
