@@ -1,10 +1,12 @@
 // src/pages/EmpleadoForm.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
 import { useCargos, useDepartamentos, useTurnos } from "../hooks/useCatalogos";
+import { Icon } from "@iconify/react";
+import { ICONOS } from "../utils/iconos";
 import "./EmpleadoForm.css";
 
 const VACIO = {
@@ -44,6 +46,18 @@ function EmpleadoForm() {
   const [cargandoDatos, setCargandoDatos] = useState(esEdicion);
   const [guardando, setGuardando] = useState(false);
   const [errores, setErrores] = useState({});
+  const [historialTurnos, setHistorialTurnos] = useState([]);
+  const [cargandoHistorial, setCargandoHistorial] = useState(false);
+
+  const cargarHistorialTurnos = useCallback(() => {
+    if (!id) return;
+    setCargandoHistorial(true);
+    api
+      .get(`/asignaciones-turnos/empleado/${id}`)
+      .then(({ data }) => setHistorialTurnos(data))
+      .catch(() => {})
+      .finally(() => setCargandoHistorial(false));
+  }, [id]);
 
   useEffect(() => {
     if (!esEdicion) return;
@@ -74,7 +88,8 @@ function EmpleadoForm() {
         navigate("/empleados");
       })
       .finally(() => setCargandoDatos(false));
-  }, [id, esEdicion, navigate, toast]);
+    cargarHistorialTurnos();
+  }, [id, esEdicion, navigate, toast, cargarHistorialTurnos]);
 
   const turnosDisponibles = turnos.filter(
     (t) =>
@@ -146,7 +161,7 @@ function EmpleadoForm() {
         await api.put(`/empleados/${id}`, payload);
         toast.success("Empleado actualizado correctamente.");
 
-        // Asignación de turno: solo aplica en edición si sigue activo y cambió
+        // Cambio de turno: solo si el empleado sigue activo y cambió el turno
         if (
           form.activo &&
           form.turnoId &&
@@ -154,7 +169,7 @@ function EmpleadoForm() {
         ) {
           try {
             if (turnoIdOriginal) {
-              // Ya tenía turno: reemplazar la asignación vigente
+              // Ya tenía turno → reemplazar la asignación vigente
               await api.put(
                 `/asignaciones-turnos/empleado/${id}/vigente`,
                 {
@@ -163,7 +178,7 @@ function EmpleadoForm() {
                 },
               );
             } else {
-              // Primera asignación: crear una nueva
+              // Sin turno previo → crear asignación directamente
               await api.post("/asignaciones-turnos", {
                 empleadoId: Number(id),
                 turnoId: Number(form.turnoId),
@@ -171,6 +186,8 @@ function EmpleadoForm() {
               });
             }
             toast.success("Turno actualizado correctamente.");
+            // Refrescar historial tras el cambio
+            cargarHistorialTurnos();
           } catch (errTurno) {
             toast.error(
               extractErrorMessage(
@@ -178,6 +195,9 @@ function EmpleadoForm() {
                 "No se pudo actualizar el turno del empleado.",
               ),
             );
+            // No navegar: dejar al usuario corregir la fechaDesde
+            setGuardando(false);
+            return;
           }
         }
       } else {
@@ -380,12 +400,16 @@ function EmpleadoForm() {
                   String(form.turnoId) !== String(turnoIdOriginal) &&
                   form.turnoId && (
                     <label>
-                      Turno efectivo desde
+                      Turno efectivo desde *
                       <input
                         type="date"
                         value={fechaDesdeTurno}
                         onChange={(e) => setFechaDesdeTurno(e.target.value)}
+                        required
                       />
+                      <span className="campo-ayuda">
+                        La asignación vigente se cerrará el día anterior.
+                      </span>
                     </label>
                   )}
 
@@ -460,6 +484,51 @@ function EmpleadoForm() {
             </button>
           </div>
         </form>
+
+        {/* Historial de asignaciones de turno (solo en edición) */}
+        {esEdicion && (
+          <section className="historial-turnos">
+            <div className="historial-heading">
+              <h2>
+                <Icon icon={ICONOS.reloj} className="icono-inline" />
+                Historial de turnos
+              </h2>
+            </div>
+
+            {cargandoHistorial ? (
+              <p className="historial-estado">Cargando historial...</p>
+            ) : historialTurnos.length === 0 ? (
+              <p className="historial-estado">Sin asignaciones registradas.</p>
+            ) : (
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Turno</th>
+                      <th>Desde</th>
+                      <th>Hasta</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historialTurnos.map((a) => (
+                      <tr key={a.id}>
+                        <td data-label="Turno">{a.turnoNombre}</td>
+                        <td data-label="Desde">{a.fechaDesde}</td>
+                        <td data-label="Hasta">
+                          {a.fechaHasta ? (
+                            a.fechaHasta
+                          ) : (
+                            <span className="badge-activo-turno">Vigente</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
       </div>
     </>
   );
