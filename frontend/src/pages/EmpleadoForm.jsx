@@ -12,7 +12,8 @@ import "./EmpleadoForm.css";
 const VACIO = {
   nombre: "",
   apellido: "",
-  cedula: "",
+  cedulaTipo: "",
+  cedulaNumero: "",
   correoLocal: "",
   telefono: "",
   fechaNacimiento: "",
@@ -30,6 +31,26 @@ const hoyISO = () => new Date().toISOString().split("T")[0];
 const DOMINIO_CORREO = "@asansa.local";
 
 const soloDigitos = (valor) => valor.replace(/\D/g, "");
+
+const separarCedula = (valor) => {
+  const cedula = String(valor || "").trim().toUpperCase();
+  const conPrefijo = cedula.match(/^([VE])\s*-\s*(\d+)$/);
+  if (conPrefijo) {
+    return { cedulaTipo: conPrefijo[1], cedulaNumero: conPrefijo[2] };
+  }
+
+  return { cedulaTipo: "", cedulaNumero: soloDigitos(cedula).slice(0, 8) };
+};
+
+const validarCedula = (tipo, numero) => {
+  if (!tipo) return "Selecciona el tipo de cédula.";
+  if (tipo === "V" && /^(?:[6-9]\d{6}|[1-9]\d{7})$/.test(numero)) return "";
+  if (tipo === "E" && /^[89]\d{7}$/.test(numero)) return "";
+  if (tipo === "V") {
+    return "La cédula V debe estar entre 6.000.000 y 99.999.999.";
+  }
+  return "La cédula E debe estar entre 80.000.000 y 99.999.999.";
+};
 
 function EmpleadoForm() {
   const { id } = useParams();
@@ -66,10 +87,11 @@ function EmpleadoForm() {
       .then(({ data }) => {
         const correoCompleto = data.correo || "";
         const [local] = correoCompleto.split("@");
+        const cedula = separarCedula(data.cedula);
         setForm({
           nombre: data.nombre || "",
           apellido: data.apellido || "",
-          cedula: data.cedula || "",
+          ...cedula,
           correoLocal: local || "",
           telefono: data.telefono || "",
           fechaNacimiento: data.fechaNacimiento || "",
@@ -99,7 +121,13 @@ function EmpleadoForm() {
 
   const actualizarCampo = (campo, valor) => {
     setForm((prev) => ({ ...prev, [campo]: valor }));
-    setErrores((prev) => ({ ...prev, [campo]: undefined }));
+    setErrores((prev) => ({
+      ...prev,
+      [campo]: undefined,
+      ...(campo === "cedulaTipo" || campo === "cedulaNumero"
+        ? { cedula: undefined }
+        : {}),
+    }));
   };
 
   const validar = () => {
@@ -108,11 +136,8 @@ function EmpleadoForm() {
     if (!form.apellido.trim())
       nuevosErrores.apellido = "El apellido es obligatorio.";
 
-    if (!form.cedula.trim()) {
-      nuevosErrores.cedula = "La cédula es obligatoria.";
-    } else if (form.cedula.length < 6 || form.cedula.length > 8) {
-      nuevosErrores.cedula = "La cédula debe tener entre 6 y 8 dígitos.";
-    }
+    const errorCedula = validarCedula(form.cedulaTipo, form.cedulaNumero);
+    if (errorCedula) nuevosErrores.cedula = errorCedula;
 
     if (form.telefono && form.telefono.length !== 11) {
       nuevosErrores.telefono =
@@ -126,6 +151,18 @@ function EmpleadoForm() {
 
     if (!form.fechaIngreso) {
       nuevosErrores.fechaIngreso = "La fecha de ingreso es obligatoria.";
+    }
+
+    if (esEdicion && !form.activo) {
+      if (!form.fechaEgreso) {
+        nuevosErrores.fechaEgreso = "La fecha de egreso es obligatoria.";
+      } else if (
+        form.fechaIngreso &&
+        form.fechaEgreso < form.fechaIngreso
+      ) {
+        nuevosErrores.fechaEgreso =
+          "La fecha de egreso no puede ser anterior a la fecha de ingreso.";
+      }
     }
 
     if (!form.cargoId) {
@@ -148,7 +185,7 @@ function EmpleadoForm() {
     const payload = {
       nombre: form.nombre,
       apellido: form.apellido,
-      cedula: form.cedula,
+      cedula: `${form.cedulaTipo}-${form.cedulaNumero}`.trim().toUpperCase(),
       correo: form.correoLocal ? `${form.correoLocal}${DOMINIO_CORREO}` : null,
       telefono: form.telefono || null,
       sexo: form.sexo || null,
@@ -261,17 +298,35 @@ function EmpleadoForm() {
 
             <label>
               Cédula *
-              <input
-                value={form.cedula}
-                onChange={(e) =>
-                  actualizarCampo(
-                    "cedula",
-                    soloDigitos(e.target.value).slice(0, 8),
-                  )
-                }
-                inputMode="numeric"
-                placeholder="12345678"
-              />
+              <div className="cedula-controls">
+                <select
+                  value={form.cedulaTipo}
+                  onChange={(e) =>
+                    actualizarCampo("cedulaTipo", e.target.value)
+                  }
+                  aria-label="Tipo de cédula"
+                >
+                  <option value="">Tipo</option>
+                  <option value="V">Venezolana (V)</option>
+                  <option value="E">Extranjera (E)</option>
+                </select>
+                <input
+                  value={form.cedulaNumero}
+                  onChange={(e) =>
+                    actualizarCampo(
+                      "cedulaNumero",
+                      soloDigitos(e.target.value).slice(0, 8),
+                    )
+                  }
+                  inputMode="numeric"
+                  maxLength={8}
+                  placeholder="12345678"
+                  aria-label="Número de cédula"
+                />
+              </div>
+              <span className="campo-ayuda">
+                V: desde 6.000.000 · E: desde 80.000.000.
+              </span>
               {errores.cedula && (
                 <span className="campo-error">{errores.cedula}</span>
               )}
@@ -445,10 +500,17 @@ function EmpleadoForm() {
                     <input
                       type="date"
                       value={form.fechaEgreso}
+                      min={form.fechaIngreso || undefined}
+                      required
                       onChange={(e) =>
                         actualizarCampo("fechaEgreso", e.target.value)
                       }
                     />
+                    {errores.fechaEgreso && (
+                      <span className="campo-error">
+                        {errores.fechaEgreso}
+                      </span>
+                    )}
                   </label>
                 )}
               </>

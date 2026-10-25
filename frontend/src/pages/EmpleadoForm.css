@@ -34,6 +34,12 @@
   text-transform: none;
 }
 
+.cedula-controls {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.8fr) minmax(0, 1.2fr);
+  gap: 0.5rem;
+}
+
 .empleado-form input:focus,
 .empleado-form select:focus {
   outline: none;
@@ -57,6 +63,10 @@
 @media (max-width: 640px) {
   .form-grid-2 {
     grid-template-columns: 1fr;
+  }
+
+  .cedula-controls {
+    grid-template-columns: minmax(115px, 0.8fr) minmax(0, 1.2fr);
   }
 }
 

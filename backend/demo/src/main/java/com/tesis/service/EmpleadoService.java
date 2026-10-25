@@ -15,6 +15,7 @@ import com.tesis.repository.DepartamentoRepository;
 import com.tesis.repository.EmpleadoRepository;
 import com.tesis.repository.TurnoRepository;
 import com.tesis.repository.UsuarioRepository;
+import com.tesis.validation.CedulaVenezolana;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -82,7 +83,8 @@ public class EmpleadoService {
     }
 
     public EmpleadoResponseDTO crear(EmpleadoRequestDTO request) {
-        if (empleadoRepository.existsByCedula(request.getCedula())) {
+        String cedula = normalizarYValidarCedula(request.getCedula());
+        if (empleadoRepository.existsByCedula(cedula)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La cédula ya está registrada");
         }
         if (request.getCargoId() == null) {
@@ -100,19 +102,24 @@ public class EmpleadoService {
         Turno turno = buscarTurnoActivo(request.getTurnoId());
         Empleado empleado = new Empleado();
         aplicarRequest(request, empleado, true);
+        empleado.setCedula(cedula);
+        validarEstadoLaboral(Boolean.TRUE.equals(empleado.getActivo()), empleado.getFechaEgreso(),
+                empleado.getFechaIngreso());
         Empleado empleadoGuardado = empleadoRepository.save(empleado);
 
         AsignacionTurno asignacion = new AsignacionTurno();
         asignacion.setPersonal(empleadoGuardado);
         asignacion.setTurno(turno);
         asignacion.setFechaDesde(empleadoGuardado.getFechaIngreso());
+        asignacion.setFechaHasta(empleadoGuardado.getFechaEgreso());
         AsignacionTurno asignacionGuardada = asignacionTurnoRepository.save(asignacion);
         return toResponse(empleadoGuardado, asignacionGuardada);
     }
 
     public EmpleadoResponseDTO actualizar(Integer id, EmpleadoRequestDTO request) {
         Empleado empleado = buscarEmpleado(id);
-        if (empleadoRepository.existsByCedulaAndIdNot(request.getCedula(), id)) {
+        String cedula = normalizarYValidarCedula(request.getCedula());
+        if (empleadoRepository.existsByCedulaAndIdNot(cedula, id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La cédula ya está registrada");
         }
         if (request.getCargoId() == null) {
@@ -120,10 +127,12 @@ public class EmpleadoService {
                     "El cargo es obligatorio");
         }
         aplicarRequest(request, empleado, false);
-        if (Boolean.TRUE.equals(empleado.getActivo()) && empleado.getFechaEgreso() != null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Un empleado activo no puede tener fecha de egreso");
+        empleado.setCedula(cedula);
+        if (Boolean.FALSE.equals(empleado.getActivo()) && empleado.getFechaEgreso() == null) {
+            empleado.setFechaEgreso(LocalDate.now());
         }
+        validarEstadoLaboral(Boolean.TRUE.equals(empleado.getActivo()), empleado.getFechaEgreso(),
+                empleado.getFechaIngreso());
         if (Boolean.FALSE.equals(empleado.getActivo())) {
             darDeBaja(empleado);
         }
@@ -140,6 +149,7 @@ public class EmpleadoService {
         if (empleado.getFechaEgreso() == null) {
             empleado.setFechaEgreso(LocalDate.now());
         }
+        validarEstadoLaboral(false, empleado.getFechaEgreso(), empleado.getFechaIngreso());
         empleado.setActivo(false);
         LocalDate fechaEgreso = empleado.getFechaEgreso();
         asignacionTurnoRepository.buscarVigentesEnFecha(empleado.getId(), fechaEgreso).forEach(asignacion -> {
@@ -177,10 +187,32 @@ public class EmpleadoService {
         return turno;
     }
 
+    private String normalizarYValidarCedula(String cedula) {
+        String normalizada = CedulaVenezolana.normalizar(cedula);
+        if (!CedulaVenezolana.esValida(normalizada)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, CedulaVenezolana.MENSAJE);
+        }
+        return normalizada;
+    }
+
+    private void validarEstadoLaboral(boolean activo, LocalDate fechaEgreso, LocalDate fechaIngreso) {
+        if (activo && fechaEgreso != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Un empleado activo no puede tener fecha de egreso");
+        }
+        if (!activo && fechaEgreso == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "La fecha de egreso es obligatoria para un empleado inactivo");
+        }
+        if (fechaEgreso != null && fechaIngreso != null && fechaEgreso.isBefore(fechaIngreso)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "La fecha de egreso no puede ser anterior a la fecha de ingreso");
+        }
+    }
+
     private void aplicarRequest(EmpleadoRequestDTO request, Empleado empleado, boolean nuevo) {
         empleado.setNombre(request.getNombre());
         empleado.setApellido(request.getApellido());
-        empleado.setCedula(request.getCedula());
         empleado.setCorreo(request.getCorreo());
         empleado.setTelefono(request.getTelefono());
         empleado.setFechaNacimiento(request.getFechaNacimiento());
