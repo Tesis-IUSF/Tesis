@@ -47,11 +47,32 @@ class EmpleadoDTOValidationTest {
         assertFalse(validator.validate(solicitudValida(), CrearEmpleado.class).iterator().hasNext());
     }
 
+    @Test
+    void exigeCargoAlCrearEmpleado() {
+        EmpleadoRequestDTO request = solicitudValida();
+        request.setCargoId(null);
+
+        var errores = validator.validate(request, CrearEmpleado.class);
+
+        assertTrue(errores.stream().anyMatch(error -> error.getPropertyPath().toString().equals("cargoId")));
+    }
+
+    @Test
+    void permiteDepartamentoOpcionalAlCrearEmpleado() {
+        EmpleadoRequestDTO request = solicitudValida();
+        request.setDepartamentoId(null);
+
+        var errores = validator.validate(request, CrearEmpleado.class);
+
+        assertTrue(errores.stream().noneMatch(error -> error.getPropertyPath().toString().equals("departamentoId")));
+    }
+
     private EmpleadoRequestDTO solicitudValida() {
         EmpleadoRequestDTO request = new EmpleadoRequestDTO();
         request.setNombre("Ana");
         request.setApellido("Pérez");
         request.setCedula("12345678");
+        request.setCargoId(10);
         request.setFechaIngreso(LocalDate.of(2020, 1, 15));
         request.setTurnoId(4);
         return request;

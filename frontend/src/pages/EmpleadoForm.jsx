@@ -128,6 +128,10 @@ function EmpleadoForm() {
       nuevosErrores.fechaIngreso = "La fecha de ingreso es obligatoria.";
     }
 
+    if (!form.cargoId) {
+      nuevosErrores.cargoId = "El cargo es obligatorio.";
+    }
+
     if (!esEdicion && !form.turnoId) {
       nuevosErrores.turnoId = "El turno es obligatorio.";
     }
@@ -347,18 +351,21 @@ function EmpleadoForm() {
             </label>
 
             <label>
-              Cargo
+              Cargo *
               <select
                 value={form.cargoId}
                 onChange={(e) => actualizarCampo("cargoId", e.target.value)}
               >
-                <option value="">Selecciona...</option>
+                <option value="">Selecciona un cargo...</option>
                 {cargos.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.nombreCargo}
                   </option>
                 ))}
               </select>
+              {errores.cargoId && (
+                <span className="campo-error">{errores.cargoId}</span>
+              )}
             </label>
 
             <label>
@@ -369,7 +376,7 @@ function EmpleadoForm() {
                   actualizarCampo("departamentoId", e.target.value)
                 }
               >
-                <option value="">Selecciona...</option>
+                <option value="">Sin departamento (Opcional)</option>
                 {departamentos.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.nombre}
