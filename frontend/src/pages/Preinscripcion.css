@@ -129,6 +129,15 @@
   grid-column: 1 / -1;
 }
 
+.empleado-form.wiz .wiz-identidad-toggle,
+.empleado-form.wiz .wiz-identidad-ayuda {
+  grid-column: 1 / -1;
+}
+
+.wiz-identidad-ayuda {
+  margin: 0;
+}
+
 .wiz-checks {
   display: flex;
   flex-direction: column;

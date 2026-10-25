@@ -2,6 +2,8 @@ package com.tesis.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
@@ -45,9 +47,18 @@ public class PreinscripcionDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class EstudianteData {
-        @NotBlank
         @Size(max = 20)
         private String cedula;
+
+        @NotNull
+        private Boolean tieneCedulaIdentidad;
+
+        @Pattern(regexp = "(?i)^(?:|[VE])$", message = "La nacionalidad debe ser V o E")
+        private String nacionalidad;
+
+        @Min(1)
+        @Max(9)
+        private Integer ordenNacimiento;
 
         @NotBlank
         @Size(max = 100)
@@ -84,6 +95,8 @@ public class PreinscripcionDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class RepresentanteData {
+        private Integer id;
+
         @NotBlank
         @Size(max = 20)
         private String cedula;
@@ -105,6 +118,7 @@ public class PreinscripcionDTO {
         @Size(max = 150)
         private String correo;
 
+        @NotBlank
         @Size(max = 20)
         private String telefono;
 
@@ -135,5 +149,6 @@ public class PreinscripcionDTO {
         private Short anioEscolar;
         private Long cuposDisponibles;
         private String tipoIngreso;
+        private String estudianteCedula;
     }
 }

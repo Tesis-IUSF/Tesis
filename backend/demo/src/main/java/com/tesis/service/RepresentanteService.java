@@ -2,6 +2,7 @@ package com.tesis.service;
 
 import com.tesis.entity.Representante;
 import com.tesis.repository.RepresentanteRepository;
+import com.tesis.validation.CedulaVenezolana;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -25,31 +26,49 @@ public class RepresentanteService {
     }
 
     @Transactional(readOnly = true)
+    public Page<Representante> buscarActivos(String termino, Pageable pageable) {
+        String busqueda = termino == null ? "" : termino.trim();
+        if (busqueda.isBlank()) {
+            return Page.empty(pageable);
+        }
+        String cedula = CedulaVenezolana.normalizarFormato(busqueda);
+        return representanteRepository.buscarActivos(busqueda, cedula, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public Representante obtener(Integer id) {
         return buscarRepresentante(id);
     }
 
     public Representante crear(Representante representante) {
-        validarEntidad(representante);
-        if (representanteRepository.existsByCedula(representante.getCedula().trim())) {
+        validarEntidad(representante, null);
+        String cedula = CedulaVenezolana.normalizarFormato(representante.getCedula());
+        if (representanteRepository.existsByCedula(cedula)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La cédula del representante ya está registrada");
         }
+        representante.setCedula(cedula);
+        representante.setTelefono(representante.getTelefono().trim());
         return representanteRepository.save(representante);
     }
 
     public Representante actualizar(Integer id, Representante representante) {
         Representante actual = buscarRepresentante(id);
-        validarEntidad(representante);
-        if (representanteRepository.existsByCedula(representante.getCedula().trim())
-                && !actual.getCedula().equalsIgnoreCase(representante.getCedula().trim())) {
+        validarEntidad(representante, actual.getCedula());
+        String cedula = CedulaVenezolana.normalizarFormato(representante.getCedula());
+        boolean conservaCedulaLegada = !CedulaVenezolana.esValida(cedula)
+                && actual.getCedula().equalsIgnoreCase(representante.getCedula().trim());
+        if (conservaCedulaLegada) {
+            cedula = actual.getCedula();
+        } else if (representanteRepository.existsByCedula(cedula)
+                && !cedula.equals(CedulaVenezolana.normalizarFormato(actual.getCedula()))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La cédula del representante ya está registrada");
         }
-        actual.setCedula(representante.getCedula().trim());
+        actual.setCedula(cedula);
         actual.setNombre(representante.getNombre().trim());
         actual.setApellido(representante.getApellido().trim());
         actual.setParentesco(representante.getParentesco());
         actual.setCorreo(representante.getCorreo());
-        actual.setTelefono(representante.getTelefono());
+        actual.setTelefono(representante.getTelefono().trim());
         actual.setTelefonoSecundario(representante.getTelefonoSecundario());
         actual.setDireccion(representante.getDireccion());
         actual.setOcupacion(representante.getOcupacion());
@@ -69,12 +88,18 @@ public class RepresentanteService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Representante no encontrado"));
     }
 
-    private void validarEntidad(Representante representante) {
+    private void validarEntidad(Representante representante, String cedulaActual) {
         if (representante == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La entidad es obligatoria");
         }
         if (representante.getCedula() == null || representante.getCedula().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La cédula es obligatoria");
+        }
+        String cedula = CedulaVenezolana.normalizarFormato(representante.getCedula());
+        boolean conservaCedulaLegada = cedulaActual != null
+                && cedulaActual.equalsIgnoreCase(representante.getCedula().trim());
+        if (!CedulaVenezolana.esValida(cedula) && !conservaCedulaLegada) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, CedulaVenezolana.MENSAJE);
         }
         if (representante.getNombre() == null || representante.getNombre().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El nombre es obligatorio");
@@ -84,6 +109,10 @@ public class RepresentanteService {
         }
         if (representante.getCorreo() == null || representante.getCorreo().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El correo es obligatorio");
+        }
+        if (representante.getTelefono() == null || representante.getTelefono().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El teléfono principal es obligatorio");
         }
     }
 }

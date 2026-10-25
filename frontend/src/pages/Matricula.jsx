@@ -261,6 +261,12 @@ function Matricula() {
                       </span>
                     </td>
                     <td data-label="Acciones">
+                      <Link
+                        to={`/matricula/${f.matriculaId}/preinscripcion/editar`}
+                        className="btn-edit"
+                      >
+                        Editar datos
+                      </Link>
                       {f.estadoMatricula === "preinscrito" ? (
                         <button
                           type="button"
