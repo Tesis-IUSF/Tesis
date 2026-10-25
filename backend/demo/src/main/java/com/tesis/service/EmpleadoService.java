@@ -85,6 +85,10 @@ public class EmpleadoService {
         if (empleadoRepository.existsByCedula(request.getCedula())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La cédula ya está registrada");
         }
+        if (request.getCargoId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El cargo es obligatorio");
+        }
         if (request.getTurnoId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "El turno es obligatorio al crear un empleado");
@@ -110,6 +114,10 @@ public class EmpleadoService {
         Empleado empleado = buscarEmpleado(id);
         if (empleadoRepository.existsByCedulaAndIdNot(request.getCedula(), id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La cédula ya está registrada");
+        }
+        if (request.getCargoId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El cargo es obligatorio");
         }
         aplicarRequest(request, empleado, false);
         if (Boolean.TRUE.equals(empleado.getActivo()) && empleado.getFechaEgreso() != null) {
@@ -198,7 +206,7 @@ public class EmpleadoService {
 
     private Cargo buscarCargo(Integer id) {
         if (id == null) {
-            return null;
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El cargo es obligatorio");
         }
         return cargoRepository.findById(id).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cargo no encontrado"));

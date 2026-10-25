@@ -49,6 +49,7 @@ public class EmpleadoDTO {
         @Size(max = 500)
         private String fotoUrl;
 
+        @NotNull(message = "El cargo es obligatorio")
         private Integer cargoId;
         private Integer departamentoId;
         @NotNull(message = "La fecha de ingreso es obligatoria")
