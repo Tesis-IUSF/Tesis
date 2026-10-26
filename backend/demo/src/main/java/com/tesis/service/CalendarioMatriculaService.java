@@ -13,6 +13,7 @@ import com.tesis.entity.TipoPeriodoMatricula;
 import com.tesis.repository.AnioEscolarRepository;
 import com.tesis.repository.MatriculaRepository;
 import com.tesis.repository.PeriodoMatriculaRepository;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +46,7 @@ public class CalendarioMatriculaService {
         this.clock = clock;
     }
 
+    @Cacheable(cacheNames = "calendarioMatricula", key = "'anioActivo'")
     public AnioEscolar obtenerAnioActivo() {
         return anioRepository.findFirstByActivoTrue().orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.NOT_FOUND,
