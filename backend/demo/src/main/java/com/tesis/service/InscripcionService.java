@@ -2,8 +2,14 @@ package com.tesis.service;
 
 import com.tesis.dto.InscripcionDTO.ChecklistItemResponseDTO;
 import com.tesis.dto.InscripcionDTO.ChecklistUpdateRequestDTO;
+import com.tesis.dto.InscripcionDTO.ChecklistBatchItemRequestDTO;
+import com.tesis.dto.InscripcionDTO.ChecklistBatchUpdateRequestDTO;
+import com.tesis.dto.InscripcionDTO.ExpedienteResponseDTO;
 import com.tesis.dto.InscripcionDTO.FormalizarInscripcionRequestDTO;
 import com.tesis.dto.InscripcionDTO.InscripcionResponseDTO;
+import com.tesis.dto.InscripcionDTO.EstudianteExpedienteDTO;
+import com.tesis.dto.InscripcionDTO.MatriculaAcademicaDTO;
+import com.tesis.dto.InscripcionDTO.RepresentanteExpedienteDTO;
 import com.tesis.entity.ChecklistMatricula;
 import com.tesis.entity.Matricula;
 import com.tesis.entity.RequisitoMatricula;
@@ -11,6 +17,7 @@ import com.tesis.entity.Usuario;
 import com.tesis.repository.ChecklistMatriculaRepository;
 import com.tesis.repository.MatriculaRepository;
 import com.tesis.repository.RequisitoMatriculaRepository;
+import com.tesis.repository.RelacionEstudianteRepresentanteRepository;
 import com.tesis.repository.UsuarioRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +30,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -43,6 +51,7 @@ public class InscripcionService {
     private final MatriculaRepository matriculaRepository;
     private final ChecklistMatriculaRepository checklistRepository;
     private final RequisitoMatriculaRepository requisitoRepository;
+    private final RelacionEstudianteRepresentanteRepository relacionRepository;
     private final UsuarioRepository usuarioRepository;
     private final CalendarioMatriculaService calendarioService;
     private final Clock clock;
@@ -50,12 +59,14 @@ public class InscripcionService {
     public InscripcionService(MatriculaRepository matriculaRepository,
                               ChecklistMatriculaRepository checklistRepository,
                               RequisitoMatriculaRepository requisitoRepository,
+                              RelacionEstudianteRepresentanteRepository relacionRepository,
                               UsuarioRepository usuarioRepository,
                               CalendarioMatriculaService calendarioService,
                               Clock clock) {
         this.matriculaRepository = matriculaRepository;
         this.checklistRepository = checklistRepository;
         this.requisitoRepository = requisitoRepository;
+        this.relacionRepository = relacionRepository;
         this.usuarioRepository = usuarioRepository;
         this.calendarioService = calendarioService;
         this.clock = clock;
@@ -72,7 +83,12 @@ public class InscripcionService {
     }
 
     @Transactional(readOnly = true)
-    public Page<InscripcionResponseDTO> listar(String estado, String busqueda, Pageable pageable) {
+    public Page<InscripcionResponseDTO> listar(String estado,
+                                                Short anioEscolar,
+                                                Integer gradoId,
+                                                Integer seccionId,
+                                                String busqueda,
+                                                Pageable pageable) {
         String estadoNormalizado = estado == null || estado.isBlank()
                 ? null : estado.trim().toLowerCase(Locale.ROOT);
         if (estadoNormalizado != null && !ESTADOS_MATRICULA.contains(estadoNormalizado)) {
@@ -82,7 +98,19 @@ public class InscripcionService {
         String busquedaNormalizada = busqueda == null || busqueda.isBlank()
                 ? null : busqueda.trim();
         return toResponses(matriculaRepository.buscarListado(
-                estadoNormalizado, busquedaNormalizada, pageable));
+                estadoNormalizado, anioEscolar, gradoId, seccionId, busquedaNormalizada, pageable));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<InscripcionResponseDTO> listarPosiblesGraduados(Integer gradoId,
+                                                                 Integer seccionId,
+                                                                 String busqueda,
+                                                                 Pageable pageable) {
+        Short anioActivo = calendarioService.obtenerAnioActivo().getAnio();
+        String busquedaNormalizada = busqueda == null || busqueda.isBlank()
+                ? null : busqueda.trim();
+        return toResponses(matriculaRepository.buscarPosiblesGraduados(
+                anioActivo, gradoId, seccionId, busquedaNormalizada, pageable));
     }
 
     @Transactional(readOnly = true)
@@ -92,13 +120,84 @@ public class InscripcionService {
         return toResponse(matricula, checklistRepository.findByMatricula_Id(matriculaId));
     }
 
+    @Transactional(readOnly = true)
+    public ExpedienteResponseDTO obtenerExpediente(Integer matriculaId) {
+        Matricula matricula = matriculaRepository.buscarExpediente(matriculaId).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Matrícula no encontrada"));
+        var estudiante = matricula.getEstudiante();
+        var grado = matricula.getSeccion().getGrado();
+        List<RepresentanteExpedienteDTO> representantes = relacionRepository
+                .findByEstudiante_IdAndActivoTrueOrderByRelacionPrincipalDesc(estudiante.getId())
+                .stream()
+                .map(relacion -> {
+                    var representante = relacion.getRepresentante();
+                    return new RepresentanteExpedienteDTO(
+                            representante.getId(),
+                            representante.getCedula(),
+                            representante.getNombre(),
+                            representante.getApellido(),
+                            representante.getParentesco(),
+                            representante.getCorreo(),
+                            representante.getTelefono(),
+                            representante.getTelefonoSecundario(),
+                            representante.getDireccion(),
+                            representante.getOcupacion(),
+                            relacion.getRelacionPrincipal(),
+                            relacion.getAutorizadoRetirar(),
+                            relacion.getRecibeComunicados());
+                })
+                .toList();
+        return new ExpedienteResponseDTO(
+                matricula.getId(),
+                matricula.getEstadoMatricula(),
+                matricula.getAnioEscolar(),
+                matricula.getFechaSolicitud(),
+                matricula.getFechaFormalizacion(),
+                matricula.getNumeroConstancia(),
+                matricula.getTipoIngreso(),
+                matricula.getInstitucionProcedencia(),
+                matricula.getSeccion().getId(),
+                grado.getNivelEducativo().getNombre(),
+                nombreGrado(grado),
+                matricula.getSeccion().getLetraSeccion(),
+                new EstudianteExpedienteDTO(
+                        estudiante.getId(),
+                        estudiante.getCedula(),
+                        estudiante.getNombre(),
+                        estudiante.getApellido(),
+                        estudiante.getFechaNacimiento(),
+                        estudiante.getSexo(),
+                        estudiante.getCorreo(),
+                        estudiante.getTelefono(),
+                        estudiante.getNumeroExpediente(),
+                        estudiante.getObservaciones()),
+                representantes);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MatriculaAcademicaDTO> obtenerHistorialAcademico(Integer matriculaId) {
+        Matricula matricula = matriculaRepository.findById(matriculaId).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Matrícula no encontrada"));
+        return matriculaRepository.buscarHistorialAcademico(matricula.getEstudiante().getId())
+                .stream()
+                .map(item -> new MatriculaAcademicaDTO(
+                        item.getId(),
+                        item.getAnioEscolar(),
+                        item.getEstadoMatricula(),
+                        item.getFechaSolicitud(),
+                        item.getFechaFormalizacion(),
+                        item.getSeccion().getGrado().getNivelEducativo().getNombre(),
+                        nombreGrado(item.getSeccion().getGrado()),
+                        item.getSeccion().getLetraSeccion()))
+                .toList();
+    }
+
     public InscripcionResponseDTO prepararChecklist(Integer matriculaId) {
         Matricula matricula = buscarMatriculaBloqueada(matriculaId);
         validarEstadoEditable(matricula);
         calendarioService.validarGestionInscripcion(
             matricula.getAnioEscolar(), matricula.getEstadoMatricula());
         List<ChecklistMatricula> checklist = inicializarChecklist(matricula);
-        marcarEnProceso(matricula);
         return toResponse(matricula, checklist);
     }
 
@@ -136,6 +235,47 @@ public class InscripcionService {
         return toResponse(matricula, checklistRepository.findByMatricula_Id(matriculaId));
     }
 
+    public InscripcionResponseDTO actualizarRequisitos(Integer matriculaId,
+                                                        ChecklistBatchUpdateRequestDTO request,
+                                                        String verificadoPorEmail) {
+        Matricula matricula = buscarMatriculaBloqueada(matriculaId);
+        validarEstadoEditable(matricula);
+        calendarioService.validarGestionInscripcion(
+                matricula.getAnioEscolar(), matricula.getEstadoMatricula());
+        inicializarChecklist(matricula);
+        Usuario verificador = buscarUsuarioAutenticado(verificadoPorEmail);
+        List<ChecklistMatricula> elementos = new ArrayList<>();
+        Set<Integer> idsProcesados = new HashSet<>();
+
+        for (ChecklistBatchItemRequestDTO cambio : request.getItems()) {
+            if (!idsProcesados.add(cambio.getRequisitoId())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "No se puede enviar un requisito más de una vez");
+            }
+            ChecklistMatricula item = checklistRepository
+                    .findByMatricula_IdAndRequisito_Id(
+                            matriculaId, cambio.getRequisitoId())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "El requisito no aplica a esta matrícula"));
+            item.setCumplido(cambio.getCumplido());
+            item.setNotas(cambio.getNotas());
+            item.setArchivoUrl(cambio.getArchivoUrl());
+            if (Boolean.TRUE.equals(cambio.getCumplido())) {
+                item.setFechaVerificacion(LocalDateTime.now(clock));
+                item.setVerificadoPor(verificador);
+            } else {
+                item.setFechaVerificacion(null);
+                item.setVerificadoPor(null);
+            }
+            elementos.add(item);
+        }
+
+        checklistRepository.saveAll(elementos);
+        marcarEnProceso(matricula);
+        return toResponse(
+                matricula, checklistRepository.findByMatricula_Id(matriculaId));
+    }
+
     public InscripcionResponseDTO formalizar(Integer matriculaId,
                                               FormalizarInscripcionRequestDTO request) {
         Matricula matricula = buscarMatriculaBloqueada(matriculaId);
@@ -147,26 +287,13 @@ public class InscripcionService {
             matricula.getAnioEscolar(), matricula.getEstadoMatricula());
 
         List<ChecklistMatricula> checklist = inicializarChecklist(matricula);
-        String tipoIngreso = matricula.getTipoIngreso();
-        List<RequisitoMatricula> obligatorios = requisitoRepository
-            .findObligatoriosActivosAplicablesAlNivel(
-            matricula.getSeccion().getGrado().getNivelEducativo().getId()).stream()
-            .filter(requisito -> aplicaAlTipoIngreso(requisito, tipoIngreso))
-            .toList();
-        Map<Integer, ChecklistMatricula> checklistPorRequisito = checklist.stream()
-                .collect(Collectors.toMap(item -> item.getRequisito().getId(),
-                        Function.identity(), (first, duplicate) -> first));
-
-        List<String> pendientes = obligatorios.stream()
-                .filter(requisito -> {
-                    ChecklistMatricula item = checklistPorRequisito.get(requisito.getId());
-                    return item == null || !Boolean.TRUE.equals(item.getCumplido());
-                })
-                .map(RequisitoMatricula::getNombre)
+        List<String> pendientes = checklist.stream()
+                .filter(item -> !Boolean.TRUE.equals(item.getCumplido()))
+                .map(item -> item.getRequisito().getNombre())
                 .toList();
         if (!pendientes.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Faltan requisitos obligatorios: " + String.join(", ", pendientes));
+                    "Faltan requisitos de inscripción: " + String.join(", ", pendientes));
         }
 
         matricula.setEstadoMatricula(COMPLETADA);
@@ -233,6 +360,12 @@ public class InscripcionService {
             matricula.setEstadoMatricula(EN_PROCESO);
             matriculaRepository.save(matricula);
         }
+    }
+
+    private String nombreGrado(com.tesis.entity.Grado grado) {
+        return grado.getNombreEspecial() != null && !grado.getNombreEspecial().isBlank()
+                ? grado.getNombreEspecial()
+                : grado.getNumeroGrado() + "° grado";
     }
 
     private Usuario buscarUsuarioAutenticado(String email) {

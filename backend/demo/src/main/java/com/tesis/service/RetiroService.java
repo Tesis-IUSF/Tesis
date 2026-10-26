@@ -3,6 +3,7 @@ package com.tesis.service;
 import com.tesis.dto.RetiroDTO.HistorialRetirosResponseDTO;
 import com.tesis.dto.RetiroDTO.RetiroRequestDTO;
 import com.tesis.dto.RetiroDTO.RetiroResponseDTO;
+import com.tesis.dto.RetiroDTO.RepresentanteSolicitanteDTO;
 import com.tesis.entity.Matricula;
 import com.tesis.entity.Representante;
 import com.tesis.entity.RetiroMatricula;
@@ -28,7 +29,6 @@ import java.util.List;
 public class RetiroService {
 
     private static final String ESTADO_COMPLETADA = "completada";
-    private static final String ESTADO_EN_PROCESO = "en_proceso";
     private static final String ESTADO_PREINSCRITO = "preinscrito";
     private static final String ESTADO_RETIRADA = "retirada";
     private static final String OPERACION_RETIRO_FORMAL = "retiro_formal";
@@ -75,10 +75,9 @@ public class RetiroService {
                         "Matrícula no encontrada"));
         String estadoActual = matricula.getEstadoMatricula();
         if (!ESTADO_PREINSCRITO.equals(estadoActual)
-                && !ESTADO_EN_PROCESO.equals(estadoActual)
                 && !ESTADO_COMPLETADA.equals(estadoActual)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Solo se puede cancelar una preinscripción o retirar una matrícula inscrita");
+                    "Solo se puede cancelar una preinscripción o retirar una matrícula completada");
         }
         if (!ESTADO_PREINSCRITO.equals(estadoActual)
                 && matricula.getFechaFormalizacion() != null
@@ -160,6 +159,22 @@ public class RetiroService {
                 .map(retiro -> toResponse(retiro, OPERACION_RETIRO_FORMAL))
                 .toList();
         return new HistorialRetirosResponseDTO(matriculaId, retiros);
+    }
+
+    @Transactional(readOnly = true)
+    public List<RepresentanteSolicitanteDTO> listarRepresentantesAutorizados(Integer matriculaId) {
+        Matricula matricula = matriculaRepository.findById(matriculaId).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Matrícula no encontrada"));
+        return relacionRepository
+                .findByEstudiante_IdAndActivoTrueAndAutorizadoRetirarTrue(
+                        matricula.getEstudiante().getId()).stream()
+                .map(relacion -> relacion.getRepresentante())
+                .filter(representante -> Boolean.TRUE.equals(representante.getActivo()))
+                .map(representante -> new RepresentanteSolicitanteDTO(
+                        representante.getId(),
+                        representante.getNombre() + " " + representante.getApellido(),
+                        representante.getCedula()))
+                .toList();
     }
 
     private Representante buscarRepresentanteAutorizado(Matricula matricula,

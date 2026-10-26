@@ -66,13 +66,18 @@ class ConstanciaServiceTest {
     }
 
     @Test
-    void rechazaConstanciaDeAsignacionCuandoElCupoYaNoEstaReservado() {
+    void rechazaConstanciaDeAsignacionSiLaMatriculaNoEstaPreinscrita() {
         Matricula matricula = crearMatricula("completada", "CONSTANCIA-CUPO-02", "F");
+        Matricula enProceso = crearMatricula(
+                "en_proceso", "CONSTANCIA-CUPO-03", "G");
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> constanciaService.generarConstanciaAsignacionCupo(matricula.getId()));
+        ResponseStatusException enProcesoException = assertThrows(ResponseStatusException.class,
+                () -> constanciaService.generarConstanciaAsignacionCupo(enProceso.getId()));
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, enProcesoException.getStatusCode());
     }
 
     @Test

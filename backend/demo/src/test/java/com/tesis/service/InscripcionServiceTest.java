@@ -1,6 +1,8 @@
 package com.tesis.service;
 
 import com.tesis.dto.InscripcionDTO.ChecklistUpdateRequestDTO;
+import com.tesis.dto.InscripcionDTO.ChecklistBatchItemRequestDTO;
+import com.tesis.dto.InscripcionDTO.ChecklistBatchUpdateRequestDTO;
 import com.tesis.dto.InscripcionDTO.FormalizarInscripcionRequestDTO;
 import com.tesis.dto.InscripcionDTO.InscripcionResponseDTO;
 import com.tesis.entity.Estudiante;
@@ -26,11 +28,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -50,7 +53,7 @@ class InscripcionServiceTest {
         private Clock clock;
 
     @Test
-    void inicializaChecklistYFormalizaCuandoTodosLosObligatoriosEstanCumplidos() {
+    void formalizaSoloCuandoTodosLosRequisitosAplicablesEstanCumplidos() {
                 crearVerificador();
         NivelEducativo nivel = crearNivel();
         RequisitoMatricula requisitoNivelObligatorio = crearRequisito(
@@ -63,12 +66,14 @@ class InscripcionServiceTest {
 
         InscripcionResponseDTO checklistInicial = inscripcionService
                 .prepararChecklist(matricula.getId());
-        assertEquals("en_proceso", checklistInicial.getEstadoMatricula());
+        assertEquals("preinscrito", checklistInicial.getEstadoMatricula());
         assertEquals(3, checklistInicial.getChecklist().size());
         assertEquals(3, checklistRepository.findByMatricula_Id(matricula.getId()).size());
 
-        inscripcionService.prepararChecklist(matricula.getId());
+        InscripcionResponseDTO checklistReabierto = inscripcionService
+                .prepararChecklist(matricula.getId());
         assertEquals(3, checklistRepository.findByMatricula_Id(matricula.getId()).size());
+        assertEquals("preinscrito", checklistReabierto.getEstadoMatricula());
 
         ResponseStatusException pendiente = assertThrows(ResponseStatusException.class,
                 () -> inscripcionService.formalizar(
@@ -76,12 +81,28 @@ class InscripcionServiceTest {
         assertEquals(HttpStatus.CONFLICT, pendiente.getStatusCode());
 
         marcarCumplido(matricula.getId(), requisitoNivelObligatorio.getId());
+        assertEquals("en_proceso", inscripcionService.obtenerSeguimiento(matricula.getId())
+                .getEstadoMatricula());
         ResponseStatusException faltaGlobal = assertThrows(ResponseStatusException.class,
                 () -> inscripcionService.formalizar(
                         matricula.getId(), new FormalizarInscripcionRequestDTO("CONST-01", null)));
         assertEquals(HttpStatus.CONFLICT, faltaGlobal.getStatusCode());
 
         marcarCumplido(matricula.getId(), requisitoGlobalObligatorio.getId());
+        ResponseStatusException faltaOpcional = assertThrows(ResponseStatusException.class,
+                () -> inscripcionService.formalizar(
+                        matricula.getId(), new FormalizarInscripcionRequestDTO("CONST-01", null)));
+        assertEquals(HttpStatus.CONFLICT, faltaOpcional.getStatusCode());
+        assertTrue(faltaOpcional.getReason().contains("Autorización opcional"));
+        assertEquals("en_proceso", inscripcionService.obtenerSeguimiento(matricula.getId())
+                .getEstadoMatricula());
+
+        Integer requisitoOpcionalId = checklistRepository.findByMatricula_Id(matricula.getId())
+                .stream()
+                .filter(item -> "Autorización opcional".equals(
+                        item.getRequisito().getNombre()))
+                .findFirst().orElseThrow().getRequisito().getId();
+        marcarCumplido(matricula.getId(), requisitoOpcionalId);
         InscripcionResponseDTO formalizada = inscripcionService.formalizar(
                 matricula.getId(), new FormalizarInscripcionRequestDTO("CONST-01", null));
 
@@ -93,7 +114,7 @@ class InscripcionServiceTest {
         assertNotNull(formalizada.getChecklist().stream()
                 .filter(item -> requisitoNivelObligatorio.getId().equals(item.getRequisitoId()))
                 .findFirst().orElseThrow().getVerificadoPorId());
-        assertFalse(formalizada.getChecklist().stream()
+        assertTrue(formalizada.getChecklist().stream()
                 .filter(item -> "Autorización opcional".equals(item.getNombreRequisito()))
                 .findFirst().orElseThrow().getCumplido());
     }
@@ -109,6 +130,37 @@ class InscripcionServiceTest {
 
         assertEquals("preinscrito", inscripcionService.obtenerSeguimiento(matricula.getId())
                 .getEstadoMatricula());
+    }
+
+    @Test
+    void actualizaChecklistEnUnaSolaOperacionYMarcaEnProcesoAlGuardar() {
+        crearVerificador();
+        NivelEducativo nivel = crearNivel();
+        RequisitoMatricula requisitoUno = crearRequisito(
+                "Requisito lote uno", true, nivel);
+        RequisitoMatricula requisitoDos = crearRequisito(
+                "Requisito lote dos", true, nivel);
+        Matricula matricula = crearMatricula(nivel);
+        inscripcionService.prepararChecklist(matricula.getId());
+
+        assertEquals("preinscrito", inscripcionService.obtenerSeguimiento(matricula.getId())
+                .getEstadoMatricula());
+
+        InscripcionResponseDTO respuesta = inscripcionService.actualizarRequisitos(
+                matricula.getId(),
+                new ChecklistBatchUpdateRequestDTO(List.of(
+                        new ChecklistBatchItemRequestDTO(
+                                requisitoUno.getId(), true, null, null),
+                        new ChecklistBatchItemRequestDTO(
+                                requisitoDos.getId(), false, "Pendiente", null))),
+                "verificador@test.local");
+
+        assertEquals("en_proceso", respuesta.getEstadoMatricula());
+        assertEquals(1, respuesta.getRequisitosObligatoriosCumplidos());
+        assertEquals(2, respuesta.getRequisitosObligatorios());
+        assertEquals("Pendiente", respuesta.getChecklist().stream()
+                .filter(item -> requisitoDos.getId().equals(item.getRequisitoId()))
+                .findFirst().orElseThrow().getNotas());
     }
 
         @Test

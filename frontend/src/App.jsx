@@ -100,6 +100,10 @@ function App() {
                 path="/matricula/preinscripcion"
                 element={<Preinscripcion />}
               />
+              <Route
+                path="/matricula/:id/preinscripcion/editar"
+                element={<Preinscripcion />}
+              />
               <Route path="/matricula" element={<Matricula />} />
               <Route
                 path="/matricula/:id/inscripcion"

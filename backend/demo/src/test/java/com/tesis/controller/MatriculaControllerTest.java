@@ -221,20 +221,72 @@ class MatriculaControllerTest {
         }
 
     @Test
-    void obtieneYActualizaDatosDePreinscripcionYExponeCedulaEnListado() throws Exception {
+        void buscaRepresentantesActivosPorElEndpointPaginado() throws Exception {
+            Representante activo = new Representante();
+            activo.setCedula("V-18456789");
+            activo.setNombre("Ana");
+            activo.setApellido("Pérez");
+            activo.setCorreo("ana@example.com");
+            activo.setTelefono("04121234567");
+            entityManager.persist(activo);
+
+            Representante inactivo = new Representante();
+            inactivo.setCedula("V-18456790");
+            inactivo.setNombre("Ana");
+            inactivo.setApellido("Gómez");
+            inactivo.setCorreo("ana2@example.com");
+            inactivo.setTelefono("04121234568");
+            inactivo.setActivo(false);
+            entityManager.persist(inactivo);
+            entityManager.flush();
+
+            mockMvc.perform(get("/api/representantes/buscar")
+                            .param("q", "Ana")
+                            .param("page", "0")
+                            .param("size", "1")
+                            .with(user("admin").roles("ADMINISTRADOR")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalElements").value(1))
+                    .andExpect(jsonPath("$.content[0].id").value(activo.getId()));
+        }
+
+        @Test
+        void obtieneYActualizaDatosDePreinscripcionYExponeCedulaEnListado() throws Exception {
         MatriculaFixture fixture = crearMatriculaParaEdicion();
         Integer matriculaId = fixture.matriculaId();
 
         mockMvc.perform(get("/api/matriculas/{id}/preinscripcion", matriculaId)
                         .with(user("admin").roles("ADMINISTRADOR")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.estudiante.cedula").value("EST-API-EDITAR"))
-                .andExpect(jsonPath("$.representante.cedula").value("REP-API-EDITAR"))
+                .andExpect(jsonPath("$.estudiante.cedula").value("V-18456789"))
+                .andExpect(jsonPath("$.estudiante.tieneCedulaIdentidad").value(true))
+                .andExpect(jsonPath("$.representante.cedula").value("V-18456789"))
+                .andExpect(jsonPath("$.representante.id").value(fixture.representanteId()))
                 .andExpect(jsonPath("$.seccionId").value(fixture.seccionId()))
                 .andExpect(jsonPath("$.anioEscolar").value(2026))
                 .andExpect(jsonPath("$.relacionPrincipal").value(true))
                 .andExpect(jsonPath("$.autorizadoRetirar").value(true))
                 .andExpect(jsonPath("$.recibeComunicados").value(false));
+
+        mockMvc.perform(get("/api/matriculas/{id}/expediente", matriculaId)
+                        .with(user("admin").roles("ADMINISTRADOR")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.matriculaId").value(matriculaId))
+                .andExpect(jsonPath("$.estudiante.cedula").value("V-18456789"))
+                .andExpect(jsonPath("$.nivelEducativoNombre").value("Nivel API edición"))
+                .andExpect(jsonPath("$.letraSeccion").value("Z"))
+                .andExpect(jsonPath("$.representantes.length()").value(1))
+                .andExpect(jsonPath("$.representantes[0].id")
+                        .value(fixture.representanteId()))
+                .andExpect(jsonPath("$.representantes[0].relacionPrincipal").value(true));
+
+        mockMvc.perform(get("/api/matriculas/{id}/historial-academico", matriculaId)
+                        .with(user("admin").roles("ADMINISTRADOR")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].matriculaId").value(matriculaId))
+                .andExpect(jsonPath("$[0].estadoMatricula").value("preinscrito"))
+                .andExpect(jsonPath("$[0].gradoNombre").value("1° grado"));
 
         mockMvc.perform(put("/api/matriculas/{id}/preinscripcion", matriculaId)
                         .with(user("admin").roles("ADMINISTRADOR"))
@@ -242,18 +294,21 @@ class MatriculaControllerTest {
                         .content(String.format("""
                                 {
                                   "estudiante": {
-                                    "cedula": "EST-API-EDITAR",
+                                    "cedula": "V-18456789",
+                                    "tieneCedulaIdentidad": true,
                                     "nombre": "Nombre corregido",
                                     "apellido": "Estudiante",
                                     "fechaNacimiento": "2017-01-01",
                                     "sexo": "F"
                                   },
                                   "representante": {
-                                    "cedula": "REP-API-EDITAR",
+                                    "id": %d,
+                                    "cedula": "V-18456789",
                                     "nombre": "Representante corregido",
                                     "apellido": "Prueba",
                                     "parentesco": "Madre",
-                                    "correo": "representante@example.com"
+                                    "correo": "representante@example.com",
+                                    "telefono": "04121234567"
                                   },
                                   "seccionId": %d,
                                   "anioEscolar": 2026,
@@ -262,7 +317,7 @@ class MatriculaControllerTest {
                                   "autorizadoRetirar": true,
                                   "recibeComunicados": false
                                 }
-                                """, fixture.seccionId())))
+                                """, fixture.representanteId(), fixture.seccionId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estadoMatricula").value("preinscrito"))
                 .andExpect(jsonPath("$.estudianteNombreCompleto").value("Nombre corregido Estudiante"));
@@ -270,20 +325,73 @@ class MatriculaControllerTest {
         mockMvc.perform(get("/api/matriculas/preinscripciones")
                         .with(user("admin").roles("ADMINISTRADOR")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].estudianteCedula").value("EST-API-EDITAR"));
+                .andExpect(jsonPath("$.content[0].estudianteCedula").value("V-18456789"));
 
         mockMvc.perform(get("/api/matriculas/listado")
                         .param("estado", "")
-                        .param("q", "EST-API-EDITAR")
+                        .param("q", "V-18456789")
+                        .param("anioEscolar", "2026")
+                        .param("gradoId", fixture.gradoId().toString())
+                        .param("seccionId", fixture.seccionId().toString())
                         .with(user("admin").roles("ADMINISTRADOR")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(1))
-                .andExpect(jsonPath("$.content[0].estudianteCedula").value("EST-API-EDITAR"));
+                .andExpect(jsonPath("$.content[0].estudianteCedula").value("V-18456789"));
+
+        mockMvc.perform(get("/api/matriculas/{id}/retiros/representantes-autorizados",
+                        fixture.matriculaId())
+                        .with(user("admin").roles("ADMINISTRADOR")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(fixture.representanteId()));
 
         mockMvc.perform(get("/api/matriculas/listado")
                         .param("estado", "no-es-valido")
                         .with(user("admin").roles("ADMINISTRADOR")))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void listaPosiblesGraduadosDelAnioActivoEnElUltimoGradoActivo() throws Exception {
+        entityManager.createQuery("update AnioEscolar a set a.activo = false").executeUpdate();
+        AnioEscolar anio = nuevoAnio((short) 2196, true);
+        entityManager.persist(anio);
+
+        NivelEducativo nivel = new NivelEducativo();
+        nivel.setNombre("Nivel posibles graduados");
+        nivel.setOrdinal((short) 198);
+        entityManager.persist(nivel);
+
+        Grado primero = nuevoGrado(nivel, (short) 1);
+        Grado ultimo = nuevoGrado(nivel, (short) 2);
+        entityManager.persist(primero);
+        entityManager.persist(ultimo);
+        entityManager.flush();
+
+        crearMatriculaParaGraduacion(primero, (short) 2196, "V-21960001",
+                "Fuera del último grado", "en_proceso", "A");
+        FixtureGraduacion posible = crearMatriculaParaGraduacion(
+                ultimo, (short) 2196, "V-21960002",
+                "Posible Graduado", "en_proceso", "B");
+        crearMatriculaParaGraduacion(ultimo, (short) 2196, "V-21960003",
+                "Preinscrito no elegible", "preinscrito", "C");
+        crearMatriculaParaGraduacion(ultimo, (short) 2195, "V-21950004",
+                "Año anterior", "completada", "D");
+        entityManager.flush();
+
+        mockMvc.perform(get("/api/matriculas/posibles-graduados")
+                        .param("q", "Posible Graduado")
+                        .param("gradoId", ultimo.getId().toString())
+                        .param("seccionId", posible.seccionId().toString())
+                        .param("page", "0")
+                        .param("size", "10")
+                        .with(user("admin").roles("ADMINISTRADOR")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].estudianteNombreCompleto")
+                        .value("Posible Graduado Prueba"))
+                .andExpect(jsonPath("$.content[0].estadoMatricula").value("en_proceso"));
     }
 
     private MatriculaFixture crearMatriculaParaEdicion() {
@@ -308,7 +416,7 @@ class MatriculaControllerTest {
         entityManager.persist(seccion);
 
         Estudiante estudiante = new Estudiante();
-        estudiante.setCedula("EST-API-EDITAR");
+        estudiante.setCedula("V-18456789");
         estudiante.setNombre("Nombre anterior");
         estudiante.setApellido("Estudiante");
         estudiante.setFechaNacimiento(LocalDate.of(2017, 1, 1));
@@ -316,11 +424,12 @@ class MatriculaControllerTest {
         entityManager.persist(estudiante);
 
         Representante representante = new Representante();
-        representante.setCedula("REP-API-EDITAR");
+        representante.setCedula("V-18456789");
         representante.setNombre("Representante anterior");
         representante.setApellido("Prueba");
         representante.setParentesco("Madre");
         representante.setCorreo("representante@example.com");
+        representante.setTelefono("04121234567");
         entityManager.persist(representante);
 
         RelacionEstudianteRepresentante relacion = new RelacionEstudianteRepresentante();
@@ -341,9 +450,58 @@ class MatriculaControllerTest {
         matricula.setFechaSolicitud(LocalDate.now(clock));
         entityManager.persist(matricula);
         entityManager.flush();
-        return new MatriculaFixture(matricula.getId(), seccion.getId());
+        return new MatriculaFixture(
+                matricula.getId(), grado.getId(), seccion.getId(), representante.getId());
     }
 
-    private record MatriculaFixture(Integer matriculaId, Integer seccionId) {
+    private Grado nuevoGrado(NivelEducativo nivel, Short numero) {
+        Grado grado = new Grado();
+        grado.setNivelEducativo(nivel);
+        grado.setNumeroGrado(numero);
+        grado.setEdadMinima((short) 0);
+        grado.setEdadMaxima((short) 120);
+        grado.setActivo(true);
+        return grado;
+    }
+
+    private FixtureGraduacion crearMatriculaParaGraduacion(Grado grado,
+                                                            Short anioEscolar,
+                                                            String cedula,
+                                                            String nombre,
+                                                            String estado,
+                                                            String letra) {
+        Seccion seccion = new Seccion();
+        seccion.setGrado(grado);
+        seccion.setLetraSeccion(letra);
+        seccion.setCapacidadMaxima((short) 10);
+        seccion.setAnioEscolar(anioEscolar);
+        seccion.setActivo(true);
+        entityManager.persist(seccion);
+
+        Estudiante estudiante = new Estudiante();
+        estudiante.setCedula(cedula);
+        estudiante.setNombre(nombre);
+        estudiante.setApellido("Prueba");
+        estudiante.setFechaNacimiento(LocalDate.of(2010, 1, 1));
+        estudiante.setSexo("F");
+        entityManager.persist(estudiante);
+
+        Matricula matricula = new Matricula();
+        matricula.setEstudiante(estudiante);
+        matricula.setSeccion(seccion);
+        matricula.setAnioEscolar(anioEscolar);
+        matricula.setEstadoMatricula(estado);
+        matricula.setFechaSolicitud(LocalDate.now(clock));
+        entityManager.persist(matricula);
+        return new FixtureGraduacion(seccion.getId());
+    }
+
+    private record MatriculaFixture(Integer matriculaId,
+                                    Integer gradoId,
+                                    Integer seccionId,
+                                    Integer representanteId) {
+    }
+
+    private record FixtureGraduacion(Integer seccionId) {
     }
 }

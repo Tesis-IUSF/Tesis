@@ -1,21 +1,10 @@
 /* src/pages/Matricula.css — prefijo mat-
-   Reutiliza .stats-row / .stat-card (Dashboard.css), tabla, paginación,
-   .filters-bar y botones globales. */
+   Reutiliza .stats-row / .stat-card (Dashboard.css), tabla, paginación y botones globales. */
 
-.mat-subtitulo {
-  margin: -0.25rem 0 1rem;
-  color: var(--texto-suave);
-}
-
-.mat-subtitulo strong {
-  color: var(--azul-oscuro);
-}
-
-/* Cuatro tarjetas de resumen */
-.stats-row.mat-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 1rem;
+/* El año escolar es texto, no una cifra grande */
+.stat-value.mat-anio {
+  font-size: 1.6rem;
+  line-height: 1.2;
 }
 
 /* ===== Pestañas ===== */
@@ -39,7 +28,6 @@
   font-weight: 600;
   color: var(--texto-suave);
   cursor: pointer;
-  white-space: nowrap;
 }
 
 .mat-tabs button:hover {
@@ -88,8 +76,56 @@
 }
 
 .badge.mat-estado--retirada {
-  background: #e5e7eb;
-  color: #374151;
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.mat-cedula {
+  width: 1%;
+  white-space: nowrap;
+}
+
+/* ===== Filtros ===== */
+.mat-filtros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(150px, 1fr)) auto;
+  gap: 0.8rem;
+  align-items: end;
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid #d0dcea;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.mat-filtros label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.mat-filtros input,
+.mat-filtros select {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.4rem;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-weight: 400;
+}
+
+.mat-filtros input:disabled {
+  background: #f1f5f9;
+  color: var(--texto-suave);
+}
+
+.mat-filtros-acciones {
+  display: flex;
+  gap: 0.5rem;
 }
 
 /* ===== Progreso de requisitos ===== */
@@ -120,83 +156,18 @@
   color: var(--texto-suave);
 }
 
-/* ===== Formalización ===== */
-.mat-formal {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 0.1rem;
+@media (max-width: 900px) {
+  .mat-filtros {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+
+  .mat-filtros-acciones {
+    grid-column: 1 / -1;
+  }
 }
 
-.mat-constancia {
-  font-size: 0.78rem;
-  color: var(--texto-suave);
-}
-
-/* ===== Acciones en una sola línea ===== */
-.mat-acciones {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.mat-acciones > .btn-edit,
-.mat-acciones > .btn-reactivar {
-  margin: 0;
-  white-space: nowrap;
-}
-
-/* Nombre del estudiante como enlace al detalle */
-.mat-nombre-link {
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-weight: 600;
-  color: var(--azul-oscuro);
-  text-align: left;
-  cursor: pointer;
-}
-
-.mat-nombre-link:hover {
-  text-decoration: underline;
-}
-
-/* Ventana de detalle */
-.mat-detalle {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  margin: 0;
-}
-
-.mat-detalle > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #e6edf5;
-}
-
-.mat-detalle dt {
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--texto-suave);
-}
-
-.mat-detalle dd {
-  margin: 0;
-  text-align: right;
-  color: var(--texto);
-}
-
-/* Botón compacto "⋯" que abre el detalle */
-.mat-mas {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-  padding: 0.35rem 0.5rem;
+@media (max-width: 520px) {
+  .mat-filtros {
+    grid-template-columns: 1fr;
+  }
 }

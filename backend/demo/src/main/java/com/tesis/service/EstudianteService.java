@@ -4,6 +4,8 @@ import com.tesis.entity.Estudiante;
 import com.tesis.entity.Usuario;
 import com.tesis.repository.EstudianteRepository;
 import com.tesis.repository.UsuarioRepository;
+import com.tesis.validation.CedulaEstudiantil;
+import com.tesis.validation.CedulaVenezolana;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -35,10 +37,12 @@ public class EstudianteService {
     }
 
     public Estudiante crear(Estudiante estudiante) {
-        validarEntidad(estudiante);
-        if (estudianteRepository.existsByCedula(estudiante.getCedula().trim())) {
+        validarEntidad(estudiante, null);
+        String cedula = normalizarCedula(estudiante.getCedula());
+        if (estudianteRepository.existsByCedula(cedula)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La cédula del estudiante ya está registrada");
         }
+        estudiante.setCedula(cedula);
         if (estudiante.getUsuario() != null && estudiante.getUsuario().getId() != null) {
             Usuario usuario = usuarioRepository.findById(estudiante.getUsuario().getId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Usuario no encontrado"));
@@ -49,12 +53,13 @@ public class EstudianteService {
 
     public Estudiante actualizar(Integer id, Estudiante estudiante) {
         Estudiante actual = buscarEstudiante(id);
-        validarEntidad(estudiante);
-        if (estudianteRepository.existsByCedula(estudiante.getCedula().trim())
-                && !actual.getCedula().equalsIgnoreCase(estudiante.getCedula().trim())) {
+        validarEntidad(estudiante, actual.getCedula());
+        String cedula = normalizarCedula(estudiante.getCedula());
+        if (estudianteRepository.existsByCedula(cedula)
+                && !actual.getCedula().equalsIgnoreCase(cedula)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La cédula del estudiante ya está registrada");
         }
-        actual.setCedula(estudiante.getCedula().trim());
+        actual.setCedula(cedula);
         actual.setNombre(estudiante.getNombre().trim());
         actual.setApellido(estudiante.getApellido().trim());
         actual.setFechaNacimiento(estudiante.getFechaNacimiento());
@@ -85,12 +90,25 @@ public class EstudianteService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Estudiante no encontrado"));
     }
 
-    private void validarEntidad(Estudiante estudiante) {
+    private void validarEntidad(Estudiante estudiante, String cedulaActual) {
         if (estudiante == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La entidad es obligatoria");
         }
         if (estudiante.getCedula() == null || estudiante.getCedula().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La cédula es obligatoria");
+        }
+        String cedulaNormalizada = normalizarCedula(estudiante.getCedula());
+        boolean conservaCedulaLegada = cedulaActual != null
+                && cedulaNormalizada.equals(CedulaEstudiantil.normalizar(cedulaActual));
+        boolean cedulaNuevaValida = CedulaVenezolana.esValida(cedulaNormalizada)
+                || CedulaEstudiantil.esValida(cedulaNormalizada);
+        if (cedulaActual == null && CedulaEstudiantil.esValida(cedulaNormalizada)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "La cédula escolar CE- se genera automáticamente durante la preinscripción");
+        }
+        if (!cedulaNuevaValida && !conservaCedulaLegada) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "La cédula debe tener formato V-/E- válido o formato escolar CE-V/CE-E generado por el sistema");
         }
         if (estudiante.getNombre() == null || estudiante.getNombre().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El nombre es obligatorio");
@@ -109,5 +127,12 @@ public class EstudianteService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "El sexo debe ser M, F u Otro");
         }
+    }
+
+    private String normalizarCedula(String cedula) {
+        if (CedulaVenezolana.esValida(cedula)) {
+            return CedulaVenezolana.normalizarFormato(cedula);
+        }
+        return CedulaEstudiantil.normalizar(cedula);
     }
 }

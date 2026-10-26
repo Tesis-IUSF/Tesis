@@ -136,7 +136,7 @@ class EmpleadoServiceTest {
         EmpleadoResponseDTO respuesta = empleadoService.obtener(3);
 
         assertEquals(3, respuesta.getId());
-        assertEquals("12345678", respuesta.getCedula());
+        assertEquals("V-12345678", respuesta.getCedula());
     }
 
     @Test
@@ -152,11 +152,12 @@ class EmpleadoServiceTest {
     @Test
     void crearGuardaEmpleadoYAsignaRelaciones() {
         EmpleadoRequestDTO solicitud = solicitudEmpleado(10, 20, 30);
+        solicitud.setCedula(" v-12345678 ");
         Cargo cargo = cargo(10, "Docente");
         Departamento departamento = departamento(20, "Académico");
         Usuario usuario = new Usuario();
         usuario.setId(30);
-        when(empleadoRepository.existsByCedula("12345678")).thenReturn(false);
+        when(empleadoRepository.existsByCedula("V-12345678")).thenReturn(false);
         when(cargoRepository.findById(10)).thenReturn(Optional.of(cargo));
         when(departamentoRepository.findById(20)).thenReturn(Optional.of(departamento));
         when(empleadoRepository.existsByUsuario_Id(30)).thenReturn(false);
@@ -178,6 +179,7 @@ class EmpleadoServiceTest {
         assertEquals("/api/fotos/empleado.png", respuesta.getFotoUrl());
         assertTrue(respuesta.getActivo());
         assertEquals(4, respuesta.getTurnoId());
+        assertEquals("V-12345678", respuesta.getCedula());
         verify(empleadoRepository).save(any(Empleado.class));
         verify(asignacionTurnoRepository).save(any(AsignacionTurno.class));
     }
@@ -185,7 +187,7 @@ class EmpleadoServiceTest {
     @Test
     void crearAsignaElTurnoDesdeLaFechaDeIngreso() {
         EmpleadoRequestDTO solicitud = solicitudEmpleado(10, null, null);
-        when(empleadoRepository.existsByCedula("12345678")).thenReturn(false);
+        when(empleadoRepository.existsByCedula("V-12345678")).thenReturn(false);
         when(cargoRepository.findById(10)).thenReturn(Optional.of(cargo(10, "Docente")));
         when(asignacionTurnoRepository.save(any(AsignacionTurno.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -209,7 +211,7 @@ class EmpleadoServiceTest {
     void crearSinTurnoLanzaBadRequestSinGuardar() {
         EmpleadoRequestDTO solicitud = solicitudEmpleado(10, null, null);
         solicitud.setTurnoId(null);
-        when(empleadoRepository.existsByCedula("12345678")).thenReturn(false);
+        when(empleadoRepository.existsByCedula("V-12345678")).thenReturn(false);
 
         ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
                 () -> empleadoService.crear(solicitud));
@@ -223,7 +225,7 @@ class EmpleadoServiceTest {
     void crearConTurnoInactivoLanzaConflictSinGuardar() {
         Turno turnoInactivo = turno(4, "Matutino");
         turnoInactivo.setActivo(false);
-        when(empleadoRepository.existsByCedula("12345678")).thenReturn(false);
+        when(empleadoRepository.existsByCedula("V-12345678")).thenReturn(false);
         when(turnoRepository.findById(4)).thenReturn(Optional.of(turnoInactivo));
 
         ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
@@ -236,18 +238,44 @@ class EmpleadoServiceTest {
 
     @Test
     void crearConCedulaDuplicadaLanzaConflictSinGuardar() {
-        when(empleadoRepository.existsByCedula("12345678")).thenReturn(true);
+        when(empleadoRepository.existsByCedula("V-12345678")).thenReturn(true);
 
         ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
-                () -> empleadoService.crear(solicitudEmpleado(null, null, null)));
+                () -> empleadoService.crear(solicitudEmpleado(10, null, null)));
 
         assertEquals(HttpStatus.CONFLICT, excepcion.getStatusCode());
         verify(empleadoRepository, never()).save(any(Empleado.class));
     }
 
     @Test
+    void crearRechazaCedulaInvalidaAntesDeConsultarDuplicados() {
+        EmpleadoRequestDTO solicitud = solicitudEmpleado(10, null, null);
+        solicitud.setCedula("12345678");
+
+        ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
+                () -> empleadoService.crear(solicitud));
+
+        assertEquals(HttpStatus.BAD_REQUEST, excepcion.getStatusCode());
+        verify(empleadoRepository, never()).existsByCedula(any());
+        verify(empleadoRepository, never()).save(any(Empleado.class));
+    }
+
+    @Test
+    void crearSinCargoLanzaBadRequestSinGuardar() {
+        EmpleadoRequestDTO solicitud = solicitudEmpleado(null, null, null);
+        when(empleadoRepository.existsByCedula("V-12345678")).thenReturn(false);
+
+        ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
+                () -> empleadoService.crear(solicitud));
+
+        assertEquals(HttpStatus.BAD_REQUEST, excepcion.getStatusCode());
+        assertEquals("El cargo es obligatorio", excepcion.getReason());
+        verify(empleadoRepository, never()).save(any(Empleado.class));
+    }
+
+    @Test
     void crearConCargoInexistenteLanzaBadRequest() {
-        when(empleadoRepository.existsByCedula("12345678")).thenReturn(false);
+        when(empleadoRepository.existsByCedula("V-12345678")).thenReturn(false);
         when(cargoRepository.findById(404)).thenReturn(Optional.empty());
 
         ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
@@ -259,11 +287,12 @@ class EmpleadoServiceTest {
 
     @Test
     void crearConUsuarioYaVinculadoLanzaConflict() {
-        when(empleadoRepository.existsByCedula("12345678")).thenReturn(false);
+        when(empleadoRepository.existsByCedula("V-12345678")).thenReturn(false);
+        when(cargoRepository.findById(10)).thenReturn(Optional.of(cargo(10, "Docente")));
         when(empleadoRepository.existsByUsuario_Id(30)).thenReturn(true);
 
         ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
-                () -> empleadoService.crear(solicitudEmpleado(null, null, 30)));
+                () -> empleadoService.crear(solicitudEmpleado(10, null, 30)));
 
         assertEquals(HttpStatus.CONFLICT, excepcion.getStatusCode());
         verify(usuarioRepository, never()).findById(30);
@@ -274,28 +303,42 @@ class EmpleadoServiceTest {
     void actualizarModificaEmpleadoYConservaActivoSiNoSeEnvia() {
         Empleado empleado = empleadoExistente();
         when(empleadoRepository.findById(3)).thenReturn(Optional.of(empleado));
-        when(empleadoRepository.existsByCedulaAndIdNot("87654321", 3)).thenReturn(false);
+        when(empleadoRepository.existsByCedulaAndIdNot("E-87654321", 3)).thenReturn(false);
+        when(cargoRepository.findById(10)).thenReturn(Optional.of(cargo(10, "Docente")));
         when(empleadoRepository.save(any(Empleado.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        EmpleadoRequestDTO solicitud = solicitudEmpleado(null, null, null);
+        EmpleadoRequestDTO solicitud = solicitudEmpleado(10, null, null);
         solicitud.setNombre("María");
-        solicitud.setCedula("87654321");
+        solicitud.setCedula(" e-87654321 ");
 
         EmpleadoResponseDTO respuesta = empleadoService.actualizar(3, solicitud);
 
         assertEquals("María", respuesta.getNombre());
-        assertEquals("87654321", respuesta.getCedula());
+        assertEquals("E-87654321", respuesta.getCedula());
         assertTrue(respuesta.getActivo());
-        assertNull(respuesta.getCargoId());
+        assertEquals(10, respuesta.getCargoId());
         verify(empleadoRepository).save(empleado);
+    }
+
+    @Test
+    void actualizarSinCargoLanzaBadRequestSinGuardar() {
+        when(empleadoRepository.findById(3)).thenReturn(Optional.of(empleadoExistente()));
+        when(empleadoRepository.existsByCedulaAndIdNot("V-12345678", 3)).thenReturn(false);
+
+        ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
+                () -> empleadoService.actualizar(3, solicitudEmpleado(null, null, null)));
+
+        assertEquals(HttpStatus.BAD_REQUEST, excepcion.getStatusCode());
+        assertEquals("El cargo es obligatorio", excepcion.getReason());
+        verify(empleadoRepository, never()).save(any(Empleado.class));
     }
 
     @Test
     void actualizarConCedulaDeOtroEmpleadoLanzaConflictSinGuardar() {
         when(empleadoRepository.findById(3)).thenReturn(Optional.of(empleadoExistente()));
-        when(empleadoRepository.existsByCedulaAndIdNot("12345678", 3)).thenReturn(true);
+        when(empleadoRepository.existsByCedulaAndIdNot("V-12345678", 3)).thenReturn(true);
 
         ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
-                () -> empleadoService.actualizar(3, solicitudEmpleado(null, null, null)));
+                () -> empleadoService.actualizar(3, solicitudEmpleado(10, null, null)));
 
         assertEquals(HttpStatus.CONFLICT, excepcion.getStatusCode());
         verify(empleadoRepository, never()).save(any(Empleado.class));
@@ -346,12 +389,13 @@ class EmpleadoServiceTest {
         asignacion.setPersonal(empleado);
         asignacion.setFechaDesde(LocalDate.now().minusMonths(1));
         when(empleadoRepository.findById(3)).thenReturn(Optional.of(empleado));
-        when(empleadoRepository.existsByCedulaAndIdNot("12345678", 3)).thenReturn(false);
+        when(empleadoRepository.existsByCedulaAndIdNot("V-12345678", 3)).thenReturn(false);
         when(asignacionTurnoRepository.buscarVigentesEnFecha(3, LocalDate.now()))
                 .thenReturn(List.of(asignacion));
         when(credencialQrRepository.findByEmpleado_IdAndActivaTrue(3)).thenReturn(List.of());
+        when(cargoRepository.findById(10)).thenReturn(Optional.of(cargo(10, "Docente")));
         when(empleadoRepository.save(any(Empleado.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        EmpleadoRequestDTO solicitud = solicitudEmpleado(null, null, null);
+        EmpleadoRequestDTO solicitud = solicitudEmpleado(10, null, null);
         solicitud.setActivo(false);
 
         empleadoService.actualizar(3, solicitud);
@@ -361,6 +405,35 @@ class EmpleadoServiceTest {
         assertEquals(LocalDate.now(), asignacion.getFechaHasta());
         verify(asignacionTurnoRepository).save(asignacion);
         verify(empleadoRepository).save(empleado);
+    }
+
+    @Test
+    void actualizarRechazaEmpleadoActivoConFechaDeEgreso() {
+        Empleado empleado = empleadoExistente();
+        when(empleadoRepository.findById(3)).thenReturn(Optional.of(empleado));
+        when(empleadoRepository.existsByCedulaAndIdNot("V-12345678", 3)).thenReturn(false);
+        when(cargoRepository.findById(10)).thenReturn(Optional.of(cargo(10, "Docente")));
+        EmpleadoRequestDTO solicitud = solicitudEmpleado(10, null, null);
+        solicitud.setFechaEgreso(LocalDate.now());
+
+        ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
+                () -> empleadoService.actualizar(3, solicitud));
+
+        assertEquals(HttpStatus.BAD_REQUEST, excepcion.getStatusCode());
+        verify(empleadoRepository, never()).save(any(Empleado.class));
+    }
+
+    @Test
+    void crearRechazaEmpleadoInactivoSinFechaDeEgreso() {
+        EmpleadoRequestDTO solicitud = solicitudEmpleado(10, null, null);
+        solicitud.setActivo(false);
+        when(empleadoRepository.existsByCedula("V-12345678")).thenReturn(false);
+
+        ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
+                () -> empleadoService.crear(solicitud));
+
+        assertEquals(HttpStatus.BAD_REQUEST, excepcion.getStatusCode());
+        verify(empleadoRepository, never()).save(any(Empleado.class));
     }
 
     @Test
@@ -377,7 +450,7 @@ class EmpleadoServiceTest {
 
     private EmpleadoRequestDTO solicitudEmpleado(Integer cargoId, Integer departamentoId, Integer usuarioId) {
         EmpleadoRequestDTO solicitud = new EmpleadoRequestDTO(
-                "Ana", "Pérez", "12345678", "ana@example.com", "555-0100",
+                "Ana", "Pérez", "V-12345678", "ana@example.com", "555-0100",
                 LocalDate.of(1990, 5, 12), "F", null, cargoId, departamentoId,
                 LocalDate.of(2020, 1, 15), null, usuarioId, null, 4);
         solicitud.setFotoUrl("/api/fotos/empleado.png");
@@ -389,7 +462,7 @@ class EmpleadoServiceTest {
         empleado.setId(3);
         empleado.setNombre("Ana");
         empleado.setApellido("Pérez");
-        empleado.setCedula("12345678");
+        empleado.setCedula("V-12345678");
         empleado.setFotoUrl("/api/fotos/empleado.png");
         empleado.setActivo(true);
         empleado.setCargo(cargo(10, "Docente"));

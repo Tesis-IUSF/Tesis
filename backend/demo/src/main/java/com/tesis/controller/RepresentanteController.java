@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -31,6 +32,15 @@ public class RepresentanteController {
     public PaginacionDTO.Respuesta<Representante> listar(@ModelAttribute PaginacionDTO.Solicitud paginacion) {
         Pageable pageable = paginacion.toPageable();
         return PaginacionDTO.Respuesta.desde(representanteService.listar(pageable));
+    }
+
+    @GetMapping("/buscar")
+    public PaginacionDTO.Respuesta<Representante> buscar(
+            @RequestParam String q,
+            @ModelAttribute PaginacionDTO.Solicitud paginacion) {
+        Pageable pageable = paginacion.toPageable();
+        return PaginacionDTO.Respuesta.desde(
+                representanteService.buscarActivos(q, pageable));
     }
 
     @GetMapping("/{id}")

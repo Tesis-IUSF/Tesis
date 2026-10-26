@@ -9,6 +9,7 @@ import jakarta.validation.groups.Default;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.tesis.validation.CedulaVenezolana;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -31,7 +32,7 @@ public class EmpleadoDTO {
         private String apellido;
 
         @NotBlank
-        @Size(max = 20)
+        @Pattern(regexp = CedulaVenezolana.FORMATO, message = CedulaVenezolana.MENSAJE)
         private String cedula;
 
         @Email
@@ -49,6 +50,7 @@ public class EmpleadoDTO {
         @Size(max = 500)
         private String fotoUrl;
 
+        @NotNull(message = "El cargo es obligatorio")
         private Integer cargoId;
         private Integer departamentoId;
         @NotNull(message = "La fecha de ingreso es obligatoria")

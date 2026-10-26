@@ -34,6 +34,12 @@
   text-transform: none;
 }
 
+.cedula-controls {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.8fr) minmax(0, 1.2fr);
+  gap: 0.5rem;
+}
+
 .empleado-form input:focus,
 .empleado-form select:focus {
   outline: none;
@@ -57,6 +63,10 @@
 @media (max-width: 640px) {
   .form-grid-2 {
     grid-template-columns: 1fr;
+  }
+
+  .cedula-controls {
+    grid-template-columns: minmax(115px, 0.8fr) minmax(0, 1.2fr);
   }
 }
 
@@ -86,34 +96,53 @@
   white-space: nowrap;
 }
 
-/* ===== Foto carnet junto a los datos ===== */
-.ef-con-foto {
-  display: grid;
-  grid-template-columns: 170px minmax(0, 1fr);
-  gap: 1.5rem;
-  align-items: start;
+.campo-ayuda {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--texto-suave);
+  text-transform: none;
 }
 
-.ef-con-foto .form-grid-2 {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  min-width: 0;
+/* ─── Historial de turnos ─────────────────────────── */
+.historial-turnos {
+  margin-top: 2.5rem;
+  max-width: 700px;
 }
 
-.ef-con-foto input,
-.ef-con-foto select {
-  min-width: 0;
-  box-sizing: border-box;
+.historial-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
 }
 
-@media (max-width: 640px) {
-  .ef-con-foto {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .ef-con-foto .form-grid-2 {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .ef-con-foto .fc {
-    max-width: 200px;
-    margin: 0 auto;
-  }
+.historial-heading h2 {
+  font-family: var(--font-titulos);
+  font-size: 1.15rem;
+  color: var(--azul-oscuro);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.historial-estado {
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+  padding: 1rem 0;
+}
+
+.badge-activo-turno {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  background: #dcfce7;
+  color: #15803d;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.icono-inline {
+  vertical-align: middle;
+  font-size: 1.1em;
 }
