@@ -3,6 +3,8 @@ import { ToastProvider } from "./context/ToastContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Empleados from "./pages/Empleados";
+import Usuarios from "./pages/Usuarios";
+import UsuarioForm from "./pages/UsuarioForm";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import PublicLayout from "./components/PublicLayout";
@@ -69,6 +71,12 @@ function App() {
                 }
               >
                 <Route path="/carnets" element={<Carnets />} />
+              </Route>
+
+              <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
+                <Route path="/usuarios" element={<Usuarios />} />
+                <Route path="/usuarios/nuevo" element={<UsuarioForm />} />
+                <Route path="/usuarios/:id/editar" element={<UsuarioForm />} />
               </Route>
 
               <Route path="/dashboard" element={<Dashboard />} />

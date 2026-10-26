@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.util.List;
 import java.util.Optional;
@@ -32,10 +33,12 @@ class UsuarioServiceTest {
     private RolesRepository rolesRepository;
 
     private UsuarioService usuarioService;
+    private BCryptPasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
-        usuarioService = new UsuarioService(usuarioRepository, rolesRepository);
+        passwordEncoder = new BCryptPasswordEncoder();
+        usuarioService = new UsuarioService(usuarioRepository, rolesRepository, passwordEncoder);
     }
 
     @Test
@@ -114,6 +117,44 @@ class UsuarioServiceTest {
 
         assertEquals("usuario2", resultado.getNombreUsuario());
         assertEquals(2, resultado.getRolId());
-        assertEquals("abc123", request.getPassword());
+        org.mockito.ArgumentCaptor<Usuario> captor =
+                org.mockito.ArgumentCaptor.forClass(Usuario.class);
+        org.mockito.Mockito.verify(usuarioRepository).save(captor.capture());
+        assertTrue(passwordEncoder.matches("abc123", captor.getValue().getPasswordHash()));
+    }
+
+    @Test
+    void actualizarUsuarioSinPasswordConservaLaPasswordActual() {
+        Roles rol = new Roles();
+        rol.setId(2);
+        rol.setNombreRol("ADMIN");
+
+        Usuario existente = new Usuario();
+        existente.setId(8);
+        existente.setNombreUsuario("usuario");
+        existente.setEmail("usuario@test.com");
+        existente.setPasswordHash(passwordEncoder.encode("clave-actual"));
+        existente.setRol(rol);
+        existente.setTipoUsuario(TipoUsuario.PERSONAL);
+        existente.setActivo(true);
+
+        UsuarioDTO.UsuarioRequestDTO request = UsuarioDTO.UsuarioRequestDTO.builder()
+                .nombreUsuario("usuario-editado")
+                .email("nuevo@test.com")
+                .rolId(2)
+                .tipoUsuario(TipoUsuario.PERSONAL)
+                .activo(true)
+                .build();
+
+        when(usuarioRepository.findById(8)).thenReturn(Optional.of(existente));
+        when(usuarioRepository.existsByEmail("nuevo@test.com")).thenReturn(false);
+        when(usuarioRepository.existsByNombreUsuario("usuario-editado")).thenReturn(false);
+        when(rolesRepository.findById(2)).thenReturn(Optional.of(rol));
+        when(usuarioRepository.save(any(Usuario.class))).thenReturn(existente);
+
+        UsuarioDTO.UsuarioResponseDTO resultado = usuarioService.actualizar(8, request);
+
+        assertEquals("usuario-editado", resultado.getNombreUsuario());
+        assertTrue(passwordEncoder.matches("clave-actual", existente.getPasswordHash()));
     }
 }

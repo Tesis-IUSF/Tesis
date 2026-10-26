@@ -6,6 +6,7 @@ import com.tesis.entity.TipoUsuario;
 import com.tesis.entity.Usuario;
 import com.tesis.repository.RolesRepository;
 import com.tesis.repository.UsuarioRepository;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -13,17 +14,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
+
 @Service
 @Transactional
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final RolesRepository rolesRepository;
+    private final BCryptPasswordEncoder passwordEncoder;
 
     public UsuarioService(UsuarioRepository usuarioRepository,
-                          RolesRepository rolesRepository) {
+                          RolesRepository rolesRepository,
+                          BCryptPasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
         this.rolesRepository = rolesRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional(readOnly = true)
@@ -40,15 +46,13 @@ public class UsuarioService {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La solicitud es obligatoria");
         }
-        validarCampos(request);
+        validarCampos(request, true);
         validarUnicidad(null, request.getEmail(), request.getNombreUsuario());
-
-        String password = obtenerPassword(request);
 
         Usuario usuario = new Usuario();
         usuario.setNombreUsuario(request.getNombreUsuario().trim());
         usuario.setEmail(request.getEmail().trim());
-        usuario.setPasswordHash(password);
+        usuario.setPasswordHash(passwordEncoder.encode(obtenerPassword(request)));
         usuario.setRol(buscarRol(request.getRolId()));
         usuario.setTipoUsuario(request.getTipoUsuario() == null ? TipoUsuario.PERSONAL : request.getTipoUsuario());
         usuario.setActivo(request.getActivo() == null || request.getActivo());
@@ -62,7 +66,7 @@ public class UsuarioService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La solicitud es obligatoria");
         }
         Usuario usuario = buscarUsuario(id);
-        validarCampos(request);
+        validarCampos(request, false);
         validarUnicidad(id, request.getEmail(), request.getNombreUsuario());
 
         usuario.setNombreUsuario(request.getNombreUsuario().trim());
@@ -70,7 +74,8 @@ public class UsuarioService {
 
         String password = obtenerPassword(request);
         if (password != null && !password.isBlank()) {
-            usuario.setPasswordHash(password);
+            validarLongitudPassword(password);
+            usuario.setPasswordHash(passwordEncoder.encode(password));
         }
         usuario.setRol(buscarRol(request.getRolId()));
         usuario.setTipoUsuario(request.getTipoUsuario() == null ? TipoUsuario.PERSONAL : request.getTipoUsuario());
@@ -101,15 +106,27 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rol no encontrado"));
     }
 
-    private void validarCampos(UsuarioDTO.UsuarioRequestDTO request) {
+    private void validarCampos(UsuarioDTO.UsuarioRequestDTO request, boolean passwordObligatoria) {
         if (request.getNombreUsuario() == null || request.getNombreUsuario().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El nombre de usuario es obligatorio");
         }
         if (request.getEmail() == null || request.getEmail().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El email es obligatorio");
         }
-        if (obtenerPassword(request) == null || obtenerPassword(request).isBlank()) {
+        if (passwordObligatoria
+                && (obtenerPassword(request) == null || obtenerPassword(request).isBlank())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La contraseña es obligatoria");
+        }
+        String password = obtenerPassword(request);
+        if (password != null && !password.isBlank()) {
+            validarLongitudPassword(password);
+        }
+    }
+
+    private void validarLongitudPassword(String password) {
+        if (password.getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "La contraseña no puede superar 72 bytes UTF-8");
         }
     }
 
