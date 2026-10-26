@@ -49,6 +49,7 @@ public class CarnetPdfGenerator {
     private static final float CARD_HEIGHT = 153.07f;
     private static final String AVATAR_HOMBRE = "carnet/pngegg(1).png";
     private static final String AVATAR_MUJER = "carnet/pngegg.png";
+    private static final String AVATAR_NEUTRO = "carnet/avatar-neutro.png";
     private static final Pattern FOTO_URL = Pattern.compile(
             "^/api/fotos/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
                     + "[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.(?:jpg|png|webp))$",
@@ -105,6 +106,9 @@ public class CarnetPdfGenerator {
                     ? null : empleado.getCargo().getNombreCargo()), font(7, Font.NORMAL, Color.DARK_GRAY)));
             details.addElement(new Paragraph("Departamento: " + texto(empleado.getDepartamento() == null
                     ? null : empleado.getDepartamento().getNombre()), font(7, Font.NORMAL, Color.DARK_GRAY)));
+            // Cédula de identidad debajo del departamento
+            details.addElement(new Paragraph("C.I.: " + texto(empleado.getCedula()),
+                    font(7, Font.NORMAL, Color.DARK_GRAY)));
             card.addCell(details);
 
             Image qr = Image.getInstance(qrImage);
@@ -186,22 +190,21 @@ public class CarnetPdfGenerator {
         }
     }
 
-    // Devuelve el avatar genérico según el sexo del empleado (F = mujer, M = hombre).
-    // Si el sexo está vacío o es otro valor, devuelve null y se usa el marcador con iniciales.
+    // Devuelve el avatar genérico según el sexo del empleado:
+    // F = mujer, M = hombre, cualquier otro valor o vacío = silueta neutral.
     private byte[] cargarAvatar(Empleado empleado) {
         String sexo = empleado.getSexo();
-        if (sexo == null || sexo.isBlank()) {
-            return null;
-        }
+        String inicial = sexo == null || sexo.isBlank()
+                ? ""
+                : sexo.strip().substring(0, 1).toUpperCase(Locale.ROOT);
 
-        String inicial = sexo.strip().substring(0, 1).toUpperCase(Locale.ROOT);
         String ruta;
         if ("F".equals(inicial)) {
             ruta = AVATAR_MUJER;
         } else if ("M".equals(inicial)) {
             ruta = AVATAR_HOMBRE;
         } else {
-            return null;
+            ruta = AVATAR_NEUTRO;
         }
 
         try (InputStream entrada = new ClassPathResource(ruta).getInputStream()) {
