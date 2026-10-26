@@ -53,10 +53,7 @@ class BlogControllerTest {
                 .apply(SecurityMockMvcConfigurers.springSecurity())
                 .build();
 
-        Roles rol = new Roles();
-        rol.setNombreRol("Administrador blog");
-        rol.setActivo(true);
-        rolesRepository.save(rol);
+        Roles rol = rolesRepository.findByNombreRol("COORDINADOR").orElseThrow();
 
         editor = new Usuario();
         editor.setNombreUsuario("editor.blog");
@@ -84,9 +81,18 @@ class BlogControllerTest {
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(get("/api/blog/admin/categorias")
-                        .with(user("admin").roles("ADMINISTRADOR")))
+                        .with(user("admin").roles("DIRECTOR")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(1));
+
+        mockMvc.perform(get("/api/blog/admin/categorias")
+                        .with(user("coordinador").roles("COORDINADOR")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1));
+
+        mockMvc.perform(get("/api/blog/admin/categorias")
+                        .with(user("admin").roles("ADMINISTRADOR")))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -103,7 +109,7 @@ class BlogControllerTest {
                 """.formatted(categoria.getId());
 
         MvcResult response = mockMvc.perform(post("/api/blog/admin/comunicados")
-                        .with(user(EMAIL_EDITOR).roles("ADMINISTRATIVO"))
+                        .with(user(EMAIL_EDITOR).roles("COORDINADOR"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request))
                 .andExpect(status().isCreated())
@@ -119,12 +125,12 @@ class BlogControllerTest {
 
         mockMvc.perform(get("/api/blog/admin/comunicados")
                         .param("publicado", "true")
-                        .with(user(EMAIL_EDITOR).roles("ADMINISTRATIVO")))
+                        .with(user(EMAIL_EDITOR).roles("COORDINADOR")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(1));
 
         mockMvc.perform(delete("/api/blog/admin/comunicados/" + comunicadoId)
-                        .with(user(EMAIL_EDITOR).roles("ADMINISTRATIVO")))
+                        .with(user(EMAIL_EDITOR).roles("DIRECTOR")))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/api/blog/publicaciones"))
@@ -146,7 +152,7 @@ class BlogControllerTest {
                 """.formatted(categoria.getId());
 
         mockMvc.perform(post("/api/blog/admin/comunicados")
-                        .with(user(EMAIL_EDITOR).roles("ADMINISTRATIVO"))
+                        .with(user(EMAIL_EDITOR).roles("COORDINADOR"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request))
                 .andExpect(status().isCreated())

@@ -12,6 +12,7 @@ import "./Sidebar.css";
 const SECCIONES = [
   {
     titulo: null,
+    roles: [ROLES.DIRECTOR],
     items: [
       {
         ruta: "/dashboard",
@@ -23,30 +24,47 @@ const SECCIONES = [
   {
     titulo: "Personal",
     items: [
-      { ruta: "/empleados", etiqueta: "Empleados", icono: ICONOS.empleados },
+      {
+        ruta: "/empleados",
+        etiqueta: "Empleados",
+        icono: ICONOS.empleados,
+        roles: [ROLES.DIRECTOR, ROLES.COORDINADOR],
+      },
       {
         ruta: "/usuarios",
         etiqueta: "Usuarios",
         icono: ICONOS.usuarios,
         roles: [ROLES.ADMIN],
       },
-      { ruta: "/turnos", etiqueta: "Turnos", icono: ICONOS.reloj },
+      {
+        ruta: "/turnos",
+        etiqueta: "Turnos",
+        icono: ICONOS.reloj,
+        roles: [ROLES.DIRECTOR],
+      },
       {
         ruta: "/carnets",
         etiqueta: "Carnets",
         icono: ICONOS.carnet,
-        roles: [ROLES.ADMIN, ROLES.DIRECTOR],
+        roles: [ROLES.COORDINADOR],
       },
       {
         ruta: "/departamentos",
         etiqueta: "Departamentos",
         icono: ICONOS.departamentos,
+        roles: [ROLES.DIRECTOR],
       },
-      { ruta: "/cargos", etiqueta: "Cargos", icono: ICONOS.cargos },
+      {
+        ruta: "/cargos",
+        etiqueta: "Cargos",
+        icono: ICONOS.cargos,
+        roles: [ROLES.DIRECTOR],
+      },
     ],
   },
   {
     titulo: "Asistencia",
+    roles: [ROLES.DIRECTOR],
     items: [
       {
         ruta: "/asistencia/hoy",
@@ -62,6 +80,12 @@ const SECCIONES = [
   },
   {
     titulo: "Institución",
+    roles: [
+      ROLES.ADMIN,
+      ROLES.DIRECTOR,
+      ROLES.COORDINADOR,
+      ROLES.ADMINISTRATIVO,
+    ],
     items: [
       { ruta: "/matricula", etiqueta: "Matrícula", icono: ICONOS.matricula },
       { etiqueta: "Reportes", icono: ICONOS.reportes, pronto: true },
@@ -69,6 +93,7 @@ const SECCIONES = [
   },
   {
     titulo: "Blog",
+    roles: [ROLES.DIRECTOR, ROLES.COORDINADOR],
     items: [
       {
         ruta: "/blog/comunicados",
@@ -98,7 +123,11 @@ function Sidebar({ colapsado, abiertoMovil, onCerrar }) {
     items: seccion.items.filter(
       (item) => !item.roles || item.roles.includes(rol),
     ),
-  })).filter((seccion) => seccion.items.length > 0);
+  })).filter(
+    (seccion) =>
+      seccion.items.length > 0 &&
+      (!seccion.roles || seccion.roles.includes(rol)),
+  );
 
   return (
     <>
