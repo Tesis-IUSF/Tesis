@@ -96,6 +96,9 @@ public class PreinscripcionService {
         if (!Boolean.TRUE.equals(seccion.getActivo())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La sección no está activa");
         }
+        if (!Boolean.TRUE.equals(seccion.getGrado().getActivo())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El grado no está activo");
+        }
         if (!seccion.getAnioEscolar().equals(request.getAnioEscolar())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "El año escolar no corresponde a la sección seleccionada");

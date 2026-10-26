@@ -134,7 +134,10 @@ public class CatalogoDTO {
     @AllArgsConstructor
     @Builder
     public static class GradoRequestDTO {
+        @NotNull
         private Integer nivelEducativoId;
+        @NotNull
+        @Min(1)
         private Short numeroGrado;
         @NotNull
         @Min(0)
@@ -168,11 +171,18 @@ public class CatalogoDTO {
     @AllArgsConstructor
     @Builder
     public static class SeccionRequestDTO {
+        @NotNull
         private Integer gradoId;
+        @NotBlank
+        @Size(max = 1)
         private String letraSeccion;
+        @NotNull
+        @Min(1)
         private Short capacidadMaxima;
         private Integer docentePrincipalId;
         private Integer turnoId;
+        @NotNull
+        @Min(1)
         private Short anioEscolar;
         private Boolean activo;
     }
@@ -188,11 +198,22 @@ public class CatalogoDTO {
         private String letraSeccion;
         private Short capacidadMaxima;
         private Integer docentePrincipalId;
+        private String docentePrincipalNombre;
         private Integer turnoId;
         private Short anioEscolar;
         private Boolean activo;
         private Long matriculados;
         private Long cuposDisponibles;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class DocenteOptionDTO {
+        private Integer id;
+        private String nombre;
+        private String apellido;
     }
 
     @Data

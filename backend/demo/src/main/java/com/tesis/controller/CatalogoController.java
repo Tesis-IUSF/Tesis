@@ -5,6 +5,7 @@ import com.tesis.dto.PaginacionDTO;
 import com.tesis.dto.RolDTO;
 import com.tesis.entity.Cargo;
 import com.tesis.entity.Departamento;
+import com.tesis.entity.Empleado;
 import com.tesis.entity.Grado;
 import com.tesis.entity.NivelEducativo;
 import com.tesis.entity.RequisitoMatricula;
@@ -195,6 +196,14 @@ public class CatalogoController {
     public ResponseEntity<Void> eliminarNivelEducativo(@PathVariable Integer id) {
         catalogoService.eliminarNivelEducativo(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/docentes")
+    public List<CatalogoDTO.DocenteOptionDTO> listarDocentesActivos() {
+        return catalogoService.listarDocentesActivos().stream()
+                .map(empleado -> new CatalogoDTO.DocenteOptionDTO(
+                        empleado.getId(), empleado.getNombre(), empleado.getApellido()))
+                .toList();
     }
 
     @GetMapping("/grados")

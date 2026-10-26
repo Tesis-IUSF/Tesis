@@ -29,6 +29,9 @@ import Preinscripcion from "./pages/Preinscripcion";
 import Matricula from "./pages/Matricula";
 import Inscripcion from "./pages/Inscripcion";
 import EmpleadoDetalle from "./pages/EmpleadoDetalle";
+import CalendarioMatricula from "./pages/CalendarioMatricula";
+import Grados from "./pages/Grados";
+import Secciones from "./pages/Secciones";
 import { getRol } from "./utils/auth";
 
 function EmpleadosPorRol() {
@@ -125,6 +128,21 @@ function App() {
                 <Route path="/turnos/:id/editar" element={<TurnoForm />} />
                 <Route path="/departamentos" element={<Departamentos />} />
                 <Route path="/cargos" element={<Cargos />} />
+              </Route>
+
+              <Route
+                element={
+                  <ProtectedRoute
+                    allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR]}
+                  />
+                }
+              >
+                <Route
+                  path="/matricula/calendario"
+                  element={<CalendarioMatricula />}
+                />
+                <Route path="/grados" element={<Grados />} />
+                <Route path="/secciones" element={<Secciones />} />
               </Route>
 
               <Route

@@ -2,6 +2,8 @@ package com.tesis.service;
 
 import com.tesis.entity.Cargo;
 import com.tesis.entity.Departamento;
+import com.tesis.entity.AnioEscolar;
+import com.tesis.entity.Empleado;
 import com.tesis.entity.Grado;
 import com.tesis.entity.NivelEducativo;
 import com.tesis.entity.RequisitoMatricula;
@@ -13,6 +15,8 @@ import com.tesis.repository.ChecklistMatriculaRepository;
 import com.tesis.repository.DepartamentoRepository;
 import com.tesis.repository.EmpleadoRepository;
 import com.tesis.repository.GradoRepository;
+import com.tesis.repository.AnioEscolarRepository;
+import com.tesis.repository.MatriculaRepository;
 import com.tesis.repository.NivelEducativoRepository;
 import com.tesis.repository.RequisitoMatriculaRepository;
 import com.tesis.repository.RolesRepository;
@@ -40,6 +44,8 @@ public class CatalogoService {
     private static final List<String> TIPOS_INGRESO =
             List.of("nuevo_ingreso", "regular", "reingreso", "traslado");
     private static final Set<String> TIPOS_INGRESO_VALIDOS = Set.copyOf(TIPOS_INGRESO);
+    private static final List<String> ESTADOS_MATRICULA_ACTIVA =
+            List.of("preinscrito", "en_proceso", "completada");
 
     private final DepartamentoRepository departamentoRepository;
     private final CargoRepository cargoRepository;
@@ -51,6 +57,8 @@ public class CatalogoService {
     private final SeccionRepository seccionRepository;
     private final RequisitoMatriculaRepository requisitoMatriculaRepository;
     private final ChecklistMatriculaRepository checklistMatriculaRepository;
+    private final MatriculaRepository matriculaRepository;
+    private final AnioEscolarRepository anioEscolarRepository;
 
     public CatalogoService(DepartamentoRepository departamentoRepository,
                            CargoRepository cargoRepository,
@@ -61,7 +69,9 @@ public class CatalogoService {
                            GradoRepository gradoRepository,
                            SeccionRepository seccionRepository,
                            RequisitoMatriculaRepository requisitoMatriculaRepository,
-                           ChecklistMatriculaRepository checklistMatriculaRepository) {
+                           ChecklistMatriculaRepository checklistMatriculaRepository,
+                           MatriculaRepository matriculaRepository,
+                           AnioEscolarRepository anioEscolarRepository) {
         this.departamentoRepository = departamentoRepository;
         this.cargoRepository = cargoRepository;
         this.empleadoRepository = empleadoRepository;
@@ -72,6 +82,8 @@ public class CatalogoService {
         this.seccionRepository = seccionRepository;
         this.requisitoMatriculaRepository = requisitoMatriculaRepository;
         this.checklistMatriculaRepository = checklistMatriculaRepository;
+        this.matriculaRepository = matriculaRepository;
+        this.anioEscolarRepository = anioEscolarRepository;
     }
 
     @Transactional(readOnly = true)
@@ -281,12 +293,12 @@ public class CatalogoService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe indicar el número de grado");
         }
         validarRangoEdad(grado);
-        buscarNivelEducativo(grado.getNivelEducativo().getId());
+        grado.setNivelEducativo(buscarNivelEducativo(grado.getNivelEducativo().getId()));
         return gradoRepository.save(grado);
     }
 
     public Grado actualizarGrado(Integer id, Grado grado) {
-        Grado actual = buscarGrado(id);
+        Grado actual = buscarGradoForUpdate(id);
         if (grado == null || grado.getNivelEducativo() == null || grado.getNivelEducativo().getId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe indicar el nivel educativo");
         }
@@ -294,13 +306,29 @@ public class CatalogoService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe indicar el número de grado");
         }
         validarRangoEdad(grado);
-        buscarNivelEducativo(grado.getNivelEducativo().getId());
-        actual.setNivelEducativo(grado.getNivelEducativo());
+        NivelEducativo nivelEducativo = buscarNivelEducativo(grado.getNivelEducativo().getId());
+        boolean desactivando = Boolean.TRUE.equals(actual.getActivo())
+                && Boolean.FALSE.equals(grado.getActivo());
+        List<Seccion> secciones = List.of();
+        if (desactivando) {
+            secciones = seccionRepository.findByGrado_IdForUpdate(id);
+            if (tieneMatriculasActivasEnAnioActual(id)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "No se puede desactivar el grado porque tiene matrículas activas en el año escolar vigente");
+            }
+        }
+        actual.setNivelEducativo(nivelEducativo);
         actual.setNumeroGrado(grado.getNumeroGrado());
         actual.setEdadMinima(grado.getEdadMinima());
         actual.setEdadMaxima(grado.getEdadMaxima());
         actual.setNombreEspecial(grado.getNombreEspecial());
-        actual.setActivo(grado.getActivo());
+        if (grado.getActivo() != null) {
+            actual.setActivo(grado.getActivo());
+        }
+        if (desactivando) {
+            secciones.forEach(seccion -> seccion.setActivo(false));
+            seccionRepository.saveAll(secciones);
+        }
         return gradoRepository.save(actual);
     }
 
@@ -314,8 +342,15 @@ public class CatalogoService {
     }
 
     public void eliminarGrado(Integer id) {
-        if (!gradoRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Grado no encontrado");
+        buscarGradoForUpdate(id);
+        List<Seccion> secciones = seccionRepository.findByGrado_IdForUpdate(id);
+        if (matriculaRepository.existsBySeccion_Grado_Id(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede eliminar el grado porque tiene matrículas asociadas en el histórico");
+        }
+        if (!secciones.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Elimine primero las secciones sin matrículas asociadas a este grado");
         }
         gradoRepository.deleteById(id);
     }
@@ -352,12 +387,23 @@ public class CatalogoService {
         if (seccion.getAnioEscolar() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe indicar el año escolar");
         }
-        buscarGrado(seccion.getGrado().getId());
+        Grado grado = buscarGrado(seccion.getGrado().getId());
+        if (Boolean.TRUE.equals(seccion.getActivo()) && !Boolean.TRUE.equals(grado.getActivo())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede activar una sección de un grado inactivo");
+        }
+        seccion.setGrado(grado);
+        seccion.setDocentePrincipal(buscarDocente(seccion.getDocentePrincipal()));
+        if (seccion.getTurno() != null && seccion.getTurno().getId() != null) {
+            seccion.setTurno(buscarTurno(seccion.getTurno().getId()));
+        }
         return seccionRepository.save(seccion);
     }
 
     public Seccion actualizarSeccion(Integer id, Seccion seccion) {
-        Seccion actual = buscarSeccion(id);
+        Seccion actual = seccionRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Sección no encontrada"));
         if (seccion == null || seccion.getGrado() == null || seccion.getGrado().getId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe indicar el grado");
         }
@@ -367,22 +413,99 @@ public class CatalogoService {
         if (seccion.getAnioEscolar() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe indicar el año escolar");
         }
-        buscarGrado(seccion.getGrado().getId());
-        actual.setGrado(seccion.getGrado());
+        Grado grado = buscarGrado(seccion.getGrado().getId());
+        if (Boolean.TRUE.equals(seccion.getActivo()) && !Boolean.TRUE.equals(grado.getActivo())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede activar una sección de un grado inactivo");
+        }
+        boolean cambiandoGradoOAnio = !actual.getGrado().getId().equals(grado.getId())
+                || !actual.getAnioEscolar().equals(seccion.getAnioEscolar());
+        if (cambiandoGradoOAnio && matriculaRepository.existsBySeccion_Id(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede cambiar el grado o año escolar de una sección con matrículas asociadas");
+        }
+        boolean desactivando = Boolean.TRUE.equals(actual.getActivo())
+                && Boolean.FALSE.equals(seccion.getActivo());
+        if (desactivando && tieneMatriculasActivasEnAnioActual(actual)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede desactivar la sección porque tiene matrículas activas en el año escolar vigente");
+        }
+        actual.setGrado(grado);
         actual.setLetraSeccion(seccion.getLetraSeccion());
-        actual.setCapacidadMaxima(seccion.getCapacidadMaxima());
-        actual.setDocentePrincipal(seccion.getDocentePrincipal());
-        actual.setTurno(seccion.getTurno());
+        if (seccion.getCapacidadMaxima() != null) {
+            actual.setCapacidadMaxima(seccion.getCapacidadMaxima());
+        }
+        actual.setDocentePrincipal(resolverDocenteEnActualizacion(
+                seccion.getDocentePrincipal(), actual.getDocentePrincipal()));
+        actual.setTurno(seccion.getTurno() != null && seccion.getTurno().getId() != null
+                ? buscarTurno(seccion.getTurno().getId()) : null);
         actual.setAnioEscolar(seccion.getAnioEscolar());
-        actual.setActivo(seccion.getActivo());
+        if (seccion.getActivo() != null) {
+            actual.setActivo(seccion.getActivo());
+        }
         return seccionRepository.save(actual);
     }
 
     public void eliminarSeccion(Integer id) {
-        if (!seccionRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Sección no encontrada");
+        seccionRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Sección no encontrada"));
+        if (matriculaRepository.existsBySeccion_Id(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede eliminar la sección porque tiene matrículas asociadas en el histórico");
         }
         seccionRepository.deleteById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Empleado> listarDocentesActivos() {
+        return empleadoRepository.findActivosPorNombreCargo("Docente");
+    }
+
+    private Empleado buscarDocente(Empleado docente) {
+        if (docente == null || docente.getId() == null) {
+            return null;
+        }
+        Empleado empleado = empleadoRepository.findById(docente.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Docente no encontrado"));
+        if (!Boolean.TRUE.equals(empleado.getActivo())
+                || empleado.getCargo() == null
+                || empleado.getCargo().getNombreCargo() == null
+                || !"Docente".equalsIgnoreCase(empleado.getCargo().getNombreCargo().trim())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El personal asignado debe estar activo y tener el cargo Docente");
+        }
+        return empleado;
+    }
+
+    private Empleado resolverDocenteEnActualizacion(Empleado solicitado, Empleado actual) {
+        if (solicitado == null || solicitado.getId() == null) {
+            return null;
+        }
+        if (actual != null && solicitado.getId().equals(actual.getId())) {
+            return actual;
+        }
+        return buscarDocente(solicitado);
+    }
+
+    private boolean tieneMatriculasActivasEnAnioActual(Integer gradoId) {
+        return anioEscolarRepository.findFirstByActivoTrue()
+                .map(AnioEscolar::getAnio)
+                .map(anio -> matriculaRepository
+                        .existsBySeccion_Grado_IdAndAnioEscolarAndEstadoMatriculaIn(
+                                gradoId, anio, ESTADOS_MATRICULA_ACTIVA))
+                .orElse(false);
+    }
+
+    private boolean tieneMatriculasActivasEnAnioActual(Seccion seccion) {
+        return anioEscolarRepository.findFirstByActivoTrue()
+                .map(AnioEscolar::getAnio)
+                .filter(anio -> anio.equals(seccion.getAnioEscolar()))
+                .map(anio -> matriculaRepository
+                        .existsBySeccion_IdAndAnioEscolarAndEstadoMatriculaIn(
+                                seccion.getId(), anio, ESTADOS_MATRICULA_ACTIVA))
+                .orElse(false);
     }
 
     @Transactional(readOnly = true)
@@ -474,6 +597,11 @@ public class CatalogoService {
 
     private Grado buscarGrado(Integer id) {
         return gradoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Grado no encontrado"));
+    }
+
+    private Grado buscarGradoForUpdate(Integer id) {
+        return gradoRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Grado no encontrado"));
     }
 
