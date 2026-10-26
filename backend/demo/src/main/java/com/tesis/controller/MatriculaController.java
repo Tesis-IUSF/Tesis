@@ -29,6 +29,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.data.domain.Pageable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -68,17 +70,21 @@ public class MatriculaController {
     }
 
     @GetMapping("/calendario")
+    @Cacheable(cacheNames = "calendarioMatricula",
+            key = "#p0 == null ? 'activo' : #p0")
     public CalendarioMatriculaDTO obtenerCalendario(
             @RequestParam(required = false) Short anio) {
         return calendarioService.obtenerCalendario(anio);
     }
 
     @GetMapping("/gestion/anios")
+    @Cacheable(cacheNames = "calendarioMatricula", key = "'anios'")
     public List<AnioEscolarResponseDTO> listarAniosEscolares() {
         return calendarioService.listarAnios();
     }
 
     @PostMapping("/gestion/anios")
+    @CacheEvict(cacheNames = "calendarioMatricula", allEntries = true)
     @ResponseStatus(HttpStatus.CREATED)
     public AnioEscolarResponseDTO crearAnioEscolar(
             @Valid @RequestBody AnioEscolarRequestDTO request) {
@@ -86,11 +92,13 @@ public class MatriculaController {
     }
 
     @GetMapping("/gestion/anios/{anio}")
+    @Cacheable(cacheNames = "calendarioMatricula", key = "'anio:' + #p0")
     public AnioEscolarResponseDTO obtenerAnioEscolar(@PathVariable Short anio) {
         return calendarioService.obtenerAnioGestion(anio);
     }
 
     @PutMapping("/gestion/anios/{anio}")
+    @CacheEvict(cacheNames = "calendarioMatricula", allEntries = true)
     public AnioEscolarResponseDTO actualizarAnioEscolar(
             @PathVariable Short anio,
             @Valid @RequestBody AnioEscolarRequestDTO request) {
@@ -98,6 +106,7 @@ public class MatriculaController {
     }
 
     @PostMapping("/gestion/anios/{anio}/activar")
+    @CacheEvict(cacheNames = "calendarioMatricula", allEntries = true)
     public AnioEscolarResponseDTO activarAnioEscolar(@PathVariable Short anio) {
         return calendarioService.activarAnio(anio);
     }
@@ -121,6 +130,7 @@ public class MatriculaController {
     }
 
     @PostMapping("/gestion/anios/{anio}/periodos")
+    @CacheEvict(cacheNames = "calendarioMatricula", allEntries = true)
     @ResponseStatus(HttpStatus.CREATED)
     public PeriodoResponseDTO crearPeriodoMatricula(
             @PathVariable Short anio,
@@ -129,6 +139,7 @@ public class MatriculaController {
     }
 
     @PutMapping("/gestion/periodos/{id}")
+    @CacheEvict(cacheNames = "calendarioMatricula", allEntries = true)
     public PeriodoResponseDTO actualizarPeriodoMatricula(
             @PathVariable Integer id,
             @Valid @RequestBody PeriodoRequestDTO request) {
@@ -136,16 +147,19 @@ public class MatriculaController {
     }
 
     @PatchMapping("/gestion/periodos/{id}/activar")
+    @CacheEvict(cacheNames = "calendarioMatricula", allEntries = true)
     public PeriodoResponseDTO activarPeriodoMatricula(@PathVariable Integer id) {
         return calendarioService.activarPeriodo(id);
     }
 
     @PatchMapping("/gestion/periodos/{id}/desactivar")
+    @CacheEvict(cacheNames = "calendarioMatricula", allEntries = true)
     public PeriodoResponseDTO desactivarPeriodoMatricula(@PathVariable Integer id) {
         return calendarioService.desactivarPeriodo(id);
     }
 
     @DeleteMapping("/gestion/periodos/{id}")
+    @CacheEvict(cacheNames = "calendarioMatricula", allEntries = true)
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void eliminarPeriodoEnPreparacion(@PathVariable Integer id) {
         calendarioService.eliminarPeriodoEnPreparacion(id);

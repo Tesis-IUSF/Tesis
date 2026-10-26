@@ -5,6 +5,8 @@ import com.tesis.dto.PaginacionDTO;
 import com.tesis.service.BlogService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -31,12 +33,16 @@ public class BlogController {
     }
 
     @GetMapping("/categorias")
+    @Cacheable(cacheNames = "blogCategoriasPublicas",
+            key = "#p0.page + ':' + #p0.size")
     public PaginacionDTO.Respuesta<BlogDTO.CategoriaResponseDTO> listarCategoriasPublicas(
             @ModelAttribute PaginacionDTO.Solicitud paginacion) {
         return paginar(blogService.listarCategoriasPublicas(paginacion.toPageable()));
     }
 
     @GetMapping("/publicaciones")
+    @Cacheable(cacheNames = "blogPublicacionesPublicas",
+            key = "(#p0 == null ? 'todas' : #p0) + ':' + #p1.page + ':' + #p1.size")
     public PaginacionDTO.Respuesta<BlogDTO.ComunicadoResponseDTO> listarPublicaciones(
             @RequestParam(required = false) Integer categoriaId,
             @ModelAttribute PaginacionDTO.Solicitud paginacion) {
@@ -44,6 +50,7 @@ public class BlogController {
     }
 
     @GetMapping("/publicaciones/{id}")
+    @Cacheable(cacheNames = "blogPublicacionPublica", key = "#p0")
     public BlogDTO.ComunicadoResponseDTO obtenerPublicacion(@PathVariable Integer id) {
         return blogService.obtenerPublicacion(id);
     }
@@ -55,18 +62,24 @@ public class BlogController {
     }
 
     @PostMapping("/admin/categorias")
+    @CacheEvict(cacheNames = {"blogCategoriasPublicas", "blogPublicacionesPublicas",
+            "blogPublicacionPublica"}, allEntries = true)
     public ResponseEntity<BlogDTO.CategoriaResponseDTO> crearCategoria(
             @Valid @RequestBody BlogDTO.CategoriaRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(blogService.crearCategoria(request));
     }
 
     @PutMapping("/admin/categorias/{id}")
+    @CacheEvict(cacheNames = {"blogCategoriasPublicas", "blogPublicacionesPublicas",
+            "blogPublicacionPublica"}, allEntries = true)
     public BlogDTO.CategoriaResponseDTO actualizarCategoria(@PathVariable Integer id,
                                                             @Valid @RequestBody BlogDTO.CategoriaRequestDTO request) {
         return blogService.actualizarCategoria(id, request);
     }
 
     @DeleteMapping("/admin/categorias/{id}")
+    @CacheEvict(cacheNames = {"blogCategoriasPublicas", "blogPublicacionesPublicas",
+            "blogPublicacionPublica"}, allEntries = true)
     public ResponseEntity<Void> eliminarCategoria(@PathVariable Integer id) {
         blogService.eliminarCategoria(id);
         return ResponseEntity.noContent().build();
@@ -86,6 +99,8 @@ public class BlogController {
     }
 
     @PostMapping("/admin/comunicados")
+    @CacheEvict(cacheNames = {"blogPublicacionesPublicas", "blogPublicacionPublica"},
+            allEntries = true)
     public ResponseEntity<BlogDTO.ComunicadoResponseDTO> crearComunicado(
             @Valid @RequestBody BlogDTO.ComunicadoRequestDTO request,
             Principal principal) {
@@ -94,12 +109,16 @@ public class BlogController {
     }
 
     @PutMapping("/admin/comunicados/{id}")
+    @CacheEvict(cacheNames = {"blogPublicacionesPublicas", "blogPublicacionPublica"},
+            allEntries = true)
     public BlogDTO.ComunicadoResponseDTO actualizarComunicado(@PathVariable Integer id,
                                                               @Valid @RequestBody BlogDTO.ComunicadoRequestDTO request) {
         return blogService.actualizarComunicado(id, request);
     }
 
     @DeleteMapping("/admin/comunicados/{id}")
+    @CacheEvict(cacheNames = {"blogPublicacionesPublicas", "blogPublicacionPublica"},
+            allEntries = true)
     public ResponseEntity<Void> eliminarComunicado(@PathVariable Integer id) {
         blogService.eliminarComunicado(id);
         return ResponseEntity.noContent().build();
