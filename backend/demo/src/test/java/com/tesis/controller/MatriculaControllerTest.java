@@ -21,10 +21,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.transaction.annotation.Transactional;
+import org.openpdf.text.pdf.PdfReader;
+import org.openpdf.text.pdf.parser.PdfTextExtractor;
 import java.time.Clock;
 import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -505,6 +508,40 @@ class MatriculaControllerTest {
                                     Integer gradoId,
                                     Integer seccionId,
                                     Integer representanteId) {
+    }
+
+    @Test
+    void descargaNominaEstudiantilSoloParaDirector() throws Exception {
+        entityManager.persist(nuevoAnio((short) 2026, false));
+        MatriculaFixture fixture = crearMatriculaParaEdicion();
+        entityManager.flush();
+
+        var resultado = mockMvc.perform(get("/api/matriculas/nomina-estudiantil/pdf")
+                        .param("anioEscolar", "2026")
+                        .param("estados", "preinscrito")
+                        .param("gradoId", fixture.gradoId().toString())
+                        .param("seccionId", fixture.seccionId().toString())
+                        .param("columnas", "nombre", "cedula", "representanteNombre")
+                        .param("q", "no debe filtrar")
+                        .with(user("director").roles("DIRECTOR")))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        assertTrue(resultado.getResponse().getContentType().startsWith("application/pdf"));
+        assertTrue(resultado.getResponse().getHeader("Content-Disposition")
+                .contains("nomina-estudiantil-2026.pdf"));
+        PdfReader reader = new PdfReader(resultado.getResponse().getContentAsByteArray());
+        String contenido = new PdfTextExtractor(reader).getTextFromPage(1);
+        assertTrue(contenido.contains("Nombre anterior"));
+        assertTrue(contenido.contains("V-18456789"));
+        assertTrue(contenido.contains("Representante anterior"));
+        reader.close();
+
+        mockMvc.perform(get("/api/matriculas/nomina-estudiantil/pdf")
+                        .param("anioEscolar", "2026")
+                        .param("columnas", "nombre")
+                        .with(user("coordinador").roles("COORDINADOR")))
+                .andExpect(status().isForbidden());
     }
 
     private record FixtureGraduacion(Integer seccionId) {

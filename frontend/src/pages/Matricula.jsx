@@ -19,6 +19,32 @@ const TABS = [
   { clave: "graduados", etiqueta: "Posibles graduados", graduados: true },
 ];
 
+const ESTADOS_NOMINA = [
+  { valor: "preinscrito", etiqueta: "Preinscritos" },
+  { valor: "en_proceso", etiqueta: "En proceso" },
+  { valor: "completada", etiqueta: "Completadas" },
+  { valor: "retirada", etiqueta: "Retiradas" },
+  { valor: "anulada", etiqueta: "Anuladas" },
+];
+
+const COLUMNAS_NOMINA = [
+  { valor: "nombre", etiqueta: "Nombre y apellido" },
+  { valor: "cedula", etiqueta: "Cédula" },
+  { valor: "fechaNacimiento", etiqueta: "Fecha de nacimiento" },
+  { valor: "edad", etiqueta: "Edad calculada" },
+  { valor: "sexo", etiqueta: "Sexo" },
+  { valor: "nivelGradoSeccion", etiqueta: "Nivel, grado y sección" },
+  { valor: "tipoIngreso", etiqueta: "Tipo de ingreso" },
+  { valor: "representanteNombre", etiqueta: "Nombre del representante principal" },
+  { valor: "representanteCedula", etiqueta: "Cédula del representante" },
+  { valor: "representanteTelefono", etiqueta: "Teléfono del representante" },
+];
+
+const VALORES_NOMINA_PREDETERMINADOS = {
+  estados: ESTADOS_NOMINA.map((estado) => estado.valor),
+  columnas: COLUMNAS_NOMINA.map((columna) => columna.valor),
+};
+
 const MENSAJE_VACIO = {
   todos: "No hay matrículas en el año escolar activo.",
   preinscritos: "No hay preinscripciones pendientes.",
@@ -67,6 +93,22 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
   const [secciones, setSecciones] = useState([]);
   const [accionId, setAccionId] = useState(null);
   const [descargandoEstadisticas, setDescargandoEstadisticas] = useState(false);
+  const [nominaModal, setNominaModal] = useState(false);
+  const [cargandoCatalogosNomina, setCargandoCatalogosNomina] = useState(false);
+  const [descargandoNomina, setDescargandoNomina] = useState(false);
+  const [catalogosNomina, setCatalogosNomina] = useState({
+    anios: [],
+    niveles: [],
+    grados: [],
+    secciones: [],
+  });
+  const [filtrosNomina, setFiltrosNomina] = useState({
+    anioEscolar: "",
+    nivelId: "",
+    gradoId: "",
+    seccionId: "",
+    ...VALORES_NOMINA_PREDETERMINADOS,
+  });
   const [retiroMatricula, setRetiroMatricula] = useState(null);
   const [representantesAutorizados, setRepresentantesAutorizados] = useState(
     [],
@@ -372,6 +414,138 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
     }
   };
 
+  const abrirNominaEstudiantil = async () => {
+    setNominaModal(true);
+    setCargandoCatalogosNomina(true);
+    try {
+      const [respuestaAnios, respuestaNiveles, respuestaGrados, respuestaSecciones] =
+        await Promise.all([
+          api.get("/matriculas/gestion/anios"),
+          api.get("/catalogos/niveles-educativos", {
+            params: { page: 0, size: 100 },
+          }),
+          api.get("/catalogos/grados", { params: { page: 0, size: 100 } }),
+          api.get("/catalogos/secciones", { params: { page: 0, size: 100 } }),
+        ]);
+      const anios = respuestaAnios.data;
+      setCatalogosNomina({
+        anios,
+        niveles: respuestaNiveles.data.content,
+        grados: respuestaGrados.data.content,
+        secciones: respuestaSecciones.data.content,
+      });
+      setFiltrosNomina({
+        anioEscolar:
+          String(anios.find((anio) => anio.activo)?.anio ?? anioActivoNumero),
+        nivelId: "",
+        gradoId: "",
+        seccionId: "",
+        ...VALORES_NOMINA_PREDETERMINADOS,
+      });
+    } catch (err) {
+      setNominaModal(false);
+      toast.error(
+        extractErrorMessage(err, "No se pudieron cargar las opciones de la nómina."),
+      );
+    } finally {
+      setCargandoCatalogosNomina(false);
+    }
+  };
+
+  const cambiarFiltroNomina = (campo, valor) => {
+    setFiltrosNomina((actual) => ({
+      ...actual,
+      [campo]: valor,
+      ...(campo === "anioEscolar" ? { gradoId: "", seccionId: "" } : {}),
+      ...(campo === "nivelId" ? { gradoId: "", seccionId: "" } : {}),
+      ...(campo === "gradoId" ? { seccionId: "" } : {}),
+    }));
+  };
+
+  const alternarSeleccionNomina = (campo, valor) => {
+    setFiltrosNomina((actual) => {
+      const seleccion = new Set(actual[campo]);
+      if (seleccion.has(valor)) {
+        seleccion.delete(valor);
+      } else {
+        seleccion.add(valor);
+      }
+      return { ...actual, [campo]: [...seleccion] };
+    });
+  };
+
+  const gradosNomina = catalogosNomina.grados.filter(
+    (grado) =>
+      (!filtrosNomina.nivelId ||
+        String(grado.nivelEducativoId) === filtrosNomina.nivelId) &&
+      catalogosNomina.secciones.some(
+        (seccion) =>
+          String(seccion.anioEscolar) === filtrosNomina.anioEscolar &&
+          String(seccion.gradoId) === String(grado.id),
+      ),
+  );
+  const gradosSeleccionadosPorNivel = catalogosNomina.grados
+    .filter(
+      (grado) =>
+        !filtrosNomina.nivelId ||
+        String(grado.nivelEducativoId) === filtrosNomina.nivelId,
+    )
+    .map((grado) => String(grado.id));
+  const seccionesNomina = catalogosNomina.secciones.filter(
+    (seccion) =>
+      String(seccion.anioEscolar) === filtrosNomina.anioEscolar &&
+      gradosSeleccionadosPorNivel.includes(String(seccion.gradoId)) &&
+      (!filtrosNomina.gradoId ||
+        String(seccion.gradoId) === filtrosNomina.gradoId),
+  );
+
+  const descargarNominaEstudiantil = async (event) => {
+    event.preventDefault();
+    if (!filtrosNomina.anioEscolar) {
+      toast.error("Selecciona un año escolar para generar la nómina.");
+      return;
+    }
+    if (filtrosNomina.estados.length === 0) {
+      toast.error("Selecciona al menos un estado de matrícula.");
+      return;
+    }
+    if (filtrosNomina.columnas.length === 0) {
+      toast.error("Selecciona al menos una columna para la nómina.");
+      return;
+    }
+    const parametros = new URLSearchParams();
+    parametros.set("anioEscolar", filtrosNomina.anioEscolar);
+    filtrosNomina.estados.forEach((estado) => parametros.append("estados", estado));
+    filtrosNomina.columnas.forEach((columna) =>
+      parametros.append("columnas", columna),
+    );
+    if (filtrosNomina.nivelId) {
+      parametros.set("nivelId", filtrosNomina.nivelId);
+    }
+    if (filtrosNomina.gradoId) {
+      parametros.set("gradoId", filtrosNomina.gradoId);
+    }
+    if (filtrosNomina.seccionId) {
+      parametros.set("seccionId", filtrosNomina.seccionId);
+    }
+
+    setDescargandoNomina(true);
+    try {
+      const { data } = await api.get(
+        `/matriculas/nomina-estudiantil/pdf?${parametros.toString()}`,
+        { responseType: "blob" },
+      );
+      descargarArchivo(data, `nomina-estudiantil-${filtrosNomina.anioEscolar}.pdf`);
+      setNominaModal(false);
+    } catch (err) {
+      toast.error(
+        await mensajeErrorBlob(err, "No se pudo descargar la nómina estudiantil."),
+      );
+    } finally {
+      setDescargandoNomina(false);
+    }
+  };
+
   // Acciones de cada fila según la pestaña
   const renderAcciones = (f, ocupada) => {
     const ruta = `/matricula/${f.matriculaId}/inscripcion`;
@@ -447,6 +621,15 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
         <h1>Matrícula</h1>
         {soloConsulta ? (
           <div className="mod-heading-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={descargandoNomina || cargandoCatalogosNomina}
+              onClick={abrirNominaEstudiantil}
+            >
+              <Icon icon={ICONOS.descargar} className="icono-inline" />{" "}
+              Nómina estudiantil
+            </button>
             <button
               type="button"
               className="btn-secondary"
@@ -727,6 +910,128 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
               required
             />
           </label>
+        </ModalFormulario>
+      )}
+      {nominaModal && (
+        <ModalFormulario
+          titulo="Generar nómina estudiantil"
+          className="mat-nomina-modal"
+          onCerrar={() => setNominaModal(false)}
+          onSubmit={descargarNominaEstudiantil}
+          guardando={descargandoNomina || cargandoCatalogosNomina}
+          etiquetaGuardar="Descargar PDF"
+        >
+          {cargandoCatalogosNomina ? (
+            <p>Cargando opciones de matrícula...</p>
+          ) : (
+            <>
+              <p>
+                El reporte usa estas opciones y no aplica la búsqueda ni los
+                filtros de la pantalla.
+              </p>
+              <label>
+                Año escolar
+                <select
+                  value={filtrosNomina.anioEscolar}
+                  onChange={(event) =>
+                    cambiarFiltroNomina("anioEscolar", event.target.value)
+                  }
+                  required
+                >
+                  <option value="">Selecciona un año escolar</option>
+                  {catalogosNomina.anios.map((anio) => (
+                    <option key={anio.anio} value={anio.anio}>
+                      {anio.nombre}
+                      {anio.activo ? " · Activo" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <fieldset className="mat-nomina-opciones">
+                <legend>Estados de matrícula</legend>
+                {ESTADOS_NOMINA.map((estado) => (
+                  <label key={estado.valor} className="mat-nomina-check">
+                    <input
+                      type="checkbox"
+                      checked={filtrosNomina.estados.includes(estado.valor)}
+                      onChange={() =>
+                        alternarSeleccionNomina("estados", estado.valor)
+                      }
+                    />
+                    {estado.etiqueta}
+                  </label>
+                ))}
+              </fieldset>
+              <div className="mat-nomina-filtros-academicos">
+                <label>
+                  Nivel educativo
+                  <select
+                    value={filtrosNomina.nivelId}
+                    onChange={(event) =>
+                      cambiarFiltroNomina("nivelId", event.target.value)
+                    }
+                  >
+                    <option value="">Todos los niveles</option>
+                    {catalogosNomina.niveles.map((nivel) => (
+                      <option key={nivel.id} value={nivel.id}>
+                        {nivel.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Grado
+                  <select
+                    value={filtrosNomina.gradoId}
+                    onChange={(event) =>
+                      cambiarFiltroNomina("gradoId", event.target.value)
+                    }
+                    disabled={!filtrosNomina.anioEscolar}
+                  >
+                    <option value="">Todos los grados</option>
+                    {gradosNomina.map((grado) => (
+                      <option key={grado.id} value={grado.id}>
+                        {grado.nombreEspecial?.trim() ||
+                          `${grado.numeroGrado}° grado`}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Sección
+                  <select
+                    value={filtrosNomina.seccionId}
+                    onChange={(event) =>
+                      cambiarFiltroNomina("seccionId", event.target.value)
+                    }
+                    disabled={!filtrosNomina.anioEscolar}
+                  >
+                    <option value="">Todas las secciones</option>
+                    {seccionesNomina.map((seccion) => (
+                      <option key={seccion.id} value={seccion.id}>
+                        {seccion.gradoNombre} · Sección {seccion.letraSeccion}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <fieldset className="mat-nomina-opciones">
+                <legend>Columnas del reporte</legend>
+                {COLUMNAS_NOMINA.map((columna) => (
+                  <label key={columna.valor} className="mat-nomina-check">
+                    <input
+                      type="checkbox"
+                      checked={filtrosNomina.columnas.includes(columna.valor)}
+                      onChange={() =>
+                        alternarSeleccionNomina("columnas", columna.valor)
+                      }
+                    />
+                    {columna.etiqueta}
+                  </label>
+                ))}
+              </fieldset>
+            </>
+          )}
         </ModalFormulario>
       )}
     </div>
