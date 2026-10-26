@@ -4,6 +4,13 @@ import com.tesis.dto.InscripcionDTO.ChecklistUpdateRequestDTO;
 import com.tesis.dto.InscripcionDTO.FormalizarInscripcionRequestDTO;
 import com.tesis.dto.InscripcionDTO.InscripcionResponseDTO;
 import com.tesis.dto.CalendarioMatriculaDTO;
+import com.tesis.dto.ContinuidadDTO.EgresoPendienteResponseDTO;
+import com.tesis.dto.ContinuidadDTO.GeneracionResponseDTO;
+import com.tesis.dto.ContinuidadDTO.ResolverEgresoRequestDTO;
+import com.tesis.dto.GestionCalendarioDTO.AnioEscolarRequestDTO;
+import com.tesis.dto.GestionCalendarioDTO.AnioEscolarResponseDTO;
+import com.tesis.dto.GestionCalendarioDTO.PeriodoRequestDTO;
+import com.tesis.dto.GestionCalendarioDTO.PeriodoResponseDTO;
 import com.tesis.dto.PaginacionDTO;
 import com.tesis.dto.PreinscripcionDTO.PreinscripcionRequestDTO;
 import com.tesis.dto.PreinscripcionDTO.PreinscripcionResponseDTO;
@@ -11,6 +18,7 @@ import com.tesis.service.InscripcionService;
 import com.tesis.service.CalendarioMatriculaService;
 import com.tesis.service.PreinscripcionService;
 import com.tesis.service.ConstanciaService;
+import com.tesis.service.ContinuidadService;
 import jakarta.validation.Valid;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -18,11 +26,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -30,6 +40,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/matriculas")
@@ -39,15 +50,18 @@ public class MatriculaController {
     private final InscripcionService inscripcionService;
     private final ConstanciaService constanciaService;
     private final CalendarioMatriculaService calendarioService;
+    private final ContinuidadService continuidadService;
 
     public MatriculaController(PreinscripcionService preinscripcionService,
                                InscripcionService inscripcionService,
                                ConstanciaService constanciaService,
-                               CalendarioMatriculaService calendarioService) {
+                               CalendarioMatriculaService calendarioService,
+                               ContinuidadService continuidadService) {
         this.preinscripcionService = preinscripcionService;
         this.inscripcionService = inscripcionService;
         this.constanciaService = constanciaService;
         this.calendarioService = calendarioService;
+        this.continuidadService = continuidadService;
     }
 
     @GetMapping("/calendario")
@@ -56,11 +70,101 @@ public class MatriculaController {
         return calendarioService.obtenerCalendario(anio);
     }
 
+    @GetMapping("/gestion/anios")
+    public List<AnioEscolarResponseDTO> listarAniosEscolares() {
+        return calendarioService.listarAnios();
+    }
+
+    @PostMapping("/gestion/anios")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AnioEscolarResponseDTO crearAnioEscolar(
+            @Valid @RequestBody AnioEscolarRequestDTO request) {
+        return calendarioService.crearAnio(request);
+    }
+
+    @GetMapping("/gestion/anios/{anio}")
+    public AnioEscolarResponseDTO obtenerAnioEscolar(@PathVariable Short anio) {
+        return calendarioService.obtenerAnioGestion(anio);
+    }
+
+    @PutMapping("/gestion/anios/{anio}")
+    public AnioEscolarResponseDTO actualizarAnioEscolar(
+            @PathVariable Short anio,
+            @Valid @RequestBody AnioEscolarRequestDTO request) {
+        return calendarioService.actualizarAnio(anio, request);
+    }
+
+    @PostMapping("/gestion/anios/{anio}/activar")
+    public AnioEscolarResponseDTO activarAnioEscolar(@PathVariable Short anio) {
+        return calendarioService.activarAnio(anio);
+    }
+
+    @PostMapping("/gestion/anios/{anio}/continuidades")
+    public GeneracionResponseDTO generarContinuidades(@PathVariable Short anio) {
+        return continuidadService.generarContinuidades(anio);
+    }
+
+    @GetMapping("/gestion/anios/{anio}/egresos-pendientes")
+    public List<EgresoPendienteResponseDTO> listarEgresosPendientes(@PathVariable Short anio) {
+        return continuidadService.listarEgresosPendientes(anio);
+    }
+
+    @PatchMapping("/gestion/egresos/{egresoId}/resolver")
+    public EgresoPendienteResponseDTO resolverEgreso(
+            @PathVariable Integer egresoId,
+            @Valid @RequestBody ResolverEgresoRequestDTO request,
+            Principal principal) {
+        return continuidadService.resolverEgreso(egresoId, request, principal.getName());
+    }
+
+    @PostMapping("/gestion/anios/{anio}/periodos")
+    @ResponseStatus(HttpStatus.CREATED)
+    public PeriodoResponseDTO crearPeriodoMatricula(
+            @PathVariable Short anio,
+            @Valid @RequestBody PeriodoRequestDTO request) {
+        return calendarioService.crearPeriodo(anio, request);
+    }
+
+    @PutMapping("/gestion/periodos/{id}")
+    public PeriodoResponseDTO actualizarPeriodoMatricula(
+            @PathVariable Integer id,
+            @Valid @RequestBody PeriodoRequestDTO request) {
+        return calendarioService.actualizarPeriodo(id, request);
+    }
+
+    @PatchMapping("/gestion/periodos/{id}/activar")
+    public PeriodoResponseDTO activarPeriodoMatricula(@PathVariable Integer id) {
+        return calendarioService.activarPeriodo(id);
+    }
+
+    @PatchMapping("/gestion/periodos/{id}/desactivar")
+    public PeriodoResponseDTO desactivarPeriodoMatricula(@PathVariable Integer id) {
+        return calendarioService.desactivarPeriodo(id);
+    }
+
+    @DeleteMapping("/gestion/periodos/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void eliminarPeriodoEnPreparacion(@PathVariable Integer id) {
+        calendarioService.eliminarPeriodoEnPreparacion(id);
+    }
+
     @PostMapping("/preinscripciones")
     @ResponseStatus(HttpStatus.CREATED)
     public PreinscripcionResponseDTO preinscribir(
             @Valid @RequestBody PreinscripcionRequestDTO request) {
         return preinscripcionService.preinscribir(request);
+    }
+
+    @GetMapping("/{matriculaId}/preinscripcion")
+    public PreinscripcionRequestDTO obtenerDatosPreinscripcion(@PathVariable Integer matriculaId) {
+        return preinscripcionService.obtenerDatosPreinscripcion(matriculaId);
+    }
+
+    @PutMapping("/{matriculaId}/preinscripcion")
+    public PreinscripcionResponseDTO actualizarPreinscripcion(
+            @PathVariable Integer matriculaId,
+            @Valid @RequestBody PreinscripcionRequestDTO request) {
+        return preinscripcionService.actualizarPreinscripcion(matriculaId, request);
     }
 
     @GetMapping("/preinscripciones")
@@ -78,13 +182,12 @@ public class MatriculaController {
     }
 
     @GetMapping("/listado")
-    public PaginacionDTO.Respuesta<InscripcionResponseDTO> listarPorEstado(
-            @RequestParam String estado,
-            @RequestParam(required = false) String busqueda,
+    public PaginacionDTO.Respuesta<InscripcionResponseDTO> listarMatriculas(
+            @RequestParam(required = false) String estado,
+            @RequestParam(required = false) String q,
             @ModelAttribute PaginacionDTO.Solicitud paginacion) {
-        Pageable pageable = paginacion.toPageable();
         return PaginacionDTO.Respuesta.desde(
-                inscripcionService.listarPorEstado(estado, busqueda, pageable));
+                inscripcionService.listar(estado, q, paginacion.toPageable()));
     }
 
     @GetMapping("/{matriculaId}/checklist")

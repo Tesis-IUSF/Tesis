@@ -2,6 +2,7 @@ package com.tesis.controller;
 
 import com.tesis.dto.EmpleadoDTO.EmpleadoRequestDTO;
 import com.tesis.dto.EmpleadoDTO.EmpleadoResponseDTO;
+import com.tesis.dto.EmpleadoDTO.CrearEmpleado;
 import com.tesis.dto.PaginacionDTO;
 import com.tesis.service.EmpleadoService;
 import jakarta.validation.Valid;
@@ -16,7 +17,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.annotation.Validated;
 
 @RestController
 @RequestMapping("/api/empleados")
@@ -29,9 +32,13 @@ public class EmpleadoController {
     }
 
     @GetMapping
-    public PaginacionDTO.Respuesta<EmpleadoResponseDTO> listar(@ModelAttribute PaginacionDTO.Solicitud paginacion) {
+    public PaginacionDTO.Respuesta<EmpleadoResponseDTO> listar(
+            @RequestParam(required = false) Integer cargoId,
+            @RequestParam(required = false) Integer turnoId,
+            @RequestParam(required = false) Boolean activo,
+            @ModelAttribute PaginacionDTO.Solicitud paginacion) {
         Pageable pageable = paginacion.toPageable();
-        return PaginacionDTO.Respuesta.desde(empleadoService.listar(pageable));
+        return PaginacionDTO.Respuesta.desde(empleadoService.listar(cargoId, turnoId, activo, pageable));
     }
 
     @GetMapping("/{id}")
@@ -40,7 +47,8 @@ public class EmpleadoController {
     }
 
     @PostMapping
-    public ResponseEntity<EmpleadoResponseDTO> crear(@Valid @RequestBody EmpleadoRequestDTO request) {
+    public ResponseEntity<EmpleadoResponseDTO> crear(@Validated(CrearEmpleado.class)
+                                                      @RequestBody EmpleadoRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(empleadoService.crear(request));
     }
 

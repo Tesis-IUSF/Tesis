@@ -64,6 +64,7 @@ public class InscripcionDTO {
         private String constanciaUrl;
         private Integer estudianteId;
         private String estudianteNombreCompleto;
+        private String estudianteCedula;
         private Integer seccionId;
         private Short anioEscolar;
         private long requisitosObligatorios;

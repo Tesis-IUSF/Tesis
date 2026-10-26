@@ -3,16 +3,19 @@ package com.tesis.repository;
 import com.tesis.entity.AsignacionTurno;
 import com.tesis.entity.Asistencia;
 import com.tesis.entity.CredencialQr;
+import com.tesis.entity.Cargo;
 import com.tesis.entity.Empleado;
 import com.tesis.entity.Turno;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -25,6 +28,9 @@ class AsistenciaRepositoryTest {
 
     @Autowired
     private EmpleadoRepository empleadoRepository;
+
+    @Autowired
+    private CargoRepository cargoRepository;
 
     @Autowired
     private TurnoRepository turnoRepository;
@@ -73,6 +79,8 @@ class AsistenciaRepositoryTest {
         asistencia = asistenciaRepository.saveAndFlush(asistencia);
 
         assertEquals(1, asignacionTurnoRepository.buscarVigentes(empleado.getId(), hoy).size());
+        assertEquals(List.of(empleado.getId()),
+                asignacionTurnoRepository.buscarPersonalIdsVigentesPorTurno(turno.getId(), hoy));
         Asistencia guardada = asistenciaRepository
                 .findByPersonal_IdAndFecha(empleado.getId(), hoy).orElseThrow();
         assertEquals(asistencia.getId(), guardada.getId());
@@ -87,6 +95,111 @@ class AsistenciaRepositoryTest {
                 hoy, hoy, empleado.getId(), null, turno.getId(), "TARDANZA").size());
         assertEquals(1, asignacionTurnoRepository
                 .buscarAsignacionesActivasEnRango(hoy, hoy).size());
+    }
+
+    @Test
+    void filtraHistoricoPorCargo() {
+        Cargo cargo = new Cargo();
+        cargo.setNombreCargo("Docente historial");
+        cargo = cargoRepository.saveAndFlush(cargo);
+        LocalDate hoy = LocalDate.now();
+        Empleado empleado = new Empleado();
+        empleado.setNombre("Ana");
+        empleado.setApellido("Pérez");
+        empleado.setCedula("ASISTENCIA-CARGO-01");
+        empleado.setActivo(true);
+        empleado.setCargo(cargo);
+        empleado = empleadoRepository.saveAndFlush(empleado);
+        Empleado otroEmpleado = new Empleado();
+        otroEmpleado.setNombre("Luis");
+        otroEmpleado.setApellido("Díaz");
+        otroEmpleado.setCedula("ASISTENCIA-CARGO-02");
+        otroEmpleado.setActivo(true);
+        otroEmpleado = empleadoRepository.saveAndFlush(otroEmpleado);
+        Turno turno = new Turno();
+        turno.setNombre("Matutino historial");
+        turno.setHoraEntrada(LocalTime.of(8, 0));
+        turno.setHoraSalida(LocalTime.of(16, 0));
+        turno = turnoRepository.saveAndFlush(turno);
+
+        guardarAsistencia(empleado, turno, hoy);
+        guardarAsistencia(otroEmpleado, turno, hoy);
+
+        assertEquals(1, asistenciaRepository.buscarHistorico(
+                hoy, hoy, null, null, cargo.getId(), null, null).size());
+    }
+
+    @Test
+    void filtraEmpleadosPorCargoYTurnoVigente() {
+        LocalDate hoy = LocalDate.now();
+        Cargo cargo = new Cargo();
+        cargo.setNombreCargo("Docente filtros");
+        cargo = cargoRepository.saveAndFlush(cargo);
+        Turno turno = new Turno();
+        turno.setNombre("Diurno filtros");
+        turno.setHoraEntrada(LocalTime.of(8, 0));
+        turno.setHoraSalida(LocalTime.of(16, 0));
+        turno = turnoRepository.saveAndFlush(turno);
+        Empleado empleado = new Empleado();
+        empleado.setNombre("Ana");
+        empleado.setApellido("Pérez");
+        empleado.setCedula("EMPLEADO-FILTRO-01");
+        empleado.setActivo(true);
+        empleado.setCargo(cargo);
+        empleado = empleadoRepository.saveAndFlush(empleado);
+        AsignacionTurno asignacion = new AsignacionTurno();
+        asignacion.setPersonal(empleado);
+        asignacion.setTurno(turno);
+        asignacion.setFechaDesde(hoy);
+        asignacionTurnoRepository.saveAndFlush(asignacion);
+
+        var resultado = empleadoRepository.buscarConFiltros(
+                cargo.getId(), turno.getId(), true, hoy, PageRequest.of(0, 10));
+
+        assertEquals(1, resultado.getTotalElements());
+        assertEquals(empleado.getId(), resultado.getContent().getFirst().getId());
+    }
+
+    @Test
+    void filtraEmpleadosActivosEInactivosYPermiteTodosLosEstados() {
+        Empleado activo = guardarEmpleado("ESTADO-ACTIVO-01", true);
+        Empleado inactivo = guardarEmpleado("ESTADO-INACTIVO-01", false);
+        LocalDate hoy = LocalDate.now();
+        var pageable = PageRequest.of(0, 10);
+
+        var activos = empleadoRepository.buscarConFiltros(null, null, true, hoy, pageable);
+        var inactivos = empleadoRepository.buscarConFiltros(null, null, false, hoy, pageable);
+        var todos = empleadoRepository.buscarConFiltros(null, null, null, hoy, pageable);
+
+        assertTrue(activos.getContent().stream().anyMatch(e -> e.getId().equals(activo.getId())));
+        assertFalse(activos.getContent().stream().anyMatch(e -> e.getId().equals(inactivo.getId())));
+        assertTrue(inactivos.getContent().stream().anyMatch(e -> e.getId().equals(inactivo.getId())));
+        assertFalse(inactivos.getContent().stream().anyMatch(e -> e.getId().equals(activo.getId())));
+        assertTrue(todos.getContent().stream().anyMatch(e -> e.getId().equals(activo.getId())));
+        assertTrue(todos.getContent().stream().anyMatch(e -> e.getId().equals(inactivo.getId())));
+    }
+
+    private Empleado guardarEmpleado(String cedula, boolean activo) {
+        Empleado empleado = new Empleado();
+        empleado.setNombre("Personal");
+        empleado.setApellido("Prueba");
+        empleado.setCedula(cedula);
+        empleado.setActivo(activo);
+        if (!activo) {
+            empleado.setFechaEgreso(LocalDate.now());
+        }
+        return empleadoRepository.saveAndFlush(empleado);
+    }
+
+    private void guardarAsistencia(Empleado empleado, Turno turno, LocalDate fecha) {
+        Asistencia asistencia = new Asistencia();
+        asistencia.setPersonal(empleado);
+        asistencia.setTurno(turno);
+        asistencia.setFecha(fecha);
+        asistencia.setHoraEntrada(LocalTime.of(8, 0));
+        asistencia.setEstado("presente");
+        asistencia.setMinutosTardanza((short) 0);
+        asistenciaRepository.saveAndFlush(asistencia);
     }
 
     @Test

@@ -6,11 +6,14 @@ import com.tesis.entity.AsignacionTurno;
 import com.tesis.entity.Cargo;
 import com.tesis.entity.Departamento;
 import com.tesis.entity.Empleado;
+import com.tesis.entity.Turno;
 import com.tesis.entity.Usuario;
 import com.tesis.repository.AsignacionTurnoRepository;
 import com.tesis.repository.CargoRepository;
+import com.tesis.repository.CredencialQrRepository;
 import com.tesis.repository.DepartamentoRepository;
 import com.tesis.repository.EmpleadoRepository;
+import com.tesis.repository.TurnoRepository;
 import com.tesis.repository.UsuarioRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -34,24 +38,41 @@ public class EmpleadoService {
     private final DepartamentoRepository departamentoRepository;
     private final UsuarioRepository usuarioRepository;
     private final AsignacionTurnoRepository asignacionTurnoRepository;
+    private final TurnoRepository turnoRepository;
+    private final CredencialQrRepository credencialQrRepository;
 
     public EmpleadoService(EmpleadoRepository empleadoRepository,
                            CargoRepository cargoRepository,
                            DepartamentoRepository departamentoRepository,
                            UsuarioRepository usuarioRepository,
-                           AsignacionTurnoRepository asignacionTurnoRepository) {
+                           AsignacionTurnoRepository asignacionTurnoRepository,
+                           TurnoRepository turnoRepository,
+                           CredencialQrRepository credencialQrRepository) {
         this.empleadoRepository = empleadoRepository;
         this.cargoRepository = cargoRepository;
         this.departamentoRepository = departamentoRepository;
         this.usuarioRepository = usuarioRepository;
         this.asignacionTurnoRepository = asignacionTurnoRepository;
+        this.turnoRepository = turnoRepository;
+        this.credencialQrRepository = credencialQrRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<EmpleadoResponseDTO> listar(Integer cargoId, Integer turnoId, Pageable pageable) {
+        return listar(cargoId, turnoId, null, pageable);
     }
 
     @Transactional(readOnly = true)
     public Page<EmpleadoResponseDTO> listar(Pageable pageable) {
-        Page<Empleado> empleados = empleadoRepository.findAll(pageable);
+        return listar(null, null, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<EmpleadoResponseDTO> listar(Integer cargoId, Integer turnoId, Boolean activo, Pageable pageable) {
+        Page<Empleado> empleados = empleadoRepository.buscarConFiltros(
+                cargoId, turnoId, activo, LocalDate.now(), pageable);
         Map<Integer, AsignacionTurno> turnosVigentes = buscarTurnosVigentes(
-            empleados.getContent().stream().map(Empleado::getId).toList());
+            empleados.getContent().stream().map(empleado -> empleado.getId()).toList());
         return empleados.map(empleado -> toResponse(empleado, turnosVigentes.get(empleado.getId())));
     }
 
@@ -64,9 +85,25 @@ public class EmpleadoService {
         if (empleadoRepository.existsByCedula(request.getCedula())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La cédula ya está registrada");
         }
+        if (request.getTurnoId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El turno es obligatorio al crear un empleado");
+        }
+        if (request.getFechaIngreso() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "La fecha de ingreso es obligatoria para asignar el turno");
+        }
+        Turno turno = buscarTurnoActivo(request.getTurnoId());
         Empleado empleado = new Empleado();
         aplicarRequest(request, empleado, true);
-        return toResponse(empleadoRepository.save(empleado));
+        Empleado empleadoGuardado = empleadoRepository.save(empleado);
+
+        AsignacionTurno asignacion = new AsignacionTurno();
+        asignacion.setPersonal(empleadoGuardado);
+        asignacion.setTurno(turno);
+        asignacion.setFechaDesde(empleadoGuardado.getFechaIngreso());
+        AsignacionTurno asignacionGuardada = asignacionTurnoRepository.save(asignacion);
+        return toResponse(empleadoGuardado, asignacionGuardada);
     }
 
     public EmpleadoResponseDTO actualizar(Integer id, EmpleadoRequestDTO request) {
@@ -75,11 +112,38 @@ public class EmpleadoService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La cédula ya está registrada");
         }
         aplicarRequest(request, empleado, false);
+        if (Boolean.TRUE.equals(empleado.getActivo()) && empleado.getFechaEgreso() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Un empleado activo no puede tener fecha de egreso");
+        }
+        if (Boolean.FALSE.equals(empleado.getActivo())) {
+            darDeBaja(empleado);
+        }
         return toResponse(empleadoRepository.save(empleado));
     }
 
     public void eliminar(Integer id) {
-        empleadoRepository.delete(buscarEmpleado(id));
+        Empleado empleado = buscarEmpleado(id);
+        darDeBaja(empleado);
+        empleadoRepository.save(empleado);
+    }
+
+    private void darDeBaja(Empleado empleado) {
+        if (empleado.getFechaEgreso() == null) {
+            empleado.setFechaEgreso(LocalDate.now());
+        }
+        empleado.setActivo(false);
+        LocalDate fechaEgreso = empleado.getFechaEgreso();
+        asignacionTurnoRepository.buscarVigentesEnFecha(empleado.getId(), fechaEgreso).forEach(asignacion -> {
+            if (asignacion.getFechaHasta() == null || asignacion.getFechaHasta().isAfter(fechaEgreso)) {
+                asignacion.setFechaHasta(fechaEgreso);
+                asignacionTurnoRepository.save(asignacion);
+            }
+        });
+        credencialQrRepository.findByEmpleado_IdAndActivaTrue(empleado.getId()).forEach(credencial -> {
+            credencial.setActiva(false);
+            credencial.setRevocadaEn(LocalDateTime.now());
+        });
     }
 
     private Empleado buscarEmpleado(Integer id) {
@@ -96,6 +160,15 @@ public class EmpleadoService {
                         (primera, ignorada) -> primera));
     }
 
+    private Turno buscarTurnoActivo(Integer id) {
+        Turno turno = turnoRepository.findById(id).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Turno no encontrado"));
+        if (!Boolean.TRUE.equals(turno.getActivo())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "No se puede asignar un turno inactivo");
+        }
+        return turno;
+    }
+
     private void aplicarRequest(EmpleadoRequestDTO request, Empleado empleado, boolean nuevo) {
         empleado.setNombre(request.getNombre());
         empleado.setApellido(request.getApellido());
@@ -110,7 +183,11 @@ public class EmpleadoService {
         empleado.setCargo(buscarCargo(request.getCargoId()));
         empleado.setDepartamento(buscarDepartamento(request.getDepartamentoId()));
         empleado.setFechaIngreso(request.getFechaIngreso());
-        empleado.setFechaEgreso(request.getFechaEgreso());
+        if (request.getFechaEgreso() != null
+                || nuevo
+                || Boolean.TRUE.equals(request.getActivo())) {
+            empleado.setFechaEgreso(request.getFechaEgreso());
+        }
         empleado.setUsuario(buscarUsuario(request.getUsuarioId(), empleado.getId()));
         if (request.getActivo() != null) {
             empleado.setActivo(request.getActivo());

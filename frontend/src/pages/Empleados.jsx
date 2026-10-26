@@ -27,28 +27,36 @@ function Empleados() {
   const [empleadoAEliminar, setEmpleadoAEliminar] = useState(null);
   const [filtroCargoId, setFiltroCargoId] = useState("");
   const [filtroTurnoId, setFiltroTurnoId] = useState("");
+  const [filtroActivo, setFiltroActivo] = useState("");
 
-  const cargarEmpleados = useCallback(async (page = 0) => {
-    setCargando(true);
-    setError("");
-    try {
-      const { data } = await api.get("/empleados", {
-        params: { page, size: 25 },
-      });
-      setEmpleados(data.content);
-      setPagina({
-        page: data.page,
-        totalPages: data.totalPages,
-        totalElements: data.totalElements,
-      });
-    } catch (err) {
-      setError(
-        extractErrorMessage(err, "No se pudo cargar la lista de empleados."),
-      );
-    } finally {
-      setCargando(false);
-    }
-  }, []);
+  const cargarEmpleados = useCallback(
+    async (page = 0) => {
+      setCargando(true);
+      setError("");
+      try {
+        const params = { page, size: 25 };
+        if (filtroCargoId) params.cargoId = Number(filtroCargoId);
+        if (filtroTurnoId) params.turnoId = Number(filtroTurnoId);
+        if (filtroActivo === "true") params.activo = true;
+        if (filtroActivo === "false") params.activo = false;
+
+        const { data } = await api.get("/empleados", { params });
+        setEmpleados(data.content);
+        setPagina({
+          page: data.page,
+          totalPages: data.totalPages,
+          totalElements: data.totalElements,
+        });
+      } catch (err) {
+        setError(
+          extractErrorMessage(err, "No se pudo cargar la lista de empleados."),
+        );
+      } finally {
+        setCargando(false);
+      }
+    },
+    [filtroCargoId, filtroTurnoId, filtroActivo],
+  );
 
   useEffect(() => {
     cargarEmpleados(0);
@@ -59,28 +67,24 @@ function Empleados() {
     setEliminando(true);
     try {
       await api.delete(`/empleados/${empleadoAEliminar.id}`);
-      setEmpleados((prev) => prev.filter((e) => e.id !== empleadoAEliminar.id));
       toast.success(
-        `${empleadoAEliminar.nombre} ${empleadoAEliminar.apellido} fue eliminado correctamente.`,
+        `${empleadoAEliminar.nombre} ${empleadoAEliminar.apellido} fue dado de baja correctamente.`,
       );
       setEmpleadoAEliminar(null);
+      await cargarEmpleados(pagina.page);
     } catch (err) {
-      toast.error(extractErrorMessage(err, "No se pudo eliminar al empleado."));
+      toast.error(
+        extractErrorMessage(err, "No se pudo dar de baja al empleado."),
+      );
     } finally {
       setEliminando(false);
     }
   };
 
-  // Filtro en cliente, sobre la página ya cargada (según pide el criterio de SW-44)
-  const empleadosFiltrados = empleados.filter(
-    (empleado) =>
-      (!filtroCargoId || String(empleado.cargoId) === filtroCargoId) &&
-      (!filtroTurnoId || String(empleado.turnoId) === filtroTurnoId),
-  );
-
   const limpiarFiltros = () => {
     setFiltroCargoId("");
     setFiltroTurnoId("");
+    setFiltroActivo("");
   };
 
   return (
@@ -126,7 +130,19 @@ function Empleados() {
             </select>
           </label>
 
-          {(filtroCargoId || filtroTurnoId) && (
+          <label>
+            Estado
+            <select
+              value={filtroActivo}
+              onChange={(e) => setFiltroActivo(e.target.value)}
+            >
+              <option value="">Todos</option>
+              <option value="true">Activos</option>
+              <option value="false">Dados de baja</option>
+            </select>
+          </label>
+
+          {(filtroCargoId || filtroTurnoId || filtroActivo) && (
             <button
               type="button"
               className="btn-secondary"
@@ -136,15 +152,6 @@ function Empleados() {
             </button>
           )}
         </div>
-
-        {(filtroCargoId || filtroTurnoId) && (
-          <p className="filtro-aviso">
-            <Icon icon={ICONOS.aviso} className="icono-inline" />
-            El filtro se aplica solo sobre los {empleados.length} empleados de
-            esta página. Si el empleado que buscas está en otra página, no
-            aparecerá aquí.
-          </p>
-        )}
 
         {error && <p className="error-msg">{error}</p>}
 
@@ -156,29 +163,31 @@ function Empleados() {
                 <th>Nombre</th>
                 <th>Cargo</th>
                 <th>Turno</th>
+                <th>Estado</th>
+                <th>Fecha Egreso</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {cargando ? (
                 <tr>
-                  <td colSpan={5} className="tabla-estado">
+                  <td colSpan={7} className="tabla-estado">
                     Cargando empleados...
                   </td>
                 </tr>
-              ) : empleadosFiltrados.length === 0 ? (
+              ) : empleados.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="tabla-estado">
+                  <td colSpan={7} className="tabla-estado">
                     <span className="tabla-estado-icono">
                       <Icon icon={ICONOS.lista} />
                     </span>
-                    {filtroCargoId || filtroTurnoId
-                      ? "No hay empleados con esos filtros en esta página."
+                    {filtroCargoId || filtroTurnoId || filtroActivo
+                      ? "No hay empleados con esos filtros."
                       : "No hay empleados registrados todavía."}
                   </td>
                 </tr>
               ) : (
-                empleadosFiltrados.map((emp) => (
+                empleados.map((emp) => (
                   <tr key={emp.id}>
                     <td data-label="Cédula">{emp.cedula}</td>
                     <td data-label="Nombre">
@@ -186,6 +195,16 @@ function Empleados() {
                     </td>
                     <td data-label="Cargo">{emp.cargoNombre || "—"}</td>
                     <td data-label="Turno">{emp.turnoNombre || "—"}</td>
+                    <td data-label="Estado">
+                      <span
+                        className={`badge-estado ${
+                          emp.activo ? "badge-activo" : "badge-inactivo"
+                        }`}
+                      >
+                        {emp.activo ? "Activo" : "Dado de baja"}
+                      </span>
+                    </td>
+                    <td data-label="Fecha Egreso">{emp.fechaEgreso || "—"}</td>
                     <td data-label="Acciones">
                       <Link
                         to={`/empleados/${emp.id}/editar`}
@@ -193,12 +212,22 @@ function Empleados() {
                       >
                         Editar
                       </Link>
-                      <button
-                        className="btn-delete"
-                        onClick={() => setEmpleadoAEliminar(emp)}
-                      >
-                        Eliminar
-                      </button>
+                      {emp.activo ? (
+                        <button
+                          className="btn-delete"
+                          onClick={() => setEmpleadoAEliminar(emp)}
+                        >
+                          Dar de baja
+                        </button>
+                      ) : (
+                        <button
+                          className="btn-delete"
+                          disabled
+                          title="El empleado ya está dado de baja"
+                        >
+                          Dado de baja
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -230,12 +259,14 @@ function Empleados() {
 
         <ConfirmDialog
           open={!!empleadoAEliminar}
-          title="Eliminar empleado"
+          title="Dar de baja empleado"
           message={
             empleadoAEliminar
-              ? `¿Eliminar a ${empleadoAEliminar.nombre} ${empleadoAEliminar.apellido}? Esta acción no se puede deshacer.`
+              ? `¿Dar de baja a ${empleadoAEliminar.nombre} ${empleadoAEliminar.apellido}? Esta acción cerrará su asignación vigente y revocará sus credenciales QR activas.`
               : ""
           }
+          confirmText="Sí, dar de baja"
+          confirmLoadingText="Dando de baja..."
           onConfirm={confirmarEliminar}
           onCancel={() => setEmpleadoAEliminar(null)}
           cargando={eliminando}

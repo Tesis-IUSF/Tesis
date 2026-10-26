@@ -13,9 +13,7 @@ import com.tesis.repository.MatriculaRepository;
 import com.tesis.repository.RequisitoMatriculaRepository;
 import com.tesis.repository.UsuarioRepository;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +24,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -38,8 +37,8 @@ public class InscripcionService {
     private static final String PREINSCRITO = "preinscrito";
     private static final String EN_PROCESO = "en_proceso";
     private static final String COMPLETADA = "completada";
-    private static final Set<String> ESTADOS_LISTABLES =
-            Set.of("preinscrito", "en_proceso", "completada", "retirada", "anulada");
+    private static final Set<String> ESTADOS_MATRICULA = Set.of(
+            PREINSCRITO, EN_PROCESO, COMPLETADA, "retirada", "anulada");
 
     private final MatriculaRepository matriculaRepository;
     private final ChecklistMatriculaRepository checklistRepository;
@@ -67,23 +66,23 @@ public class InscripcionService {
         return toResponses(matriculaRepository.findByEstadoMatricula(PREINSCRITO, pageable));
     }
 
-    @Transactional(readOnly = true)
+            @Transactional(readOnly = true)
     public Page<InscripcionResponseDTO> listarEnProceso(Pageable pageable) {
         return toResponses(matriculaRepository.findByEstadoMatriculaOrderByFechaSolicitudAsc(EN_PROCESO, pageable));
     }
 
     @Transactional(readOnly = true)
-    public Page<InscripcionResponseDTO> listarPorEstado(String estado, String busqueda,
-                                                         Pageable pageable) {
-        if (estado == null || !ESTADOS_LISTABLES.contains(estado)) {
+    public Page<InscripcionResponseDTO> listar(String estado, String busqueda, Pageable pageable) {
+        String estadoNormalizado = estado == null || estado.isBlank()
+                ? null : estado.trim().toLowerCase(Locale.ROOT);
+        if (estadoNormalizado != null && !ESTADOS_MATRICULA.contains(estadoNormalizado)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Estado no válido. Use: " + String.join(", ", ESTADOS_LISTABLES));
+                    "El estado de matrícula no es válido");
         }
-        String texto = busqueda == null ? "" : busqueda.trim();
-        // Más recientes primero
-        Pageable ordenado = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
-                Sort.by(Sort.Direction.DESC, "fechaSolicitud", "id"));
-        return toResponses(matriculaRepository.buscarPorEstado(estado, texto, ordenado));
+        String busquedaNormalizada = busqueda == null || busqueda.isBlank()
+                ? null : busqueda.trim();
+        return toResponses(matriculaRepository.buscarListado(
+                estadoNormalizado, busquedaNormalizada, pageable));
     }
 
     @Transactional(readOnly = true)
@@ -276,6 +275,7 @@ public class InscripcionService {
                 matricula.getEstudiante().getId(),
                 matricula.getEstudiante().getNombre() + " "
                         + matricula.getEstudiante().getApellido(),
+                matricula.getEstudiante().getCedula(),
                 matricula.getSeccion().getId(),
                 matricula.getAnioEscolar(),
                 totalObligatorios,

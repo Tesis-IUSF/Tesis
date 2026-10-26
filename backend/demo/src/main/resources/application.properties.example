@@ -4,26 +4,13 @@
 # Define el perfil activo por defecto para desarrollo local
 spring.profiles.active=dev
 spring.application.name=sitio-web
-
-
-# ============================================================
-# DATOS DE LA INSTITUCIÓN (constancias en PDF)
-# ============================================================
 app.institucion.nombre=C.E.N. Lcda. Roraima Asansa Escandela
-app.institucion.nombre-completo=COMPLEJO EDUCATIVO NACIONAL LCDA. RORAIMA ASANSA ESCANDELA
-app.institucion.codigo-plantel=OD34942317
-app.institucion.rif=J508197682
-app.institucion.municipio=San Francisco
-app.institucion.estado=Zulia
-app.institucion.direccion=Km 9,5 Vía Perijá, Urbanización Villa Chinita, Av. 1 Parroquia José Domingo Rus
-app.institucion.correo=ceroraimasansaescandela@gmail.com
-app.institucion.telefono=0424-6772242
-app.institucion.director.nombre=MgS. Javier Mavares
-app.institucion.director.cedula=V-17.835.835
-app.institucion.director.cargo=Director
-
-
-
+app.institucion.director=${INSTITUCION_DIRECTOR:}
+app.institucion.rif=${INSTITUCION_RIF:}
+app.institucion.codigo=${INSTITUCION_CODIGO:}
+app.institucion.direccion=${INSTITUCION_DIRECCION:}
+app.institucion.telefono=${INSTITUCION_TELEFONO:}
+app.institucion.correo=${INSTITUCION_CORREO:}
 
 # ============================================================
 # SERVIDOR (Configuración común)

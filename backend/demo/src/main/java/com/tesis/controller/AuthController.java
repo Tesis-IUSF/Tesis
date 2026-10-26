@@ -3,7 +3,6 @@ package com.tesis.controller;
 import com.tesis.dto.AuthDTO;
 import com.tesis.service.AuthService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,12 +17,6 @@ public class AuthController {
     public ResponseEntity<AuthDTO.LoginResponse> login(@RequestBody AuthDTO.LoginRequest loginRequest) {
         AuthDTO.LoginResponse response = authService.login(loginRequest);
         return ResponseEntity.ok(response);
-    }
-
-    @PostMapping("/registrar")
-    public ResponseEntity<AuthDTO.LoginResponse> registrar(@RequestBody AuthDTO.RegisterRequest registerRequest) {
-        AuthDTO.LoginResponse response = authService.registrar(registerRequest);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/validar")
