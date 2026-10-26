@@ -118,20 +118,22 @@ class RetiroServiceTest {
     }
 
     @Test
-    void permiteRetirarFormalmenteUnaMatriculaEnProceso() {
+    void rechazaRetirarFormalmenteUnaMatriculaEnProceso() {
         crearProcesador();
         Matricula matricula = crearMatricula("en_proceso", "RETIRO-PEND-01", "C");
         RetiroRequestDTO request = new RetiroRequestDTO(
                 "Solicitud", LocalDate.now(clock), null, "Persona", "Externa", "CED-02");
 
-        RetiroResponseDTO response = retiroService.retirar(
-                matricula.getId(), request, "procesador@test.local");
+        org.springframework.web.server.ResponseStatusException exception =
+                org.junit.jupiter.api.Assertions.assertThrows(
+                        org.springframework.web.server.ResponseStatusException.class,
+                        () -> retiroService.retirar(
+                                matricula.getId(), request, "procesador@test.local"));
 
-        assertEquals("retiro_formal", response.getOperacion());
-        assertEquals("retirada", response.getEstadoMatricula());
-        assertEquals("retirada", matriculaRepository.findById(matricula.getId())
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals("en_proceso", matriculaRepository.findById(matricula.getId())
                 .orElseThrow().getEstadoMatricula());
-        assertEquals(1, retiroService.obtenerHistorial(matricula.getId()).getRetiros().size());
+        assertEquals(0, retiroService.obtenerHistorial(matricula.getId()).getRetiros().size());
     }
 
     @Test

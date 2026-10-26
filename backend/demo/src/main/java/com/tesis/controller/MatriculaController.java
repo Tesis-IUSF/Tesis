@@ -1,8 +1,11 @@
 package com.tesis.controller;
 
 import com.tesis.dto.InscripcionDTO.ChecklistUpdateRequestDTO;
+import com.tesis.dto.InscripcionDTO.ChecklistBatchUpdateRequestDTO;
 import com.tesis.dto.InscripcionDTO.FormalizarInscripcionRequestDTO;
+import com.tesis.dto.InscripcionDTO.ExpedienteResponseDTO;
 import com.tesis.dto.InscripcionDTO.InscripcionResponseDTO;
+import com.tesis.dto.InscripcionDTO.MatriculaAcademicaDTO;
 import com.tesis.dto.CalendarioMatriculaDTO;
 import com.tesis.dto.ContinuidadDTO.EgresoPendienteResponseDTO;
 import com.tesis.dto.ContinuidadDTO.GeneracionResponseDTO;
@@ -185,9 +188,23 @@ public class MatriculaController {
     public PaginacionDTO.Respuesta<InscripcionResponseDTO> listarMatriculas(
             @RequestParam(required = false) String estado,
             @RequestParam(required = false) String q,
+            @RequestParam(required = false) Short anioEscolar,
+            @RequestParam(required = false) Integer gradoId,
+            @RequestParam(required = false) Integer seccionId,
             @ModelAttribute PaginacionDTO.Solicitud paginacion) {
         return PaginacionDTO.Respuesta.desde(
-                inscripcionService.listar(estado, q, paginacion.toPageable()));
+                inscripcionService.listar(
+                        estado, anioEscolar, gradoId, seccionId, q, paginacion.toPageable()));
+    }
+
+    @GetMapping("/posibles-graduados")
+    public PaginacionDTO.Respuesta<InscripcionResponseDTO> listarPosiblesGraduados(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Integer gradoId,
+            @RequestParam(required = false) Integer seccionId,
+            @ModelAttribute PaginacionDTO.Solicitud paginacion) {
+        return PaginacionDTO.Respuesta.desde(inscripcionService.listarPosiblesGraduados(
+                gradoId, seccionId, q, paginacion.toPageable()));
     }
 
     @GetMapping("/{matriculaId}/checklist")
@@ -195,9 +212,29 @@ public class MatriculaController {
         return inscripcionService.obtenerSeguimiento(matriculaId);
     }
 
+    @GetMapping("/{matriculaId}/expediente")
+    public ExpedienteResponseDTO obtenerExpediente(@PathVariable Integer matriculaId) {
+        return inscripcionService.obtenerExpediente(matriculaId);
+    }
+
+    @GetMapping("/{matriculaId}/historial-academico")
+    public List<MatriculaAcademicaDTO> obtenerHistorialAcademico(
+            @PathVariable Integer matriculaId) {
+        return inscripcionService.obtenerHistorialAcademico(matriculaId);
+    }
+
     @PostMapping("/{matriculaId}/checklist")
     public InscripcionResponseDTO prepararChecklist(@PathVariable Integer matriculaId) {
         return inscripcionService.prepararChecklist(matriculaId);
+    }
+
+    @PutMapping("/{matriculaId}/checklist")
+    public InscripcionResponseDTO actualizarRequisitos(
+            @PathVariable Integer matriculaId,
+            @Valid @RequestBody ChecklistBatchUpdateRequestDTO request,
+            Principal principal) {
+        return inscripcionService.actualizarRequisitos(
+                matriculaId, request, principal.getName());
     }
 
     @PatchMapping("/{matriculaId}/checklist/{requisitoId}")

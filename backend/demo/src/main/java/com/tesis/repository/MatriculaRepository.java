@@ -16,6 +16,15 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
 
     List<Matricula> findByEstudiante_IdAndAnioEscolar(Integer estudianteId, Short anioEscolar);
 
+    @EntityGraph(attributePaths = {"estudiante", "seccion.grado.nivelEducativo"})
+    @Query("select m from Matricula m where m.id = :matriculaId")
+    java.util.Optional<Matricula> buscarExpediente(@Param("matriculaId") Integer matriculaId);
+
+    @EntityGraph(attributePaths = {"seccion.grado.nivelEducativo"})
+    @Query("select m from Matricula m where m.estudiante.id = :estudianteId "
+            + "order by m.anioEscolar desc, m.id desc")
+    List<Matricula> buscarHistorialAcademico(@Param("estudianteId") Integer estudianteId);
+
     boolean existsByEstudiante_IdAndAnioEscolarAndEstadoMatriculaIn(
             Integer estudianteId, Short anioEscolar, List<String> estados);
 
@@ -46,6 +55,9 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
     @EntityGraph(attributePaths = {"estudiante", "seccion.grado.nivelEducativo"})
     @Query("select m from Matricula m where "
             + "(:estado is null or m.estadoMatricula = :estado) and "
+            + "(:anioEscolar is null or m.anioEscolar = :anioEscolar) and "
+            + "(:gradoId is null or m.seccion.grado.id = :gradoId) and "
+            + "(:seccionId is null or m.seccion.id = :seccionId) and "
             + "(:busqueda is null "
             + "or lower(m.estudiante.cedula) like lower(concat('%', :busqueda, '%')) "
             + "or lower(m.estudiante.nombre) like lower(concat('%', :busqueda, '%')) "
@@ -53,8 +65,33 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
             + "or lower(concat(concat(m.estudiante.nombre, ' '), m.estudiante.apellido)) "
             + "like lower(concat('%', :busqueda, '%')))")
     Page<Matricula> buscarListado(@Param("estado") String estado,
+                                  @Param("anioEscolar") Short anioEscolar,
+                                  @Param("gradoId") Integer gradoId,
+                                  @Param("seccionId") Integer seccionId,
                                   @Param("busqueda") String busqueda,
                                   Pageable pageable);
+
+    @EntityGraph(attributePaths = {"estudiante", "seccion.grado.nivelEducativo"})
+    @Query("select m from Matricula m where m.anioEscolar = :anioEscolar "
+            + "and m.estadoMatricula in ('en_proceso', 'completada') "
+            + "and m.seccion.grado.activo = true "
+            + "and m.seccion.grado.numeroGrado = ("
+            + "select max(g2.numeroGrado) from Grado g2 "
+            + "where g2.nivelEducativo.id = m.seccion.grado.nivelEducativo.id "
+            + "and g2.activo = true) "
+            + "and (:gradoId is null or m.seccion.grado.id = :gradoId) "
+            + "and (:seccionId is null or m.seccion.id = :seccionId) "
+            + "and (:busqueda is null "
+            + "or lower(m.estudiante.cedula) like lower(concat('%', :busqueda, '%')) "
+            + "or lower(m.estudiante.nombre) like lower(concat('%', :busqueda, '%')) "
+            + "or lower(m.estudiante.apellido) like lower(concat('%', :busqueda, '%')) "
+            + "or lower(concat(concat(m.estudiante.nombre, ' '), m.estudiante.apellido)) "
+            + "like lower(concat('%', :busqueda, '%')))")
+    Page<Matricula> buscarPosiblesGraduados(@Param("anioEscolar") Short anioEscolar,
+                                            @Param("gradoId") Integer gradoId,
+                                            @Param("seccionId") Integer seccionId,
+                                            @Param("busqueda") String busqueda,
+                                            Pageable pageable);
 
             java.util.Optional<Matricula> findByEstudiante_IdAndAnioEscolarAndSeccion_Id(
                     Integer estudianteId, Short anioEscolar, Integer seccionId);

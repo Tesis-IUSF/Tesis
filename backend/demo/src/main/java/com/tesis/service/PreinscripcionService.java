@@ -225,9 +225,10 @@ public class PreinscripcionService {
         Matricula matricula = matriculaRepository.findByIdForUpdate(matriculaId).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.NOT_FOUND, "Matrícula no encontrada"));
         if (!ESTADO_PREINSCRITO.equals(matricula.getEstadoMatricula())
-                && !ESTADO_EN_PROCESO.equals(matricula.getEstadoMatricula())) {
+                && !ESTADO_EN_PROCESO.equals(matricula.getEstadoMatricula())
+                && !ESTADO_COMPLETADA.equals(matricula.getEstadoMatricula())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Solo se pueden editar matrículas preinscritas o en proceso");
+                    "Solo se pueden editar matrículas preinscritas, en proceso o completadas");
         }
         if (!Objects.equals(matricula.getAnioEscolar(), request.getAnioEscolar())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -274,6 +275,7 @@ public class PreinscripcionService {
 
         Integer nivelAnteriorId = matricula.getSeccion().getGrado()
                 .getNivelEducativo().getId();
+        boolean formalizada = ESTADO_COMPLETADA.equals(matricula.getEstadoMatricula());
         String tipoIngresoAnterior = matricula.getTipoIngreso();
         String institucionAnterior = matricula.getInstitucionProcedencia();
         actualizarEstudiante(estudiante, datosEstudiante);
@@ -290,8 +292,10 @@ public class PreinscripcionService {
         matricula.setSeccion(nuevaSeccion);
         String institucionNueva = normalizarInstitucionProcedencia(
                 request.getInstitucionProcedencia());
-        matricula.setInstitucionProcedencia(institucionNueva);
-        if (!Objects.equals(institucionAnterior, institucionNueva)) {
+        if (!formalizada) {
+            matricula.setInstitucionProcedencia(institucionNueva);
+        }
+        if (!formalizada && !Objects.equals(institucionAnterior, institucionNueva)) {
             matricula.setTipoIngreso(determinarTipoIngreso(
                     estudiante, matricula.getAnioEscolar(), institucionNueva));
         }
@@ -304,8 +308,8 @@ public class PreinscripcionService {
         }
 
         Integer nivelNuevoId = nuevaSeccion.getGrado().getNivelEducativo().getId();
-        if (!Objects.equals(nivelAnteriorId, nivelNuevoId)
-                || !Objects.equals(tipoIngresoAnterior, matricula.getTipoIngreso())) {
+        if (!formalizada && (!Objects.equals(nivelAnteriorId, nivelNuevoId)
+                || !Objects.equals(tipoIngresoAnterior, matricula.getTipoIngreso()))) {
             sincronizarChecklist(matricula);
         }
 
