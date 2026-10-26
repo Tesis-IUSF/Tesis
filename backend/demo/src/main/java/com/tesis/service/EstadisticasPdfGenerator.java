@@ -45,7 +45,8 @@ public class EstadisticasPdfGenerator {
             encabezado.setAlignment(Element.ALIGN_CENTER);
             document.add(encabezado);
 
-            Paragraph titulo = new Paragraph("REPORTE DE INSCRIPCIÓN AL " + LocalDate.now().format(FORMATO_FECHA),
+            Paragraph titulo = new Paragraph("REPORTE DE ESTADÍSTICAS DE MATRÍCULA AL "
+                    + LocalDate.now().format(FORMATO_FECHA),
                     new Font(Font.HELVETICA, 14, Font.BOLD));
             titulo.setAlignment(Element.ALIGN_CENTER);
             titulo.setSpacingBefore(24);

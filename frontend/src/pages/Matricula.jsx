@@ -66,6 +66,7 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
   const [anioActivoNumero, setAnioActivoNumero] = useState("");
   const [secciones, setSecciones] = useState([]);
   const [accionId, setAccionId] = useState(null);
+  const [descargandoEstadisticas, setDescargandoEstadisticas] = useState(false);
   const [retiroMatricula, setRetiroMatricula] = useState(null);
   const [representantesAutorizados, setRepresentantesAutorizados] = useState(
     [],
@@ -352,6 +353,25 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
     }
   };
 
+  const descargarEstadisticas = async () => {
+    setDescargandoEstadisticas(true);
+    try {
+      const { data } = await api.get("/director/estadisticas/pdf", {
+        responseType: "blob",
+      });
+      descargarArchivo(data, "estadisticas-matricula.pdf");
+    } catch (err) {
+      toast.error(
+        await mensajeErrorBlob(
+          err,
+          "No se pudo descargar el reporte de estadísticas de matrícula.",
+        ),
+      );
+    } finally {
+      setDescargandoEstadisticas(false);
+    }
+  };
+
   // Acciones de cada fila según la pestaña
   const renderAcciones = (f, ocupada) => {
     const ruta = `/matricula/${f.matriculaId}/inscripcion`;
@@ -425,7 +445,21 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
     <div className="mod-main">
       <div className="mod-heading">
         <h1>Matrícula</h1>
-        {!soloConsulta && (
+        {soloConsulta ? (
+          <div className="mod-heading-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={descargandoEstadisticas}
+              onClick={descargarEstadisticas}
+            >
+              <Icon icon={ICONOS.descargar} className="icono-inline" />{" "}
+              {descargandoEstadisticas
+                ? "Descargando reporte..."
+                : "Descargar estadísticas"}
+            </button>
+          </div>
+        ) : (
           <div className="mod-heading-actions">
             <Link to="/matricula/preinscripcion" className="btn-primary">
               + Nueva preinscripción
