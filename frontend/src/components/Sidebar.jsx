@@ -1,6 +1,7 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import { getRol } from "../utils/auth";
+import { getNombre, getRol, logout } from "../utils/auth";
 import { ROLES } from "../constants/roles";
 import { ICONOS } from "../utils/iconos";
 import "./Sidebar.css";
@@ -97,7 +98,28 @@ const SECCIONES = [
 
 function Sidebar({ colapsado, abiertoMovil, onCerrar }) {
   const rol = getRol();
+  const nombre = getNombre() || "Usuario";
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const [menuUsuario, setMenuUsuario] = useState(false);
+  const usuarioRef = useRef(null);
+
+  // Cierra el menú del usuario al hacer clic fuera
+  useEffect(() => {
+    if (!menuUsuario) return undefined;
+    const alClicFuera = (evento) => {
+      if (usuarioRef.current && !usuarioRef.current.contains(evento.target)) {
+        setMenuUsuario(false);
+      }
+    };
+    document.addEventListener("mousedown", alClicFuera);
+    return () => document.removeEventListener("mousedown", alClicFuera);
+  }, [menuUsuario]);
+
+  const cerrarSesion = () => {
+    logout();
+    navigate("/login");
+  };
 
   const secciones = SECCIONES.map((seccion) => ({
     ...seccion,
@@ -175,6 +197,35 @@ function Sidebar({ colapsado, abiertoMovil, onCerrar }) {
             </div>
           ))}
         </nav>
+
+        {/* Usuario al final del menú */}
+        <div className="sidebar-usuario" ref={usuarioRef}>
+          {menuUsuario && (
+            <button
+              type="button"
+              className="sidebar-item sidebar-item--salir"
+              onClick={cerrarSesion}
+              title={colapsado ? "Cerrar sesión" : undefined}
+            >
+              <Icon icon={ICONOS.salir} className="sidebar-icono" />
+              <span className="sidebar-etiqueta">Cerrar sesión</span>
+            </button>
+          )}
+          <button
+            type="button"
+            className="sidebar-item sidebar-usuario-btn"
+            onClick={() => setMenuUsuario((abierto) => !abierto)}
+            aria-expanded={menuUsuario}
+            title={colapsado ? nombre : undefined}
+          >
+            <Icon icon={ICONOS.usuario} className="sidebar-icono" />
+            <span className="sidebar-etiqueta">{nombre}</span>
+            <Icon
+              icon={menuUsuario ? "mdi:chevron-down" : "mdi:chevron-up"}
+              className="sidebar-chevron"
+            />
+          </button>
+        </div>
       </aside>
     </>
   );

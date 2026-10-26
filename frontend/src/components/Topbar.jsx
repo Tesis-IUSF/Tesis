@@ -57,22 +57,27 @@ function Topbar({ onToggleMenu }) {
         </nav>
       )}
 
+      {/* Con menú lateral, el usuario y "Cerrar sesión" van al final del menú */}
       <div className="topbar-right">
-        {nombre && (
-          <span className="topbar-usuario">
-            <Icon icon={ICONOS.usuario} className="topbar-usuario-icono" />
-            <span className="topbar-nombre">{nombre}</span>
-          </span>
+        {!onToggleMenu && (
+          <>
+            {nombre && (
+              <span className="topbar-usuario">
+                <Icon icon={ICONOS.usuario} className="topbar-usuario-icono" />
+                <span className="topbar-nombre">{nombre}</span>
+              </span>
+            )}
+            <button
+              className="btn-logout"
+              onClick={handleLogout}
+              aria-label="Cerrar sesión"
+              title="Cerrar sesión"
+            >
+              <Icon icon={ICONOS.salir} className="btn-logout-icono" />
+              <span className="btn-logout-texto">Cerrar sesión</span>
+            </button>
+          </>
         )}
-        <button
-          className="btn-logout"
-          onClick={handleLogout}
-          aria-label="Cerrar sesión"
-          title="Cerrar sesión"
-        >
-          <Icon icon={ICONOS.salir} className="btn-logout-icono" />
-          <span className="btn-logout-texto">Cerrar sesión</span>
-        </button>
       </div>
     </header>
   );
