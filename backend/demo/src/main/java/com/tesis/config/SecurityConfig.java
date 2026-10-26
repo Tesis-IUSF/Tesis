@@ -66,7 +66,7 @@ public class SecurityConfig {
             .requestMatchers("/api/matriculas/**")
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR", "ADMINISTRATIVO")
             .requestMatchers("/api/usuarios/**")
-                .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
+                .hasRole("ADMINISTRADOR")
             .anyRequest().authenticated())
         .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(
             (request, response, exception) -> response.sendError(

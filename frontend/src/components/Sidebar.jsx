@@ -24,6 +24,12 @@ const SECCIONES = [
     titulo: "Personal",
     items: [
       { ruta: "/empleados", etiqueta: "Empleados", icono: ICONOS.empleados },
+      {
+        ruta: "/usuarios",
+        etiqueta: "Usuarios",
+        icono: ICONOS.usuarios,
+        roles: [ROLES.ADMIN],
+      },
       { ruta: "/turnos", etiqueta: "Turnos", icono: ICONOS.reloj },
       {
         ruta: "/carnets",
