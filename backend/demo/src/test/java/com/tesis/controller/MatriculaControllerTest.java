@@ -13,6 +13,7 @@ import com.tesis.entity.TipoPeriodoMatricula;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.CacheManager;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 import org.springframework.test.context.ActiveProfiles;
@@ -45,10 +46,14 @@ class MatriculaControllerTest {
         @Autowired
         private Clock clock;
 
+        @Autowired
+        private CacheManager cacheManager;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void configurarMockMvc() {
+        cacheManager.getCache("calendarioMatricula").clear();
         mockMvc = MockMvcBuilders.webAppContextSetup(applicationContext)
                 .apply(SecurityMockMvcConfigurers.springSecurity())
                 .build();
