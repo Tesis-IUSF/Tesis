@@ -5,6 +5,14 @@ import api from "../utils/api";
 import { normalizarRol } from "../utils/auth";
 import "./Login.css";
 
+const RUTA_INICIAL_POR_ROL = {
+  [ROLES.ADMIN]: "/usuarios",
+  [ROLES.DIRECTOR]: "/dashboard",
+  [ROLES.COORDINADOR]: "/empleados",
+  [ROLES.ADMINISTRATIVO]: "/matricula",
+  [ROLES.ESCANER]: "/escaner",
+};
+
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,11 +46,7 @@ function Login() {
         data.nombreUsuario || data.email || email.trim(),
       );
 
-      if (rol === ROLES.ESCANER) {
-        navigate("/escaner");
-      } else {
-        navigate("/dashboard");
-      }
+      navigate(RUTA_INICIAL_POR_ROL[rol] || "/no-autorizado", { replace: true });
     } catch (err) {
       if ([401, 403, 404].includes(err.response?.status)) {
         setError("Usuario o contraseña incorrectos.");

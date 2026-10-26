@@ -10,7 +10,7 @@ import "./Empleados.css";
 import { Icon } from "@iconify/react";
 import { ICONOS } from "../utils/iconos";
 
-function Empleados() {
+function Empleados({ soloConsulta = false }) {
   const toast = useToast();
   const { items: cargos } = useCargos();
   const { items: turnos } = useTurnos();
@@ -59,7 +59,8 @@ function Empleados() {
   );
 
   useEffect(() => {
-    cargarEmpleados(0);
+    const timer = window.setTimeout(() => cargarEmpleados(0), 0);
+    return () => window.clearTimeout(timer);
   }, [cargarEmpleados]);
 
   const confirmarEliminar = async () => {
@@ -92,11 +93,13 @@ function Empleados() {
       <div className="mod-main">
         <div className="mod-heading">
           <h1>Empleados</h1>
-          <div className="mod-heading-actions">
-            <Link to="/empleados/nuevo" className="btn-primary">
-              + Crear Empleado
-            </Link>
-          </div>
+          {!soloConsulta && (
+            <div className="mod-heading-actions">
+              <Link to="/empleados/nuevo" className="btn-primary">
+                + Crear Empleado
+              </Link>
+            </div>
+          )}
         </div>
 
         <div className="filters-bar">
@@ -206,27 +209,35 @@ function Empleados() {
                     </td>
                     <td data-label="Fecha Egreso">{emp.fechaEgreso || "—"}</td>
                     <td data-label="Acciones">
-                      <Link
-                        to={`/empleados/${emp.id}/editar`}
-                        className="btn-edit"
-                      >
-                        Editar
-                      </Link>
-                      {emp.activo ? (
-                        <button
-                          className="btn-delete"
-                          onClick={() => setEmpleadoAEliminar(emp)}
-                        >
-                          Dar de baja
-                        </button>
+                      {soloConsulta ? (
+                        <Link to={`/empleados/${emp.id}`} className="btn-edit">
+                          Ver
+                        </Link>
                       ) : (
-                        <button
-                          className="btn-delete"
-                          disabled
-                          title="El empleado ya está dado de baja"
+                        <>
+                        <Link
+                          to={`/empleados/${emp.id}/editar`}
+                          className="btn-edit"
                         >
-                          Dado de baja
-                        </button>
+                          Editar
+                        </Link>
+                        {emp.activo ? (
+                          <button
+                            className="btn-delete"
+                            onClick={() => setEmpleadoAEliminar(emp)}
+                          >
+                            Dar de baja
+                          </button>
+                        ) : (
+                          <button
+                            className="btn-delete"
+                            disabled
+                            title="El empleado ya está dado de baja"
+                          >
+                            Dado de baja
+                          </button>
+                        )}
+                        </>
                       )}
                     </td>
                   </tr>
@@ -257,20 +268,22 @@ function Empleados() {
           </div>
         )}
 
-        <ConfirmDialog
-          open={!!empleadoAEliminar}
-          title="Dar de baja empleado"
-          message={
-            empleadoAEliminar
-              ? `¿Dar de baja a ${empleadoAEliminar.nombre} ${empleadoAEliminar.apellido}? Esta acción cerrará su asignación vigente y revocará sus credenciales QR activas.`
-              : ""
-          }
-          confirmText="Sí, dar de baja"
-          confirmLoadingText="Dando de baja..."
-          onConfirm={confirmarEliminar}
-          onCancel={() => setEmpleadoAEliminar(null)}
-          cargando={eliminando}
-        />
+        {!soloConsulta && (
+          <ConfirmDialog
+            open={!!empleadoAEliminar}
+            title="Dar de baja empleado"
+            message={
+              empleadoAEliminar
+                ? `¿Dar de baja a ${empleadoAEliminar.nombre} ${empleadoAEliminar.apellido}? Esta acción cerrará su asignación vigente y revocará sus credenciales QR activas.`
+                : ""
+            }
+            confirmText="Sí, dar de baja"
+            confirmLoadingText="Dando de baja..."
+            onConfirm={confirmarEliminar}
+            onCancel={() => setEmpleadoAEliminar(null)}
+            cargando={eliminando}
+          />
+        )}
       </div>
     </>
   );

@@ -165,6 +165,51 @@ tbody td {
   color: #b91c1c;
 }
 
+.emp-detalle {
+  padding: 1.5rem;
+  background: var(--blanco);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(47, 90, 138, 0.07);
+}
+
+.emp-detalle-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.emp-detalle-cabecera h2 {
+  margin: 0 0 0.5rem;
+  color: var(--azul-oscuro);
+}
+
+.emp-detalle-foto {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.emp-detalle-datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin: 0;
+}
+
+.emp-detalle-datos dt {
+  color: var(--texto-suave);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.emp-detalle-datos dd {
+  margin: 0.25rem 0 0;
+  color: var(--texto);
+}
+
 /* Responsivo: tabla -> tarjetas apiladas en movil */
 @media (max-width: 640px) {
   thead {

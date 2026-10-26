@@ -42,7 +42,7 @@ const formatFechaISO = (v) => {
   return `${d}/${m}/${a}`;
 };
 
-function Matricula() {
+function Matricula({ soloConsulta = false, permitirRetiros = false }) {
   const toast = useToast();
 
   const [tab, setTab] = useState("preinscritos");
@@ -287,6 +287,7 @@ function Matricula() {
 
   // ---------- Acciones ----------
   const abrirRetiro = async (matricula) => {
+    if (!permitirRetiros) return;
     setAccionId(matricula.matriculaId);
     try {
       const { data } = await api.get(
@@ -384,11 +385,13 @@ function Matricula() {
     <div className="mod-main">
       <div className="mod-heading">
         <h1>Matrícula</h1>
-        <div className="mod-heading-actions">
-          <Link to="/matricula/preinscripcion" className="btn-primary">
-            + Nueva preinscripción
-          </Link>
-        </div>
+        {!soloConsulta && (
+          <div className="mod-heading-actions">
+            <Link to="/matricula/preinscripcion" className="btn-primary">
+              + Nueva preinscripción
+            </Link>
+          </div>
+        )}
       </div>
 
       <div className="stats-row">
@@ -571,7 +574,8 @@ function Matricula() {
                       >
                         Ver expediente
                       </Link>
-                      {f.estadoMatricula === "completada" && (
+                      {permitirRetiros &&
+                        f.estadoMatricula === "completada" && (
                         <button
                           type="button"
                           className="btn-reactivar"
@@ -580,7 +584,7 @@ function Matricula() {
                         >
                           {ocupada ? "Cargando..." : "Retirar"}
                         </button>
-                      )}
+                        )}
                       {f.estadoMatricula === "preinscrito" && (
                           <button
                             type="button"
@@ -621,7 +625,7 @@ function Matricula() {
         </div>
       )}
 
-      {retiroMatricula && (
+      {permitirRetiros && retiroMatricula && (
         <ModalFormulario
           titulo="Registrar retiro de matrícula"
           onCerrar={() => setRetiroMatricula(null)}
