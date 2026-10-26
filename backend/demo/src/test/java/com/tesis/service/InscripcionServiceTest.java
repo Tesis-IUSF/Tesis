@@ -31,9 +31,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -53,7 +53,7 @@ class InscripcionServiceTest {
         private Clock clock;
 
     @Test
-    void inicializaChecklistYFormalizaCuandoTodosLosObligatoriosEstanCumplidos() {
+    void formalizaSoloCuandoTodosLosRequisitosAplicablesEstanCumplidos() {
                 crearVerificador();
         NivelEducativo nivel = crearNivel();
         RequisitoMatricula requisitoNivelObligatorio = crearRequisito(
@@ -89,6 +89,20 @@ class InscripcionServiceTest {
         assertEquals(HttpStatus.CONFLICT, faltaGlobal.getStatusCode());
 
         marcarCumplido(matricula.getId(), requisitoGlobalObligatorio.getId());
+        ResponseStatusException faltaOpcional = assertThrows(ResponseStatusException.class,
+                () -> inscripcionService.formalizar(
+                        matricula.getId(), new FormalizarInscripcionRequestDTO("CONST-01", null)));
+        assertEquals(HttpStatus.CONFLICT, faltaOpcional.getStatusCode());
+        assertTrue(faltaOpcional.getReason().contains("Autorización opcional"));
+        assertEquals("en_proceso", inscripcionService.obtenerSeguimiento(matricula.getId())
+                .getEstadoMatricula());
+
+        Integer requisitoOpcionalId = checklistRepository.findByMatricula_Id(matricula.getId())
+                .stream()
+                .filter(item -> "Autorización opcional".equals(
+                        item.getRequisito().getNombre()))
+                .findFirst().orElseThrow().getRequisito().getId();
+        marcarCumplido(matricula.getId(), requisitoOpcionalId);
         InscripcionResponseDTO formalizada = inscripcionService.formalizar(
                 matricula.getId(), new FormalizarInscripcionRequestDTO("CONST-01", null));
 
@@ -100,7 +114,7 @@ class InscripcionServiceTest {
         assertNotNull(formalizada.getChecklist().stream()
                 .filter(item -> requisitoNivelObligatorio.getId().equals(item.getRequisitoId()))
                 .findFirst().orElseThrow().getVerificadoPorId());
-        assertFalse(formalizada.getChecklist().stream()
+        assertTrue(formalizada.getChecklist().stream()
                 .filter(item -> "Autorización opcional".equals(item.getNombreRequisito()))
                 .findFirst().orElseThrow().getCumplido());
     }
