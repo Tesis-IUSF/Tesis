@@ -15,6 +15,7 @@ public class RoleInitializer implements ApplicationRunner {
     private static final List<DefaultRole> DEFAULT_ROLES = List.of(
             new DefaultRole("ADMINISTRADOR", "Administración completa del sistema"),
             new DefaultRole("DIRECTOR", "Acceso directivo y gestión académica"),
+            new DefaultRole("COORDINADOR", "Gestión de publicaciones y categorías del blog"),
             new DefaultRole("ADMINISTRATIVO", "Gestión administrativa de matrícula y personal"),
             new DefaultRole("ESCANER", "Registro de asistencia mediante QR"));
 

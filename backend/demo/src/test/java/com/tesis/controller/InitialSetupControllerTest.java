@@ -56,6 +56,7 @@ class InitialSetupControllerTest {
 
         assertThat(rolesRepository.findByNombreRol("ADMINISTRADOR")).isPresent();
         assertThat(rolesRepository.findByNombreRol("DIRECTOR")).isPresent();
+        assertThat(rolesRepository.findByNombreRol("COORDINADOR")).isPresent();
         assertThat(rolesRepository.findByNombreRol("ADMINISTRATIVO")).isPresent();
         assertThat(rolesRepository.findByNombreRol("ESCANER")).isPresent();
     }

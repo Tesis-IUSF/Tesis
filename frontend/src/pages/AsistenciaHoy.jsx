@@ -32,7 +32,7 @@ function RelojDigital() {
   );
 }
 
-function AsistenciaHoy() {
+function AsistenciaHoy({ soloConsulta = false }) {
   const toast = useToast();
   const [registros, setRegistros] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -67,9 +67,12 @@ function AsistenciaHoy() {
   };
 
   useEffect(() => {
-    cargar();
+    const cargaInicial = window.setTimeout(() => cargar(), 0);
     const id = setInterval(cargar, INTERVALO_AUTO_REFRESH);
-    return () => clearInterval(id);
+    return () => {
+      window.clearTimeout(cargaInicial);
+      clearInterval(id);
+    };
   }, [cargar]);
 
   return (
@@ -91,19 +94,19 @@ function AsistenciaHoy() {
                 <th>Hora Salida</th>
                 <th>Horas Trabajadas</th>
                 <th>Estado</th>
-                <th>Acciones</th>
+                {!soloConsulta && <th>Acciones</th>}
               </tr>
             </thead>
             <tbody>
               {cargando ? (
                 <tr>
-                  <td colSpan={6} className="tabla-estado">
+                  <td colSpan={soloConsulta ? 5 : 6} className="tabla-estado">
                     Cargando asistencia de hoy...
                   </td>
                 </tr>
               ) : registros.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="tabla-estado">
+                  <td colSpan={soloConsulta ? 5 : 6} className="tabla-estado">
                     <span className="tabla-estado-icono">
                       <Icon icon={ICONOS.lista} />
                     </span>
@@ -128,20 +131,22 @@ function AsistenciaHoy() {
                         {r.estado}
                       </span>
                     </td>
-                    <td data-label="Acciones">
-                      {!r.horaSalida && (
-                        <button
-                          type="button"
-                          className="btn-marcar-salida"
-                          disabled={registrandoSalidaId === r.empleadoId}
-                          onClick={() => marcarSalida(r.empleadoId)}
-                        >
-                          {registrandoSalidaId === r.empleadoId
-                            ? "Registrando..."
-                            : "Marcar Salida"}
-                        </button>
-                      )}
-                    </td>
+                    {!soloConsulta && (
+                      <td data-label="Acciones">
+                        {!r.horaSalida && (
+                          <button
+                            type="button"
+                            className="btn-marcar-salida"
+                            disabled={registrandoSalidaId === r.empleadoId}
+                            onClick={() => marcarSalida(r.empleadoId)}
+                          >
+                            {registrandoSalidaId === r.empleadoId
+                              ? "Registrando..."
+                              : "Marcar Salida"}
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
