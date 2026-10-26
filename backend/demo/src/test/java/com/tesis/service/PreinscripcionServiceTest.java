@@ -536,22 +536,51 @@ class PreinscripcionServiceTest {
     }
 
     @Test
-    void rechazaActualizarPreinscripcionSiLaMatriculaYaEstaCompletada() {
+    void permiteEditarFichaCompletadaYConservaDatosFormalizados() {
         Seccion seccion = crearSeccion(2, "P");
+        Seccion nuevaSeccion = crearSeccion(2, "Q");
         PreinscripcionResponseDTO creada = preinscripcionService.preinscribir(
                 crearRequest(seccion.getId(), "EST-EDITAR-03", "REP-EDITAR-03"));
         Matricula matricula = matriculaRepository.findById(creada.getMatriculaId()).orElseThrow();
         matricula.setEstadoMatricula("completada");
+        matricula.setTipoIngreso("regular");
+        matricula.setInstitucionProcedencia("Institución histórica");
+        matricula.setFechaFormalizacion(LocalDate.of(2026, 1, 15));
         matriculaRepository.saveAndFlush(matricula);
 
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> preinscripcionService.actualizarPreinscripcion(
-                        matricula.getId(),
-                        preinscripcionService.obtenerDatosPreinscripcion(matricula.getId())));
+        RequisitoMatricula requisito = crearRequisito(
+                "REQUISITO-FORMALIZADO-EDITAR", seccion.getGrado().getNivelEducativo(), null);
+        ChecklistMatricula checklist = crearChecklist(matricula, requisito, true);
+        PreinscripcionRequestDTO datos = preinscripcionService
+                .obtenerDatosPreinscripcion(matricula.getId());
+        datos.getEstudiante().setNombre("Nombre corregido");
+        datos.getRepresentante().setNombre("Representante corregido");
+        datos.setInstitucionProcedencia("Intento de cambio histórico");
+        datos.setSeccionId(nuevaSeccion.getId());
 
-        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
-        assertEquals("completada", matriculaRepository.findById(matricula.getId())
-                .orElseThrow().getEstadoMatricula());
+        var respuesta = preinscripcionService.actualizarPreinscripcion(matricula.getId(), datos);
+
+        entityManager.flush();
+        entityManager.clear();
+        Matricula actualizada = matriculaRepository.findById(matricula.getId()).orElseThrow();
+        assertEquals("completada", respuesta.getEstadoMatricula());
+        assertEquals(nuevaSeccion.getId(), respuesta.getSeccionId());
+        assertEquals("completada", actualizada.getEstadoMatricula());
+        assertEquals(nuevaSeccion.getId(), actualizada.getSeccion().getId());
+        assertEquals("regular", actualizada.getTipoIngreso());
+        assertEquals("Institución histórica", actualizada.getInstitucionProcedencia());
+        assertEquals(LocalDate.of(2026, 1, 15), actualizada.getFechaFormalizacion());
+        assertEquals("Nombre corregido", estudianteRepository.findById(creada.getEstudianteId())
+                .orElseThrow().getNombre());
+        assertEquals("Representante corregido", representanteRepository
+                .findByCedula(cedulaRepresentanteDeClave("REP-EDITAR-03"))
+                .orElseThrow().getNombre());
+        assertEquals(checklist.getId(), checklistRepository.findByMatricula_Id(matricula.getId())
+                .getFirst().getId());
+        assertEquals(requisito.getId(), checklistRepository.findByMatricula_Id(matricula.getId())
+                .getFirst().getRequisito().getId());
+        assertEquals(true, checklistRepository.findByMatricula_Id(matricula.getId())
+                .getFirst().getCumplido());
     }
 
     @Test

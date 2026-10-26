@@ -8,6 +8,7 @@ import { extractErrorMessage } from "../utils/errors";
 import { ICONOS } from "../utils/iconos";
 import { descargarArchivo, mensajeErrorBlob } from "../utils/descargas";
 import ModalFormulario from "../components/ModalFormulario";
+import Preinscripcion from "./Preinscripcion";
 import "./Inscripcion.css";
 
 const ETIQUETA_ESTADO = {
@@ -38,24 +39,35 @@ function Inscripcion() {
   const toast = useToast();
 
   const [data, setData] = useState(null);
+  const [expediente, setExpediente] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
-  const [secciones, setSecciones] = useState([]);
+  const [editandoFicha, setEditandoFicha] = useState(false);
+  const [guardandoFicha, setGuardandoFicha] = useState(false);
+  const [checklistBorrador, setChecklistBorrador] = useState({});
+  const [historial, setHistorial] = useState([]);
+  const [modalHistorial, setModalHistorial] = useState(false);
+  const [cargandoHistorial, setCargandoHistorial] = useState(false);
+  const [errorHistorial, setErrorHistorial] = useState("");
 
   const [guardandoId, setGuardandoId] = useState(null);
   const [abiertos, setAbiertos] = useState(() => new Set());
-  const [borradores, setBorradores] = useState({});
 
   const [modalFormalizar, setModalFormalizar] = useState(false);
   const [numeroConstancia, setNumeroConstancia] = useState("");
   const [formalizando, setFormalizando] = useState(false);
   const [descargando, setDescargando] = useState("");
 
-  const cargar = useCallback(async () => {
-    setCargando(true);
+  const cargar = useCallback(async ({ silencioso = false } = {}) => {
+    if (!silencioso) setCargando(true);
     setError("");
     try {
-      let { data: seguimiento } = await api.get(`/matriculas/${id}/checklist`);
+      const [seguimientoResponse, expedienteResponse] = await Promise.all([
+        api.get(`/matriculas/${id}/checklist`),
+        api.get(`/matriculas/${id}/expediente`),
+      ]);
+      let seguimiento = seguimientoResponse.data;
+      const datosExpediente = expedienteResponse.data;
       // Sin requisitos todavía: el backend los crea según nivel y tipo de ingreso
       if (
         seguimiento.checklist.length === 0 &&
@@ -64,6 +76,7 @@ function Inscripcion() {
         ({ data: seguimiento } = await api.post(`/matriculas/${id}/checklist`));
       }
       setData(seguimiento);
+      setExpediente(datosExpediente);
     } catch (err) {
       setError(extractErrorMessage(err, "No se pudo cargar la inscripción."));
     } finally {
@@ -72,21 +85,16 @@ function Inscripcion() {
   }, [id]);
 
   useEffect(() => {
-    cargar();
-    api
-      .get("/catalogos/secciones", { params: { page: 0, size: 100 } })
-      .then(({ data: r }) => setSecciones(r.content))
-      .catch(() => setSecciones([]));
+    void Promise.resolve().then(cargar);
   }, [cargar]);
-
-  const seccion = useMemo(
-    () => secciones.find((s) => s.id === data?.seccionId),
-    [secciones, data],
-  );
 
   const editable =
     !!data && ["preinscrito", "en_proceso"].includes(data.estadoMatricula);
+  const fichaEditable =
+    !!data &&
+    ["preinscrito", "en_proceso", "completada"].includes(data.estadoMatricula);
   const formalizada = data?.estadoMatricula === "completada";
+  const checklistEditable = editable && editandoFicha;
 
   const items = useMemo(() => {
     if (!data) return [];
@@ -102,69 +110,130 @@ function Inscripcion() {
   const faltan = Math.max(total - hechos, 0);
   const pct = total > 0 ? Math.round((hechos / total) * 100) : 100;
 
-  // ---------- Requisitos ----------
-  // El PATCH sobrescribe notas y archivo: siempre se reenvían los valores guardados.
-  const actualizar = async (item, cambios) => {
-    setGuardandoId(item.requisitoId);
+  const alGuardarFicha = async ({ fichaModificada }) => {
     try {
-      const { data: respuesta } = await api.patch(
-        `/matriculas/${id}/checklist/${item.requisitoId}`,
-        {
-          cumplido: item.cumplido,
-          notas: item.notas ?? null,
-          archivoUrl: item.archivoUrl ?? null,
-          ...cambios,
-        },
+      const checklistModificado = await guardarChecklistBorrador();
+      await cargar({ silencioso: true });
+      setEditandoFicha(false);
+      setChecklistBorrador({});
+      if (fichaModificada || checklistModificado) {
+        toast.success(
+          checklistModificado && fichaModificada
+            ? "Ficha y requisitos guardados."
+            : checklistModificado
+              ? "Requisitos guardados."
+              : "Ficha actualizada.",
+        );
+      } else {
+        toast.info("No se realizaron cambios.");
+      }
+    } catch (err) {
+      await cargar({ silencioso: true });
+      const mensaje = extractErrorMessage(
+        err,
+        "No se pudieron guardar los cambios.",
+      );
+      toast.error(
+        fichaModificada
+          ? `${mensaje} La ficha se actualizó, pero los requisitos no; revisa el expediente antes de volver a guardar.`
+          : mensaje,
+      );
+    }
+  };
+
+  const alternarDetalle = (requisitoId) => {
+    setAbiertos((prev) => {
+      const sig = new Set(prev);
+      if (sig.has(requisitoId)) sig.delete(requisitoId);
+      else sig.add(requisitoId);
+      return sig;
+    });
+  };
+
+  const iniciarEdicion = () => {
+    setChecklistBorrador(
+      Object.fromEntries(
+        (data?.checklist ?? []).map((item) => [
+          item.requisitoId,
+          {
+            cumplido: Boolean(item.cumplido),
+            notas: item.notas ?? "",
+            archivoUrl: item.archivoUrl ?? "",
+          },
+        ]),
+      ),
+    );
+    setEditandoFicha(true);
+  };
+
+  const descartarEdicion = () => {
+    setChecklistBorrador({});
+    setEditandoFicha(false);
+  };
+
+  const cambiarRequisitoBorrador = (requisitoId, cumplido) => {
+    setChecklistBorrador((actual) => ({
+      ...actual,
+      [requisitoId]: { ...actual[requisitoId], cumplido },
+    }));
+  };
+
+  const guardarChecklistBorrador = async () => {
+    const cambios = (data?.checklist ?? [])
+      .filter(
+        (item) =>
+          checklistBorrador[item.requisitoId]?.cumplido !==
+            Boolean(item.cumplido) ||
+          (checklistBorrador[item.requisitoId]?.notas ?? "") !==
+            (item.notas ?? "") ||
+          (checklistBorrador[item.requisitoId]?.archivoUrl ?? "") !==
+            (item.archivoUrl ?? ""),
+      )
+      .map((item) => ({
+        requisitoId: item.requisitoId,
+        cumplido:
+          checklistBorrador[item.requisitoId]?.cumplido ??
+          Boolean(item.cumplido),
+        notas: checklistBorrador[item.requisitoId]?.notas ?? item.notas ?? null,
+        archivoUrl:
+          checklistBorrador[item.requisitoId]?.archivoUrl ??
+          item.archivoUrl ??
+          null,
+      }));
+
+    if (cambios.length === 0) {
+      return false;
+    }
+
+    setGuardandoId("checklist");
+    try {
+      const { data: respuesta } = await api.put(
+        `/matriculas/${id}/checklist`,
+        { items: cambios },
       );
       setData(respuesta);
       return true;
-    } catch (err) {
-      toast.error(
-        extractErrorMessage(err, "No se pudo actualizar el requisito."),
-      );
-      return false;
     } finally {
       setGuardandoId(null);
     }
   };
 
-  const alternarDetalle = (item) => {
-    setAbiertos((prev) => {
-      const sig = new Set(prev);
-      if (sig.has(item.requisitoId)) sig.delete(item.requisitoId);
-      else sig.add(item.requisitoId);
-      return sig;
-    });
-    setBorradores((prev) =>
-      prev[item.requisitoId]
-        ? prev
-        : {
-            ...prev,
-            [item.requisitoId]: {
-              notas: item.notas ?? "",
-              archivoUrl: item.archivoUrl ?? "",
-            },
-          },
-    );
-  };
-
-  const cambiarBorrador = (requisitoId, campo, valor) =>
-    setBorradores((prev) => ({
-      ...prev,
-      [requisitoId]: { ...prev[requisitoId], [campo]: valor },
-    }));
-
-  const guardarDetalle = async (item) => {
-    const b = borradores[item.requisitoId];
-    if ((b.archivoUrl ?? "").trim().length > 500) {
-      toast.error("El enlace del documento admite máximo 500 caracteres.");
-      return;
+  const abrirHistorialAcademico = async () => {
+    setModalHistorial(true);
+    setCargandoHistorial(true);
+    setErrorHistorial("");
+    try {
+      const { data: respuesta } = await api.get(
+        `/matriculas/${id}/historial-academico`,
+      );
+      setHistorial(respuesta);
+    } catch (err) {
+      setErrorHistorial(
+        extractErrorMessage(err, "No se pudo cargar el historial académico."),
+      );
+    } finally {
+      setCargandoHistorial(false);
     }
-    const ok = await actualizar(item, {
-      notas: o(b.notas),
-      archivoUrl: o(b.archivoUrl),
-    });
-    if (ok) toast.success("Detalle guardado.");
   };
 
   // ---------- Formalizar ----------
@@ -248,12 +317,52 @@ function Inscripcion() {
   return (
     <div className="mod-main">
       <div className="mod-heading">
-        <h1>Inscripción</h1>
+        <h1>Expediente de matrícula</h1>
         <div className="mod-heading-actions">
-          <Link to="/matricula" className="btn-secondary">
-            <Icon icon={ICONOS.volver} className="icono-inline" /> Volver a
-            Matrícula
-          </Link>
+          {!editandoFicha && (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={abrirHistorialAcademico}
+            >
+              Ver historial académico
+            </button>
+          )}
+          {fichaEditable &&
+            (editandoFicha ? (
+              <>
+                <button
+                  type="submit"
+                  form={`preinscripcion-${id}`}
+                  className="btn-primary"
+                  disabled={Boolean(guardandoId) || guardandoFicha}
+                >
+                  Guardar
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={Boolean(guardandoId) || guardandoFicha}
+                  onClick={descartarEdicion}
+                >
+                  Descartar
+                </button>
+              </>
+            ) : (
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={iniciarEdicion}
+            >
+              Editar
+            </button>
+            ))}
+          {!editandoFicha && (
+            <Link to="/matricula" className="btn-secondary">
+              <Icon icon={ICONOS.volver} className="icono-inline" /> Volver a
+              Matrícula
+            </Link>
+          )}
         </div>
       </div>
 
@@ -262,10 +371,9 @@ function Inscripcion() {
         <div>
           <h2>{data.estudianteNombreCompleto}</h2>
           <p className="ins-sub">
-            {seccion
-              ? `${seccion.gradoNombre ?? ""} · Sección ${seccion.letraSeccion}`
-              : "Sección —"}{" "}
-            · Año escolar {data.anioEscolar}
+            {expediente?.nivelEducativoNombre} · {expediente?.gradoNombre} ·
+            {" Sección "}
+            {expediente?.letraSeccion} · Año escolar {data.anioEscolar}
           </p>
         </div>
         <div className="ins-cabecera-datos">
@@ -275,6 +383,73 @@ function Inscripcion() {
           <small>Solicitud: {formatFechaISO(data.fechaSolicitud)}</small>
         </div>
       </section>
+
+      {editandoFicha ? (
+        <Preinscripcion
+          key={id}
+          matriculaId={id}
+          embedded
+          formId={`preinscripcion-${id}`}
+          onCancel={descartarEdicion}
+          onSaved={alGuardarFicha}
+          onSubmitting={setGuardandoFicha}
+        />
+      ) : (
+      <>
+      <section className="ins-tarjeta">
+        <h3 className="ins-seccion-titulo">Datos del estudiante</h3>
+        <dl className="ins-datos-grid">
+          <div><dt>Cédula</dt><dd>{expediente?.estudiante?.cedula || "—"}</dd></div>
+          <div><dt>Fecha de nacimiento</dt><dd>{formatFechaISO(expediente?.estudiante?.fechaNacimiento)}</dd></div>
+          <div><dt>Sexo</dt><dd>{expediente?.estudiante?.sexo || "—"}</dd></div>
+          <div><dt>Correo</dt><dd>{expediente?.estudiante?.correo || "—"}</dd></div>
+          <div><dt>Teléfono</dt><dd>{expediente?.estudiante?.telefono || "—"}</dd></div>
+          <div><dt>N.º de expediente</dt><dd>{expediente?.estudiante?.numeroExpediente || "—"}</dd></div>
+          <div className="ins-dato-completo"><dt>Observaciones</dt><dd>{expediente?.estudiante?.observaciones || "—"}</dd></div>
+        </dl>
+      </section>
+
+      <section className="ins-tarjeta">
+        <h3 className="ins-seccion-titulo">Representantes vinculados</h3>
+        {expediente?.representantes?.length ? (
+          <div className="ins-representantes">
+            {expediente.representantes.map((representante) => (
+              <article className="ins-representante" key={representante.id}>
+                <h4>
+                  {representante.nombre} {representante.apellido}
+                  {representante.relacionPrincipal && (
+                    <span className="ins-principal">Principal</span>
+                  )}
+                </h4>
+                <dl className="ins-datos-grid">
+                  <div><dt>Cédula</dt><dd>{representante.cedula || "—"}</dd></div>
+                  <div><dt>Parentesco</dt><dd>{representante.parentesco || "—"}</dd></div>
+                  <div><dt>Correo</dt><dd>{representante.correo || "—"}</dd></div>
+                  <div><dt>Teléfono</dt><dd>{representante.telefono || "—"}</dd></div>
+                  <div><dt>Teléfono secundario</dt><dd>{representante.telefonoSecundario || "—"}</dd></div>
+                  <div><dt>Ocupación</dt><dd>{representante.ocupacion || "—"}</dd></div>
+                  <div className="ins-dato-completo"><dt>Dirección</dt><dd>{representante.direccion || "—"}</dd></div>
+                </dl>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p>No hay representantes activos vinculados a este estudiante.</p>
+        )}
+      </section>
+
+      <section className="ins-tarjeta">
+        <h3 className="ins-seccion-titulo">Datos de matrícula</h3>
+        <dl className="ins-datos-grid">
+          <div><dt>Tipo de ingreso</dt><dd>{expediente?.tipoIngreso || "—"}</dd></div>
+          <div><dt>Institución de procedencia</dt><dd>{expediente?.institucionProcedencia || "—"}</dd></div>
+          <div><dt>Fecha de solicitud</dt><dd>{formatFechaISO(data.fechaSolicitud)}</dd></div>
+          <div><dt>Fecha de formalización</dt><dd>{formatFechaISO(data.fechaFormalizacion)}</dd></div>
+          <div><dt>Constancia</dt><dd>{data.numeroConstancia || "—"}</dd></div>
+        </dl>
+      </section>
+      </>
+      )}
 
       {/* Progreso */}
       <section className="ins-tarjeta">
@@ -305,21 +480,43 @@ function Inscripcion() {
           <ul className="ins-lista">
             {items.map((item) => {
               const abierto = abiertos.has(item.requisitoId);
-              const b = borradores[item.requisitoId];
-              const ocupado = guardandoId === item.requisitoId;
+              const b = checklistEditable
+                ? checklistBorrador[item.requisitoId] ?? {
+                    cumplido: Boolean(item.cumplido),
+                    notas: item.notas ?? "",
+                    archivoUrl: item.archivoUrl ?? "",
+                  }
+                : item;
+              const cumplidoMostrado = checklistEditable
+                ? Boolean(b.cumplido)
+                : Boolean(item.cumplido);
+              const ocupado = Boolean(guardandoId) || guardandoFicha;
               return (
                 <li
                   key={item.requisitoId}
-                  className={`ins-item${item.cumplido ? " cumplido" : ""}`}
+                  className={`ins-item${cumplidoMostrado ? " cumplido" : ""}`}
                 >
                   <div className="ins-item-fila">
                     <label className="ins-check">
                       <input
                         type="checkbox"
-                        checked={!!item.cumplido}
-                        disabled={!editable || ocupado}
+                        checked={
+                          checklistEditable
+                            ? checklistBorrador[item.requisitoId]?.cumplido ??
+                              item.cumplido ??
+                              false
+                            : item.cumplido ?? false
+                        }
+                        disabled={!checklistEditable || ocupado}
                         onChange={() =>
-                          actualizar(item, { cumplido: !item.cumplido })
+                          cambiarRequisitoBorrador(
+                            item.requisitoId,
+                            !(
+                              checklistBorrador[item.requisitoId]?.cumplido ??
+                              item.cumplido ??
+                              false
+                            ),
+                          )
                         }
                       />
                       <span className="ins-item-texto">
@@ -345,7 +542,7 @@ function Inscripcion() {
                     <button
                       type="button"
                       className="btn-edit"
-                      onClick={() => alternarDetalle(item)}
+                      onClick={() => alternarDetalle(item.requisitoId)}
                       aria-expanded={abierto}
                     >
                       {abierto ? "Ocultar" : "Detalle"}
@@ -359,13 +556,15 @@ function Inscripcion() {
                         <textarea
                           rows={2}
                           value={b.notas}
-                          disabled={!editable}
+                          disabled={!checklistEditable}
                           onChange={(e) =>
-                            cambiarBorrador(
-                              item.requisitoId,
-                              "notas",
-                              e.target.value,
-                            )
+                            setChecklistBorrador((actual) => ({
+                              ...actual,
+                              [item.requisitoId]: {
+                                ...b,
+                                notas: e.target.value,
+                              },
+                            }))
                           }
                           placeholder="Observaciones sobre este requisito"
                         />
@@ -374,29 +573,19 @@ function Inscripcion() {
                         Enlace del documento
                         <input
                           value={b.archivoUrl}
-                          disabled={!editable}
+                          disabled={!checklistEditable}
                           onChange={(e) =>
-                            cambiarBorrador(
-                              item.requisitoId,
-                              "archivoUrl",
-                              e.target.value,
-                            )
+                            setChecklistBorrador((actual) => ({
+                              ...actual,
+                              [item.requisitoId]: {
+                                ...b,
+                                archivoUrl: e.target.value,
+                              },
+                            }))
                           }
                           placeholder="https://..."
                         />
                       </label>
-                      {editable && (
-                        <div className="ins-detalle-acciones">
-                          <button
-                            type="button"
-                            className="btn-primary"
-                            disabled={ocupado}
-                            onClick={() => guardarDetalle(item)}
-                          >
-                            {ocupado ? "Guardando..." : "Guardar detalle"}
-                          </button>
-                        </div>
-                      )}
                     </div>
                   )}
                 </li>
@@ -425,14 +614,6 @@ function Inscripcion() {
           <div className="ins-acciones">
             <button
               type="button"
-              className="btn-secondary"
-              disabled={descargando === "cupo"}
-              onClick={() => descargar("cupo")}
-            >
-              {descargando === "cupo" ? "Descargando..." : "Constancia de cupo"}
-            </button>
-            <button
-              type="button"
               className="btn-primary"
               disabled={descargando === "inscripcion"}
               onClick={() => descargar("inscripcion")}
@@ -452,14 +633,18 @@ function Inscripcion() {
               : "Todos los requisitos obligatorios están cumplidos."}
           </p>
           <div className="ins-acciones">
-            <button
-              type="button"
-              className="btn-secondary"
-              disabled={descargando === "cupo"}
-              onClick={() => descargar("cupo")}
-            >
-              {descargando === "cupo" ? "Descargando..." : "Constancia de cupo"}
-            </button>
+            {data.estadoMatricula === "preinscrito" && (
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={descargando === "cupo"}
+                onClick={() => descargar("cupo")}
+              >
+                {descargando === "cupo"
+                  ? "Descargando..."
+                  : "Constancia de cupo"}
+              </button>
+            )}
             <button
               type="button"
               className="btn-primary"
@@ -475,7 +660,7 @@ function Inscripcion() {
         </section>
       ) : null}
 
-      {modalFormalizar && (
+      {modalFormalizar && !editandoFicha && (
         <ModalFormulario
           titulo="Formalizar inscripción"
           onCerrar={() => setModalFormalizar(false)}
@@ -498,6 +683,73 @@ function Inscripcion() {
             />
           </label>
         </ModalFormulario>
+      )}
+      {modalHistorial && (
+        <div
+          className="ins-historial-overlay"
+          role="presentation"
+          onClick={() => !cargandoHistorial && setModalHistorial(false)}
+        >
+          <section
+            className="ins-historial-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ins-historial-titulo"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="ins-historial-cabecera">
+              <h2 id="ins-historial-titulo">Historial académico</h2>
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={cargandoHistorial}
+                onClick={() => setModalHistorial(false)}
+              >
+                Cerrar
+              </button>
+            </div>
+            {cargandoHistorial ? (
+              <p>Cargando historial académico...</p>
+            ) : errorHistorial ? (
+              <p className="error-msg">{errorHistorial}</p>
+            ) : historial.length === 0 ? (
+              <p>No hay matrículas académicas registradas.</p>
+            ) : (
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Año escolar</th>
+                      <th>Nivel y grado</th>
+                      <th>Sección</th>
+                      <th>Estado</th>
+                      <th>Solicitud</th>
+                      <th>Formalización</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historial.map((matricula) => (
+                      <tr key={matricula.matriculaId}>
+                        <td>{matricula.anioEscolar}</td>
+                        <td>
+                          {matricula.nivelEducativoNombre} ·{" "}
+                          {matricula.gradoNombre}
+                        </td>
+                        <td>{matricula.letraSeccion}</td>
+                        <td>
+                          {ETIQUETA_ESTADO[matricula.estadoMatricula] ??
+                            matricula.estadoMatricula}
+                        </td>
+                        <td>{formatFechaISO(matricula.fechaSolicitud)}</td>
+                        <td>{formatFechaISO(matricula.fechaFormalizacion)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </div>
       )}
     </div>
   );

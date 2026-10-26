@@ -3,6 +3,7 @@ package com.tesis.controller;
 import com.tesis.dto.RetiroDTO.HistorialRetirosResponseDTO;
 import com.tesis.dto.RetiroDTO.RetiroRequestDTO;
 import com.tesis.dto.RetiroDTO.RetiroResponseDTO;
+import com.tesis.dto.RetiroDTO.RepresentanteSolicitanteDTO;
 import com.tesis.service.RetiroService;
 import com.tesis.service.ConstanciaService;
 import jakarta.validation.Valid;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/matriculas/{matriculaId}/retiros")
@@ -47,6 +49,12 @@ public class RetiroController {
     @GetMapping
     public HistorialRetirosResponseDTO obtenerHistorial(@PathVariable Integer matriculaId) {
         return retiroService.obtenerHistorial(matriculaId);
+    }
+
+    @GetMapping("/representantes-autorizados")
+    public List<RepresentanteSolicitanteDTO> listarRepresentantesAutorizados(
+            @PathVariable Integer matriculaId) {
+        return retiroService.listarRepresentantesAutorizados(matriculaId);
     }
 
     @GetMapping(value = "/{retiroId}/constancia-retiro", produces = MediaType.APPLICATION_PDF_VALUE)
