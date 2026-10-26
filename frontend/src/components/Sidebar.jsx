@@ -1,6 +1,7 @@
-import { NavLink } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import { getRol } from "../utils/auth";
+import { getNombre, getRol, logout } from "../utils/auth";
 import { ROLES } from "../constants/roles";
 import { ICONOS } from "../utils/iconos";
 import "./Sidebar.css";
@@ -9,6 +10,7 @@ import "./Sidebar.css";
 // - ruta: a dónde lleva (sin ruta + pronto: true = deshabilitado)
 // - roles: si se indica, solo esos roles lo ven
 // - externo: true = se abre en una pestaña nueva (páginas públicas)
+// - excluir: rutas que NO deben marcar este ítem como activo
 const SECCIONES = [
   {
     titulo: null,
@@ -87,7 +89,12 @@ const SECCIONES = [
       ROLES.ADMINISTRATIVO,
     ],
     items: [
-      { ruta: "/matricula", etiqueta: "Matrícula", icono: ICONOS.matricula },
+      {
+        ruta: "/matricula",
+        etiqueta: "Matrícula",
+        icono: ICONOS.matricula,
+        excluir: ["/matricula/requisitos", "/matricula/calendario"],
+      },
       {
         ruta: "/matricula/calendario",
         etiqueta: "Calendario de matrícula",
@@ -106,7 +113,12 @@ const SECCIONES = [
         icono: ICONOS.seccion,
         roles: [ROLES.ADMIN, ROLES.DIRECTOR],
       },
-      { etiqueta: "Reportes", icono: ICONOS.reportes, pronto: true },
+      {
+        ruta: "/matricula/requisitos",
+        etiqueta: "Requisitos",
+        icono: ICONOS.requisitos,
+        roles: [ROLES.ADMIN, ROLES.DIRECTOR],
+      },
     ],
   },
   {
@@ -135,6 +147,28 @@ const SECCIONES = [
 
 function Sidebar({ colapsado, abiertoMovil, onCerrar }) {
   const rol = getRol();
+  const nombre = getNombre() || "Usuario";
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const [menuUsuario, setMenuUsuario] = useState(false);
+  const usuarioRef = useRef(null);
+
+  // Cierra el menú del usuario al hacer clic fuera
+  useEffect(() => {
+    if (!menuUsuario) return undefined;
+    const alClicFuera = (evento) => {
+      if (usuarioRef.current && !usuarioRef.current.contains(evento.target)) {
+        setMenuUsuario(false);
+      }
+    };
+    document.addEventListener("mousedown", alClicFuera);
+    return () => document.removeEventListener("mousedown", alClicFuera);
+  }, [menuUsuario]);
+
+  const cerrarSesion = () => {
+    logout();
+    navigate("/login");
+  };
 
   const secciones = SECCIONES.map((seccion) => ({
     ...seccion,
@@ -201,9 +235,12 @@ function Sidebar({ colapsado, abiertoMovil, onCerrar }) {
                     to={item.ruta}
                     onClick={onCerrar}
                     title={colapsado ? item.etiqueta : undefined}
-                    className={({ isActive }) =>
-                      `sidebar-item${isActive ? " sidebar-item--activo" : ""}`
-                    }
+                    className={({ isActive }) => {
+                      const excluido = (item.excluir ?? []).some((p) =>
+                        pathname.startsWith(p),
+                      );
+                      return `sidebar-item${isActive && !excluido ? " sidebar-item--activo" : ""}`;
+                    }}
                   >
                     <Icon icon={item.icono} className="sidebar-icono" />
                     <span className="sidebar-etiqueta">{item.etiqueta}</span>
@@ -213,6 +250,35 @@ function Sidebar({ colapsado, abiertoMovil, onCerrar }) {
             </div>
           ))}
         </nav>
+
+        {/* Usuario al final del menú */}
+        <div className="sidebar-usuario" ref={usuarioRef}>
+          {menuUsuario && (
+            <button
+              type="button"
+              className="sidebar-item sidebar-item--salir"
+              onClick={cerrarSesion}
+              title={colapsado ? "Cerrar sesión" : undefined}
+            >
+              <Icon icon={ICONOS.salir} className="sidebar-icono" />
+              <span className="sidebar-etiqueta">Cerrar sesión</span>
+            </button>
+          )}
+          <button
+            type="button"
+            className="sidebar-item sidebar-usuario-btn"
+            onClick={() => setMenuUsuario((abierto) => !abierto)}
+            aria-expanded={menuUsuario}
+            title={colapsado ? nombre : undefined}
+          >
+            <Icon icon={ICONOS.usuario} className="sidebar-icono" />
+            <span className="sidebar-etiqueta">{nombre}</span>
+            <Icon
+              icon={menuUsuario ? "mdi:chevron-down" : "mdi:chevron-up"}
+              className="sidebar-chevron"
+            />
+          </button>
+        </div>
       </aside>
     </>
   );

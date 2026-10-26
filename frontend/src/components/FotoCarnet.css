@@ -1,0 +1,88 @@
+/* src/components/FotoCarnet.css — prefijo fc- */
+
+.fc {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  aspect-ratio: 4 / 5; /* antes 3 / 4 */
+}
+
+.fc-etiqueta {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+
+/* Proporción de foto carnet (3:4) */
+.fc-marco {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  padding: 0;
+  border: 2px dashed #b8c8dc;
+  border-radius: 10px;
+  background: #f5f8fc;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.fc-marco:hover:not(:disabled) {
+  border-color: var(--azul);
+}
+
+.fc-marco:focus-visible {
+  outline: 3px solid var(--azul);
+  outline-offset: 2px;
+}
+
+.fc-marco:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.fc-marco img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fc-vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--texto-suave);
+}
+
+.fc-input {
+  display: none;
+}
+
+.fc-acciones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.fc-acciones button {
+  width: 100%;
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.82rem;
+}
+
+.fc-ayuda {
+  font-size: 0.75rem;
+  color: var(--texto-suave);
+}
+
+.fc-error {
+  font-size: 0.8rem;
+  color: #b91c1c;
+}

@@ -5,6 +5,8 @@ import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
 import { useCargos, useDepartamentos, useTurnos } from "../hooks/useCatalogos";
+import { subirFoto } from "../utils/fotos";
+import FotoCarnet from "../components/FotoCarnet";
 import { Icon } from "@iconify/react";
 import { ICONOS } from "../utils/iconos";
 import "./EmpleadoForm.css";
@@ -14,7 +16,7 @@ const VACIO = {
   apellido: "",
   cedulaTipo: "",
   cedulaNumero: "",
-  correoLocal: "",
+  correo: "",
   telefono: "",
   fechaNacimiento: "",
   sexo: "",
@@ -28,12 +30,14 @@ const VACIO = {
 
 const hoyISO = () => new Date().toISOString().split("T")[0];
 
-const DOMINIO_CORREO = "@asansa.local";
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const soloDigitos = (valor) => valor.replace(/\D/g, "");
 
 const separarCedula = (valor) => {
-  const cedula = String(valor || "").trim().toUpperCase();
+  const cedula = String(valor || "")
+    .trim()
+    .toUpperCase();
   const conPrefijo = cedula.match(/^([VE])\s*-\s*(\d+)$/);
   if (conPrefijo) {
     return { cedulaTipo: conPrefijo[1], cedulaNumero: conPrefijo[2] };
@@ -62,6 +66,8 @@ function EmpleadoForm() {
   const { items: turnos } = useTurnos();
 
   const [form, setForm] = useState(VACIO);
+  const [foto, setFoto] = useState(null); // File elegido; se sube al guardar
+  const [fotoUrlActual, setFotoUrlActual] = useState(null); // foto ya guardada
   const [turnoIdOriginal, setTurnoIdOriginal] = useState("");
   const [fechaDesdeTurno, setFechaDesdeTurno] = useState(hoyISO());
   const [cargandoDatos, setCargandoDatos] = useState(esEdicion);
@@ -85,14 +91,12 @@ function EmpleadoForm() {
     api
       .get(`/empleados/${id}`)
       .then(({ data }) => {
-        const correoCompleto = data.correo || "";
-        const [local] = correoCompleto.split("@");
         const cedula = separarCedula(data.cedula);
         setForm({
           nombre: data.nombre || "",
           apellido: data.apellido || "",
           ...cedula,
-          correoLocal: local || "",
+          correo: data.correo || "",
           telefono: data.telefono || "",
           fechaNacimiento: data.fechaNacimiento || "",
           sexo: data.sexo || "",
@@ -103,6 +107,7 @@ function EmpleadoForm() {
           activo: data.activo !== false,
           fechaEgreso: data.fechaEgreso || "",
         });
+        setFotoUrlActual(data.fotoUrl || null);
         setTurnoIdOriginal(data.turnoId ?? "");
       })
       .catch((err) => {
@@ -144,9 +149,8 @@ function EmpleadoForm() {
         "El teléfono debe tener 11 dígitos (ej: 04121234567).";
     }
 
-    if (form.correoLocal && !/^[a-zA-Z0-9._-]+$/.test(form.correoLocal)) {
-      nuevosErrores.correoLocal =
-        "Solo letras, números, puntos, guiones y guion bajo.";
+    if (form.correo.trim() && !EMAIL.test(form.correo.trim())) {
+      nuevosErrores.correo = "Correo no válido.";
     }
 
     if (!form.fechaIngreso) {
@@ -156,10 +160,7 @@ function EmpleadoForm() {
     if (esEdicion && !form.activo) {
       if (!form.fechaEgreso) {
         nuevosErrores.fechaEgreso = "La fecha de egreso es obligatoria.";
-      } else if (
-        form.fechaIngreso &&
-        form.fechaEgreso < form.fechaIngreso
-      ) {
+      } else if (form.fechaIngreso && form.fechaEgreso < form.fechaIngreso) {
         nuevosErrores.fechaEgreso =
           "La fecha de egreso no puede ser anterior a la fecha de ingreso.";
       }
@@ -186,7 +187,7 @@ function EmpleadoForm() {
       nombre: form.nombre,
       apellido: form.apellido,
       cedula: `${form.cedulaTipo}-${form.cedulaNumero}`.trim().toUpperCase(),
-      correo: form.correoLocal ? `${form.correoLocal}${DOMINIO_CORREO}` : null,
+      correo: form.correo.trim() || null,
       telefono: form.telefono || null,
       sexo: form.sexo || null,
       cargoId: form.cargoId ? Number(form.cargoId) : null,
@@ -196,6 +197,13 @@ function EmpleadoForm() {
     };
 
     try {
+      // Foto nueva: se sube primero; si no hay, se conserva la que ya tenía
+      if (foto) {
+        payload.fotoUrl = await subirFoto(foto);
+      } else if (fotoUrlActual) {
+        payload.fotoUrl = fotoUrlActual;
+      }
+
       if (esEdicion) {
         payload.activo = form.activo;
         payload.fechaEgreso = !form.activo ? form.fechaEgreso || null : null;
@@ -211,13 +219,10 @@ function EmpleadoForm() {
           try {
             if (turnoIdOriginal) {
               // Ya tenía turno → reemplazar la asignación vigente
-              await api.put(
-                `/asignaciones-turnos/empleado/${id}/vigente`,
-                {
-                  turnoId: Number(form.turnoId),
-                  fechaDesde: fechaDesdeTurno,
-                },
-              );
+              await api.put(`/asignaciones-turnos/empleado/${id}/vigente`, {
+                turnoId: Number(form.turnoId),
+                fechaDesde: fechaDesdeTurno,
+              });
             } else {
               // Sin turno previo → crear asignación directamente
               await api.post("/asignaciones-turnos", {
@@ -273,266 +278,276 @@ function EmpleadoForm() {
         </div>
 
         <form className="empleado-form" onSubmit={handleSubmit}>
-          <div className="form-grid-2">
-            <label>
-              Nombre *
-              <input
-                value={form.nombre}
-                onChange={(e) => actualizarCampo("nombre", e.target.value)}
-              />
-              {errores.nombre && (
-                <span className="campo-error">{errores.nombre}</span>
-              )}
-            </label>
+          <div className="ef-con-foto">
+            <FotoCarnet
+              etiqueta="Foto del empleado"
+              archivo={foto}
+              urlActual={fotoUrlActual}
+              onChange={setFoto}
+              disabled={guardando}
+            />
 
-            <label>
-              Apellido *
-              <input
-                value={form.apellido}
-                onChange={(e) => actualizarCampo("apellido", e.target.value)}
-              />
-              {errores.apellido && (
-                <span className="campo-error">{errores.apellido}</span>
-              )}
-            </label>
-
-            <label>
-              Cédula *
-              <div className="cedula-controls">
-                <select
-                  value={form.cedulaTipo}
-                  onChange={(e) =>
-                    actualizarCampo("cedulaTipo", e.target.value)
-                  }
-                  aria-label="Tipo de cédula"
-                >
-                  <option value="">Tipo</option>
-                  <option value="V">Venezolana (V)</option>
-                  <option value="E">Extranjera (E)</option>
-                </select>
+            <div className="form-grid-2">
+              <label>
+                Nombre *
                 <input
-                  value={form.cedulaNumero}
+                  value={form.nombre}
+                  onChange={(e) => actualizarCampo("nombre", e.target.value)}
+                />
+                {errores.nombre && (
+                  <span className="campo-error">{errores.nombre}</span>
+                )}
+              </label>
+
+              <label>
+                Apellido *
+                <input
+                  value={form.apellido}
+                  onChange={(e) => actualizarCampo("apellido", e.target.value)}
+                />
+                {errores.apellido && (
+                  <span className="campo-error">{errores.apellido}</span>
+                )}
+              </label>
+
+              <label>
+                Cédula *
+                <div className="cedula-controls">
+                  <select
+                    value={form.cedulaTipo}
+                    onChange={(e) =>
+                      actualizarCampo("cedulaTipo", e.target.value)
+                    }
+                    aria-label="Tipo de cédula"
+                  >
+                    <option value="">Tipo</option>
+                    <option value="V">Venezolana (V)</option>
+                    <option value="E">Extranjera (E)</option>
+                  </select>
+                  <input
+                    value={form.cedulaNumero}
+                    onChange={(e) =>
+                      actualizarCampo(
+                        "cedulaNumero",
+                        soloDigitos(e.target.value).slice(0, 8),
+                      )
+                    }
+                    inputMode="numeric"
+                    maxLength={8}
+                    placeholder="12345678"
+                    aria-label="Número de cédula"
+                  />
+                </div>
+                <span className="campo-ayuda">
+                  V: desde 6.000.000 · E: desde 80.000.000.
+                </span>
+                {errores.cedula && (
+                  <span className="campo-error">{errores.cedula}</span>
+                )}
+              </label>
+
+              <label>
+                Correo
+                <input
+                  type="email"
+                  value={form.correo}
+                  onChange={(e) =>
+                    actualizarCampo("correo", e.target.value.trim())
+                  }
+                  placeholder="nombre@dominio.com"
+                />
+                {errores.correo && (
+                  <span className="campo-error">{errores.correo}</span>
+                )}
+              </label>
+
+              <label>
+                Teléfono
+                <input
+                  value={form.telefono}
                   onChange={(e) =>
                     actualizarCampo(
-                      "cedulaNumero",
-                      soloDigitos(e.target.value).slice(0, 8),
+                      "telefono",
+                      soloDigitos(e.target.value).slice(0, 11),
                     )
                   }
                   inputMode="numeric"
-                  maxLength={8}
-                  placeholder="12345678"
-                  aria-label="Número de cédula"
+                  placeholder="04121234567"
                 />
-              </div>
-              <span className="campo-ayuda">
-                V: desde 6.000.000 · E: desde 80.000.000.
-              </span>
-              {errores.cedula && (
-                <span className="campo-error">{errores.cedula}</span>
-              )}
-            </label>
-
-            <label>
-              Correo
-              <div className="input-group">
-                <input
-                  value={form.correoLocal}
-                  onChange={(e) =>
-                    actualizarCampo("correoLocal", e.target.value.trim())
-                  }
-                  placeholder="nombre.apellido"
-                />
-                <span className="input-group-suffix">{DOMINIO_CORREO}</span>
-              </div>
-              {errores.correoLocal && (
-                <span className="campo-error">{errores.correoLocal}</span>
-              )}
-            </label>
-
-            <label>
-              Teléfono
-              <input
-                value={form.telefono}
-                onChange={(e) =>
-                  actualizarCampo(
-                    "telefono",
-                    soloDigitos(e.target.value).slice(0, 11),
-                  )
-                }
-                inputMode="numeric"
-                placeholder="04121234567"
-              />
-              {errores.telefono && (
-                <span className="campo-error">{errores.telefono}</span>
-              )}
-            </label>
-
-            <label>
-              Sexo
-              <select
-                value={form.sexo}
-                onChange={(e) => actualizarCampo("sexo", e.target.value)}
-              >
-                <option value="">Selecciona...</option>
-                <option value="M">Masculino</option>
-                <option value="F">Femenino</option>
-                <option value="Otro">Otro</option>
-              </select>
-            </label>
-
-            <label>
-              Fecha de nacimiento
-              <input
-                type="date"
-                value={form.fechaNacimiento}
-                onChange={(e) =>
-                  actualizarCampo("fechaNacimiento", e.target.value)
-                }
-              />
-            </label>
-
-            <label>
-              Fecha de ingreso *
-              <input
-                type="date"
-                value={form.fechaIngreso}
-                onChange={(e) =>
-                  actualizarCampo("fechaIngreso", e.target.value)
-                }
-              />
-              {errores.fechaIngreso && (
-                <span className="campo-error">{errores.fechaIngreso}</span>
-              )}
-            </label>
-
-            <label>
-              Cargo *
-              <select
-                value={form.cargoId}
-                onChange={(e) => actualizarCampo("cargoId", e.target.value)}
-              >
-                <option value="">Selecciona un cargo...</option>
-                {cargos.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombreCargo}
-                  </option>
-                ))}
-              </select>
-              {errores.cargoId && (
-                <span className="campo-error">{errores.cargoId}</span>
-              )}
-            </label>
-
-            <label>
-              Departamento
-              <select
-                value={form.departamentoId}
-                onChange={(e) =>
-                  actualizarCampo("departamentoId", e.target.value)
-                }
-              >
-                <option value="">Sin departamento (Opcional)</option>
-                {departamentos.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.nombre}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {esEdicion ? (
-              <>
-                <label>
-                  Turno asignado
-                  <select
-                    value={form.turnoId}
-                    onChange={(e) => actualizarCampo("turnoId", e.target.value)}
-                    disabled={!form.activo}
-                  >
-                    <option value="">Sin turno asignado</option>
-                    {turnosDisponibles.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.nombre} {!t.activo ? "(Inactivo)" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                {form.activo &&
-                  String(form.turnoId) !== String(turnoIdOriginal) &&
-                  form.turnoId && (
-                    <label>
-                      Turno efectivo desde *
-                      <input
-                        type="date"
-                        value={fechaDesdeTurno}
-                        onChange={(e) => setFechaDesdeTurno(e.target.value)}
-                        required
-                      />
-                      <span className="campo-ayuda">
-                        La asignación vigente se cerrará el día anterior.
-                      </span>
-                    </label>
-                  )}
-
-                <label>
-                  Estado
-                  <select
-                    value={form.activo ? "true" : "false"}
-                    onChange={(e) => {
-                      const nuevoActivo = e.target.value === "true";
-                      actualizarCampo("activo", nuevoActivo);
-                      if (nuevoActivo) {
-                        actualizarCampo("fechaEgreso", "");
-                      } else if (!form.fechaEgreso) {
-                        actualizarCampo("fechaEgreso", hoyISO());
-                      }
-                    }}
-                  >
-                    <option value="true">Activo</option>
-                    <option value="false">Inactivo (Dado de baja)</option>
-                  </select>
-                </label>
-
-                {!form.activo && (
-                  <label>
-                    Fecha de egreso
-                    <input
-                      type="date"
-                      value={form.fechaEgreso}
-                      min={form.fechaIngreso || undefined}
-                      required
-                      onChange={(e) =>
-                        actualizarCampo("fechaEgreso", e.target.value)
-                      }
-                    />
-                    {errores.fechaEgreso && (
-                      <span className="campo-error">
-                        {errores.fechaEgreso}
-                      </span>
-                    )}
-                  </label>
+                {errores.telefono && (
+                  <span className="campo-error">{errores.telefono}</span>
                 )}
-              </>
-            ) : (
+              </label>
+
               <label>
-                Turno *
+                Sexo
                 <select
-                  value={form.turnoId}
-                  onChange={(e) => actualizarCampo("turnoId", e.target.value)}
+                  value={form.sexo}
+                  onChange={(e) => actualizarCampo("sexo", e.target.value)}
                 >
-                  <option value="">Selecciona un turno activo...</option>
-                  {turnosDisponibles.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.nombre}
+                  <option value="">Selecciona...</option>
+                  <option value="M">Masculino</option>
+                  <option value="F">Femenino</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </label>
+
+              <label>
+                Fecha de nacimiento
+                <input
+                  type="date"
+                  value={form.fechaNacimiento}
+                  onChange={(e) =>
+                    actualizarCampo("fechaNacimiento", e.target.value)
+                  }
+                />
+              </label>
+
+              <label>
+                Fecha de ingreso *
+                <input
+                  type="date"
+                  value={form.fechaIngreso}
+                  onChange={(e) =>
+                    actualizarCampo("fechaIngreso", e.target.value)
+                  }
+                />
+                {errores.fechaIngreso && (
+                  <span className="campo-error">{errores.fechaIngreso}</span>
+                )}
+              </label>
+
+              <label>
+                Cargo *
+                <select
+                  value={form.cargoId}
+                  onChange={(e) => actualizarCampo("cargoId", e.target.value)}
+                >
+                  <option value="">Selecciona un cargo...</option>
+                  {cargos.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombreCargo}
                     </option>
                   ))}
                 </select>
-                {errores.turnoId && (
-                  <span className="campo-error">{errores.turnoId}</span>
+                {errores.cargoId && (
+                  <span className="campo-error">{errores.cargoId}</span>
                 )}
               </label>
-            )}
+
+              <label>
+                Departamento
+                <select
+                  value={form.departamentoId}
+                  onChange={(e) =>
+                    actualizarCampo("departamentoId", e.target.value)
+                  }
+                >
+                  <option value="">Sin departamento (Opcional)</option>
+                  {departamentos.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.nombre}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {esEdicion ? (
+                <>
+                  <label>
+                    Turno asignado
+                    <select
+                      value={form.turnoId}
+                      onChange={(e) =>
+                        actualizarCampo("turnoId", e.target.value)
+                      }
+                      disabled={!form.activo}
+                    >
+                      <option value="">Sin turno asignado</option>
+                      {turnosDisponibles.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nombre} {!t.activo ? "(Inactivo)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {form.activo &&
+                    String(form.turnoId) !== String(turnoIdOriginal) &&
+                    form.turnoId && (
+                      <label>
+                        Turno efectivo desde *
+                        <input
+                          type="date"
+                          value={fechaDesdeTurno}
+                          onChange={(e) => setFechaDesdeTurno(e.target.value)}
+                          required
+                        />
+                        <span className="campo-ayuda">
+                          La asignación vigente se cerrará el día anterior.
+                        </span>
+                      </label>
+                    )}
+
+                  <label>
+                    Estado
+                    <select
+                      value={form.activo ? "true" : "false"}
+                      onChange={(e) => {
+                        const nuevoActivo = e.target.value === "true";
+                        actualizarCampo("activo", nuevoActivo);
+                        if (nuevoActivo) {
+                          actualizarCampo("fechaEgreso", "");
+                        } else if (!form.fechaEgreso) {
+                          actualizarCampo("fechaEgreso", hoyISO());
+                        }
+                      }}
+                    >
+                      <option value="true">Activo</option>
+                      <option value="false">Inactivo (Dado de baja)</option>
+                    </select>
+                  </label>
+
+                  {!form.activo && (
+                    <label>
+                      Fecha de egreso
+                      <input
+                        type="date"
+                        value={form.fechaEgreso}
+                        min={form.fechaIngreso || undefined}
+                        required
+                        onChange={(e) =>
+                          actualizarCampo("fechaEgreso", e.target.value)
+                        }
+                      />
+                      {errores.fechaEgreso && (
+                        <span className="campo-error">
+                          {errores.fechaEgreso}
+                        </span>
+                      )}
+                    </label>
+                  )}
+                </>
+              ) : (
+                <label>
+                  Turno *
+                  <select
+                    value={form.turnoId}
+                    onChange={(e) => actualizarCampo("turnoId", e.target.value)}
+                  >
+                    <option value="">Selecciona un turno activo...</option>
+                    {turnosDisponibles.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  {errores.turnoId && (
+                    <span className="campo-error">{errores.turnoId}</span>
+                  )}
+                </label>
+              )}
+            </div>
           </div>
 
           <div className="form-actions">
