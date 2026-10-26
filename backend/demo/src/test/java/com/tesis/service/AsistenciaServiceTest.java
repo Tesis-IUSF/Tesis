@@ -19,6 +19,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openpdf.text.pdf.PdfReader;
+import org.openpdf.text.pdf.parser.PdfTextExtractor;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -34,6 +37,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -327,6 +331,45 @@ class AsistenciaServiceTest {
                 assertEquals(3, ausencias.size());
                 assertEquals("ausente", ausencias.getFirst().getEstado());
                 assertEquals(7, ausencias.getFirst().getEmpleadoId());
+            }
+
+            @Test
+            void exportaLasDosAusenciasCalculadasComoFilasDelReporte() throws Exception {
+                LocalDate hoy = LocalDate.now(clock);
+                Turno turno = turnoVigente();
+                Empleado ana = empleadoActivo();
+                Empleado luis = empleadoActivo();
+                luis.setId(8);
+                luis.setNombre("Luis");
+                luis.setApellido("Gómez");
+                AsignacionTurno asignacionAna = asignacion(turno);
+                asignacionAna.setPersonal(ana);
+                asignacionAna.setFechaDesde(hoy);
+                AsignacionTurno asignacionLuis = asignacion(turno);
+                asignacionLuis.setPersonal(luis);
+                asignacionLuis.setFechaDesde(hoy);
+                when(asignacionTurnoRepository.buscarAsignacionesActivasEnRango(hoy, hoy))
+                        .thenReturn(List.of(asignacionAna, asignacionLuis));
+                when(asistenciaRepository.findAllByFechaBetween(hoy, hoy)).thenReturn(List.of());
+
+                AsistenciaPdfGenerator pdfGenerator = new AsistenciaPdfGenerator();
+                ReflectionTestUtils.setField(pdfGenerator, "institucion", "Institución de prueba");
+                ReflectionTestUtils.setField(pdfGenerator, "municipio", "San Francisco");
+                ReflectionTestUtils.setField(pdfGenerator, "estado", "Zulia");
+                ReflectionTestUtils.setField(pdfGenerator, "codigoPlantel", "OD34942317");
+                AsistenciaService servicioConPdf = new AsistenciaService(
+                        asistenciaRepository, asignacionTurnoRepository, empleadoRepository,
+                        credencialQrRepository, jwtProvider, clock, pdfGenerator);
+
+                byte[] pdf = servicioConPdf.generarHistoricoPdf(
+                        hoy, hoy, null, null, null, null, null);
+                PdfReader reader = new PdfReader(pdf);
+                String texto = new PdfTextExtractor(reader).getTextFromPage(1);
+                reader.close();
+
+                assertTrue(texto.contains("Ana Pérez"));
+                assertTrue(texto.contains("Luis Gómez"));
+                assertEquals(2, servicioConPdf.listarAusencias(hoy, hoy, null, null, null).size());
             }
 
             @Test
