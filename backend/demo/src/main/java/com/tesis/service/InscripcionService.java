@@ -287,26 +287,13 @@ public class InscripcionService {
             matricula.getAnioEscolar(), matricula.getEstadoMatricula());
 
         List<ChecklistMatricula> checklist = inicializarChecklist(matricula);
-        String tipoIngreso = matricula.getTipoIngreso();
-        List<RequisitoMatricula> obligatorios = requisitoRepository
-            .findObligatoriosActivosAplicablesAlNivel(
-            matricula.getSeccion().getGrado().getNivelEducativo().getId()).stream()
-            .filter(requisito -> aplicaAlTipoIngreso(requisito, tipoIngreso))
-            .toList();
-        Map<Integer, ChecklistMatricula> checklistPorRequisito = checklist.stream()
-                .collect(Collectors.toMap(item -> item.getRequisito().getId(),
-                        Function.identity(), (first, duplicate) -> first));
-
-        List<String> pendientes = obligatorios.stream()
-                .filter(requisito -> {
-                    ChecklistMatricula item = checklistPorRequisito.get(requisito.getId());
-                    return item == null || !Boolean.TRUE.equals(item.getCumplido());
-                })
-                .map(RequisitoMatricula::getNombre)
+        List<String> pendientes = checklist.stream()
+                .filter(item -> !Boolean.TRUE.equals(item.getCumplido()))
+                .map(item -> item.getRequisito().getNombre())
                 .toList();
         if (!pendientes.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Faltan requisitos obligatorios: " + String.join(", ", pendientes));
+                    "Faltan requisitos de inscripción: " + String.join(", ", pendientes));
         }
 
         matricula.setEstadoMatricula(COMPLETADA);

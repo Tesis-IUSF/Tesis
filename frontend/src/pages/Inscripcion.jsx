@@ -107,8 +107,10 @@ function Inscripcion() {
 
   const total = data?.requisitosObligatorios ?? 0;
   const hechos = data?.requisitosObligatoriosCumplidos ?? 0;
-  const faltan = Math.max(total - hechos, 0);
   const pct = total > 0 ? Math.round((hechos / total) * 100) : 100;
+  const pendientesChecklist = items.filter(
+    (item) => !item.cumplido,
+  ).length;
 
   const alGuardarFicha = async ({ fichaModificada }) => {
     try {
@@ -253,7 +255,7 @@ function Inscripcion() {
       setModalFormalizar(false);
       toast.success("Inscripción formalizada correctamente.");
     } catch (err) {
-      // 409: "Faltan requisitos obligatorios: ..." u otro motivo
+      // 409: faltan requisitos aplicables u otro motivo
       toast.error(
         extractErrorMessage(err, "No se pudo formalizar la inscripción."),
       );
@@ -627,10 +629,10 @@ function Inscripcion() {
         </section>
       ) : editable ? (
         <section className="ins-tarjeta ins-cierre">
-          <p className={faltan > 0 ? "ins-pendiente" : "ins-listo"}>
-            {faltan > 0
-              ? `Faltan ${faltan} requisito${faltan === 1 ? "" : "s"} obligatorio${faltan === 1 ? "" : "s"} para poder formalizar.`
-              : "Todos los requisitos obligatorios están cumplidos."}
+          <p className={pendientesChecklist > 0 ? "ins-pendiente" : "ins-listo"}>
+            {pendientesChecklist > 0
+              ? `Faltan ${pendientesChecklist} requisito${pendientesChecklist === 1 ? "" : "s"} por cumplir, incluidos los opcionales, para poder formalizar.`
+              : "Todos los requisitos, obligatorios y opcionales, están cumplidos."}
           </p>
           <div className="ins-acciones">
             {data.estadoMatricula === "preinscrito" && (
@@ -648,7 +650,7 @@ function Inscripcion() {
             <button
               type="button"
               className="btn-primary"
-              disabled={faltan > 0}
+              disabled={pendientesChecklist > 0 || editandoFicha}
               onClick={() => {
                 setNumeroConstancia("");
                 setModalFormalizar(true);
