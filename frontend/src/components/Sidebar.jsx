@@ -88,6 +88,24 @@ const SECCIONES = [
     ],
     items: [
       { ruta: "/matricula", etiqueta: "Matrícula", icono: ICONOS.matricula },
+      {
+        ruta: "/matricula/calendario",
+        etiqueta: "Calendario de matrícula",
+        icono: ICONOS.historico,
+        roles: [ROLES.ADMIN, ROLES.DIRECTOR],
+      },
+      {
+        ruta: "/grados",
+        etiqueta: "Grados",
+        icono: ICONOS.matricula,
+        roles: [ROLES.ADMIN, ROLES.DIRECTOR],
+      },
+      {
+        ruta: "/secciones",
+        etiqueta: "Secciones",
+        icono: ICONOS.seccion,
+        roles: [ROLES.ADMIN, ROLES.DIRECTOR],
+      },
       { etiqueta: "Reportes", icono: ICONOS.reportes, pronto: true },
     ],
   },
