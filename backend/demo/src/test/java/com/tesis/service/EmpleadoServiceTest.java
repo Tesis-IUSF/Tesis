@@ -41,6 +41,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.anyList;
 
 @ExtendWith(MockitoExtension.class)
 class EmpleadoServiceTest {
@@ -65,6 +66,8 @@ class EmpleadoServiceTest {
 
     @Mock
     private CredencialQrRepository credencialQrRepository;
+    @Mock
+    private NominaPersonalPdfGenerator nominaPersonalPdfGenerator;
 
     private EmpleadoService empleadoService;
 
@@ -72,7 +75,8 @@ class EmpleadoServiceTest {
     void setUp() {
         empleadoService = new EmpleadoService(
             empleadoRepository, cargoRepository, departamentoRepository, usuarioRepository,
-            asignacionTurnoRepository, turnoRepository, credencialQrRepository);
+            asignacionTurnoRepository, turnoRepository, credencialQrRepository,
+            nominaPersonalPdfGenerator);
         lenient().when(asignacionTurnoRepository.buscarVigentesPorEmpleados(any(), any()))
             .thenReturn(List.of());
         lenient().when(turnoRepository.findById(4)).thenReturn(Optional.of(turno(4, "Matutino")));
@@ -127,6 +131,36 @@ class EmpleadoServiceTest {
 
         verify(empleadoRepository).buscarConFiltros(
                 isNull(), isNull(), eq(false), any(LocalDate.class), any(PageRequest.class));
+    }
+
+    @Test
+    void generaNominaConTodosLosEmpleadosFiltradosYTurnoAlMomentoDelEgreso() {
+        Empleado empleado = empleadoExistente();
+        empleado.setActivo(false);
+        empleado.setFechaIngreso(LocalDate.of(2020, 1, 1));
+        empleado.setFechaEgreso(LocalDate.now().minusDays(2));
+        Turno turnoHistorico = turno(4, "Matutino");
+        AsignacionTurno asignacion = new AsignacionTurno();
+        asignacion.setPersonal(empleado);
+        asignacion.setTurno(turnoHistorico);
+        asignacion.setFechaDesde(LocalDate.of(2020, 1, 1));
+        asignacion.setFechaHasta(LocalDate.now().minusDays(2));
+        when(empleadoRepository.buscarTodosConFiltros(10, 4, false, LocalDate.now()))
+                .thenReturn(List.of(empleado));
+        when(asignacionTurnoRepository.buscarHistorialPorEmpleados(List.of(3)))
+                .thenReturn(List.of(asignacion));
+        when(nominaPersonalPdfGenerator.generar(anyList(), eq(true)))
+                .thenReturn("%PDF-test".getBytes());
+
+        byte[] pdf = empleadoService.generarNominaPDF(10, 4, false);
+
+        assertEquals("%PDF-test", new String(pdf));
+        verify(empleadoRepository).buscarTodosConFiltros(10, 4, false, LocalDate.now());
+        var filas = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(nominaPersonalPdfGenerator).generar(filas.capture(), eq(true));
+        EmpleadoResponseDTO fila = (EmpleadoResponseDTO) filas.getValue().get(0);
+        assertEquals("Matutino", fila.getTurnoNombre());
+        assertEquals(empleado.getFechaEgreso(), fila.getFechaEgreso());
     }
 
     @Test
