@@ -74,6 +74,10 @@ En los módulos cubiertos por RBAC, los permisos son:
 - **Escáner:** registro de asistencia mediante QR.
 - **Público:** consulta de publicaciones y categorías activas del blog sin iniciar sesión.
 
+### Caché de consultas frecuentes
+
+Se almacenan en memoria las respuestas de los catálogos estáticos durante cinco minutos y las del calendario escolar y el blog público durante un minuto. Las escrituras relacionadas invalidan sus cachés; las publicaciones también expiran pronto para reflejar cambios de visibilidad por fecha. Las secciones no se almacenan en caché porque incluyen cupos ocupados, que deben mantenerse actualizados. La ruta pública `/noticias` y sus detalles no requieren iniciar sesión; sus datos se consultan en los endpoints públicos del blog.
+
 ---
 
 ## 🛠️ Tecnologías y Configuración (`SW-1: Infraestructura`)

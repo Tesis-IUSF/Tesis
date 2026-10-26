@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 import org.springframework.test.context.ActiveProfiles;
@@ -25,6 +26,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import com.jayway.jsonpath.JsonPath;
 
 @SpringBootTest
@@ -42,6 +44,8 @@ class BlogControllerTest {
     private UsuarioRepository usuarioRepository;
     @Autowired
     private CategoriaComunicadoRepository categoriaRepository;
+    @Autowired
+    private CacheManager cacheManager;
 
     private MockMvc mockMvc;
     private CategoriaComunicado categoria;
@@ -49,6 +53,7 @@ class BlogControllerTest {
 
     @BeforeEach
     void configurarDatosYMockMvc() {
+        cacheManager.getCacheNames().forEach(nombre -> cacheManager.getCache(nombre).clear());
         mockMvc = MockMvcBuilders.webAppContextSetup(applicationContext)
                 .apply(SecurityMockMvcConfigurers.springSecurity())
                 .build();
@@ -73,6 +78,11 @@ class BlogControllerTest {
         mockMvc.perform(get("/api/blog/categorias"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].nombre").value("Noticias"));
+        assertNotNull(cacheManager.getCache("blogCategoriasPublicas").get("0:25"));
+
+        mockMvc.perform(get("/api/blog/publicaciones"))
+                .andExpect(status().isOk());
+        assertNotNull(cacheManager.getCache("blogPublicacionesPublicas").get("todas:0:25"));
 
         mockMvc.perform(get("/api/blog/admin/categorias"))
                 .andExpect(status().isUnauthorized());
@@ -97,6 +107,10 @@ class BlogControllerTest {
 
     @Test
     void creaPublicaYRetiraUnComunicadoDeLaConsultaPublica() throws Exception {
+        mockMvc.perform(get("/api/blog/publicaciones"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(0));
+
         String request = """
                 {
                   "titulo": "Inicio de clases",
