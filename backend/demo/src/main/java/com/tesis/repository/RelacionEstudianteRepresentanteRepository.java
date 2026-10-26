@@ -1,6 +1,7 @@
 package com.tesis.repository;
 
 import com.tesis.entity.RelacionEstudianteRepresentante;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -17,4 +18,12 @@ public interface RelacionEstudianteRepresentanteRepository
         Optional<RelacionEstudianteRepresentante>
             findByEstudiante_IdAndRepresentante_IdAndActivoTrueAndAutorizadoRetirarTrue(
                 Integer estudianteId, Integer representanteId);
+
+        @EntityGraph(attributePaths = "representante")
+        List<RelacionEstudianteRepresentante>
+                findByEstudiante_IdAndActivoTrueAndAutorizadoRetirarTrue(Integer estudianteId);
+
+        @EntityGraph(attributePaths = "representante")
+        List<RelacionEstudianteRepresentante>
+                findByEstudiante_IdAndActivoTrueOrderByRelacionPrincipalDesc(Integer estudianteId);
 }

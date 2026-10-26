@@ -14,7 +14,6 @@ import org.springframework.web.server.ResponseStatusException;
 public class ConstanciaService {
 
     private static final String ESTADO_PREINSCRITO = "preinscrito";
-    private static final String ESTADO_EN_PROCESO = "en_proceso";
 
     private final MatriculaRepository matriculaRepository;
     private final RetiroMatriculaRepository retiroRepository;
@@ -42,9 +41,9 @@ public class ConstanciaService {
         Matricula matricula = matriculaRepository.findById(matriculaId).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.NOT_FOUND, "Matrícula no encontrada"));
         String estado = matricula.getEstadoMatricula();
-        if (!ESTADO_PREINSCRITO.equals(estado) && !ESTADO_EN_PROCESO.equals(estado)) {
+        if (!ESTADO_PREINSCRITO.equals(estado)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "La constancia de asignación solo está disponible mientras el cupo está reservado");
+                    "La constancia de asignación solo está disponible para matrículas preinscritas");
         }
         return pdfGenerator.generarAsignacionCupo(matricula);
     }

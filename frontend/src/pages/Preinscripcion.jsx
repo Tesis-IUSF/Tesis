@@ -6,10 +6,8 @@ import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
 import { ICONOS } from "../utils/iconos";
-import { descargarArchivo, mensajeErrorBlob } from "../utils/descargas";
 import "./Preinscripcion.css";
 
-const PASOS = ["Estudiante", "Representante", "Sección"];
 const PARENTESCOS = ["Padre", "Madre", "Tutor", "Abuelo", "Otro"];
 const SEXOS = [
   { valor: "M", etiqueta: "Masculino" },
@@ -68,6 +66,54 @@ const VACIO = {
 };
 
 const o = (v) => (v.trim() ? v.trim() : null);
+const serializarEstable = (valor) =>
+  JSON.stringify(valor, (clave, dato) =>
+    dato && typeof dato === "object" && !Array.isArray(dato)
+      ? Object.fromEntries(
+          Object.entries(dato).sort(([a], [b]) => a.localeCompare(b)),
+        )
+      : dato,
+  );
+
+const crearPayloadPreinscripcion = (formulario, id, anio) => {
+  const { est, rep } = formulario;
+  return {
+    estudiante: {
+      cedula: est.tieneCedulaIdentidad
+        ? `${est.cedulaTipo}-${est.cedulaNumero.trim()}`.toUpperCase()
+        : id && String(est.cedulaActual ?? "").startsWith("CE-")
+          ? est.cedulaActual
+          : null,
+      tieneCedulaIdentidad: est.tieneCedulaIdentidad,
+      nacionalidad: est.nacionalidad,
+      ordenNacimiento: est.ordenNacimiento ? Number(est.ordenNacimiento) : null,
+      nombre: est.nombre.trim(),
+      apellido: est.apellido.trim(),
+      fechaNacimiento: est.fechaNacimiento,
+      sexo: est.sexo,
+      correo: o(est.correo),
+      telefono: o(est.telefono),
+    },
+    representante: {
+      id: rep.id,
+      cedula: `${rep.cedulaTipo}-${rep.cedulaNumero.trim()}`.toUpperCase(),
+      nombre: rep.nombre.trim(),
+      apellido: rep.apellido.trim(),
+      parentesco: rep.parentesco,
+      correo: rep.correo.trim(),
+      telefono: o(rep.telefono),
+      telefonoSecundario: o(rep.telefonoSecundario),
+      direccion: o(rep.direccion),
+      ocupacion: o(rep.ocupacion),
+    },
+    seccionId: Number(formulario.seccionId),
+    anioEscolar: Number(id ? formulario.anioEscolar : anio),
+    institucionProcedencia: o(formulario.institucionProcedencia),
+    relacionPrincipal: formulario.relacionPrincipal,
+    autorizadoRetirar: formulario.autorizadoRetirar,
+    recibeComunicados: formulario.recibeComunicados,
+  };
+};
 
 const separarCedulaIdentidad = (cedula = "") => {
   const coincidencia = String(cedula)
@@ -91,17 +137,23 @@ const separarCedulaRepresentante = (cedula = "") => {
     : { cedulaTipo: "V", cedulaNumero: "" };
 };
 
-function Preinscripcion() {
+function Preinscripcion({
+  matriculaId,
+  embedded = false,
+  formId,
+  onCancel,
+  onSaved,
+  onSubmitting,
+}) {
   const toast = useToast();
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id: routeId } = useParams();
+  const id = matriculaId ?? routeId;
   const [form, setForm] = useState(VACIO);
-  const [paso, setPaso] = useState(0);
+  const [formOriginal, setFormOriginal] = useState(null);
   const [errores, setErrores] = useState({});
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState("");
-  const [resultado, setResultado] = useState(null);
-  const [descargando, setDescargando] = useState(false);
   const [modoRepresentante, setModoRepresentante] = useState(
     id ? "seleccionado" : "buscar",
   );
@@ -119,6 +171,9 @@ function Preinscripcion() {
   const [secciones, setSecciones] = useState([]);
   const [cargandoDatos, setCargandoDatos] = useState(true);
   const [errorDatos, setErrorDatos] = useState("");
+  const [modalSeccionAbierto, setModalSeccionAbierto] = useState(false);
+  const [gradoModalId, setGradoModalId] = useState("");
+  const [seccionModalId, setSeccionModalId] = useState("");
 
   useEffect(() => {
     let activo = true;
@@ -153,7 +208,7 @@ function Preinscripcion() {
           .toUpperCase()
           .startsWith("CE-");
         const cedulaIdentidad = separarCedulaIdentidad(estudiante.cedula);
-        setForm({
+        const formularioCargado = {
           est: {
             ...VACIO.est,
             tieneCedulaIdentidad,
@@ -177,7 +232,9 @@ function Preinscripcion() {
           relacionPrincipal: data.relacionPrincipal ?? true,
           autorizadoRetirar: data.autorizadoRetirar ?? true,
           recibeComunicados: data.recibeComunicados ?? true,
-        });
+        };
+        setForm(formularioCargado);
+        setFormOriginal(JSON.stringify(formularioCargado));
       })
       .catch((error) => {
         if (!activo) return;
@@ -261,9 +318,14 @@ function Preinscripcion() {
       );
     const mapa = new Map();
     lista.forEach((s) => {
-      const clave = s.gradoNombre ?? "Sin grado";
-      if (!mapa.has(clave)) mapa.set(clave, []);
-      mapa.get(clave).push(s);
+      const clave = String(s.gradoId);
+      if (!mapa.has(clave)) {
+        mapa.set(clave, {
+          nombre: s.gradoNombre ?? "Sin grado",
+          secciones: [],
+        });
+      }
+      mapa.get(clave).secciones.push(s);
     });
     return [...mapa.entries()];
   }, [secciones, anio]);
@@ -272,6 +334,30 @@ function Preinscripcion() {
     () => secciones.find((s) => String(s.id) === String(form.seccionId)),
     [secciones, form.seccionId],
   );
+
+  const seccionesModal = useMemo(
+    () =>
+      secciones.filter(
+        (seccion) =>
+          seccion.activo &&
+          Number(seccion.anioEscolar) === Number(anio) &&
+          String(seccion.gradoId) === String(gradoModalId),
+      ),
+    [secciones, anio, gradoModalId],
+  );
+
+  const abrirModalSeccion = () => {
+    setGradoModalId(
+      seccionElegida?.gradoId?.toString() ?? grupos[0]?.[0] ?? "",
+    );
+    setSeccionModalId(form.seccionId);
+    setModalSeccionAbierto(true);
+  };
+
+  const guardarSeccionModal = () => {
+    setRaiz("seccionId", seccionModalId);
+    setModalSeccionAbierto(false);
+  };
 
   // ---------- Edición de campos ----------
   const setEst = (campo, valor) => {
@@ -366,71 +452,57 @@ function Preinscripcion() {
     return Object.keys(e).length === 0;
   };
 
-  const siguiente = () => {
-    if (validarPaso(paso)) setPaso((p) => Math.min(p + 1, PASOS.length - 1));
-  };
-  const anterior = () => setPaso((p) => Math.max(p - 1, 0));
-
   // ---------- Envío ----------
   const enviar = async () => {
-    if (!validarPaso(2)) return;
+    const payload = crearPayloadPreinscripcion(form, id, anio);
+    if (
+      id &&
+      formOriginal &&
+      serializarEstable(payload) ===
+        serializarEstable(
+          crearPayloadPreinscripcion(JSON.parse(formOriginal), id, anio),
+        )
+    ) {
+      if (embedded && onSaved) {
+        await onSaved({ fichaModificada: false });
+      } else {
+        toast.info("No se realizaron cambios.");
+        if (onCancel) onCancel();
+        else navigate(`/matricula/${id}/inscripcion`);
+      }
+      return;
+    }
+
+    const estudianteValido = validarPaso(0);
+    const representanteValido = validarPaso(1);
+    const seccionValida = validarPaso(2);
+    if (!estudianteValido || !representanteValido || !seccionValida) {
+      return;
+    }
     if (anio == null) {
       setErrorEnvio(
         "No hay un año escolar activo en el calendario de matrícula.",
       );
       return;
     }
-    const { est, rep } = form;
-    const payload = {
-      estudiante: {
-        cedula: est.tieneCedulaIdentidad
-          ? `${est.cedulaTipo}-${est.cedulaNumero.trim()}`.toUpperCase()
-          : id && String(est.cedulaActual ?? "").startsWith("CE-")
-            ? est.cedulaActual
-            : null,
-        tieneCedulaIdentidad: est.tieneCedulaIdentidad,
-        nacionalidad: est.nacionalidad,
-        ordenNacimiento: est.ordenNacimiento ? Number(est.ordenNacimiento) : null,
-        nombre: est.nombre.trim(),
-        apellido: est.apellido.trim(),
-        fechaNacimiento: est.fechaNacimiento,
-        sexo: est.sexo,
-        correo: o(est.correo),
-        telefono: o(est.telefono),
-      },
-      representante: {
-        id: rep.id,
-        cedula: `${rep.cedulaTipo}-${rep.cedulaNumero.trim()}`.toUpperCase(),
-        nombre: rep.nombre.trim(),
-        apellido: rep.apellido.trim(),
-        parentesco: rep.parentesco,
-        correo: rep.correo.trim(),
-        telefono: o(rep.telefono),
-        telefonoSecundario: o(rep.telefonoSecundario),
-        direccion: o(rep.direccion),
-        ocupacion: o(rep.ocupacion),
-      },
-      seccionId: Number(form.seccionId),
-      anioEscolar: Number(id ? form.anioEscolar : anio),
-      institucionProcedencia: o(form.institucionProcedencia),
-      relacionPrincipal: form.relacionPrincipal,
-      autorizadoRetirar: form.autorizadoRetirar,
-      recibeComunicados: form.recibeComunicados,
-    };
-
     setEnviando(true);
+    onSubmitting?.(true);
     setErrorEnvio("");
     try {
       const { data } = id
         ? await api.put(`/matriculas/${id}/preinscripcion`, payload)
         : await api.post("/matriculas/preinscripciones", payload);
       if (id) {
-        toast.success("Preinscripción actualizada correctamente.");
-        navigate("/matricula");
+        if (embedded && onSaved) {
+          await onSaved({ fichaModificada: true, respuesta: data });
+        } else {
+          toast.success("Ficha de matrícula actualizada correctamente.");
+          navigate(`/matricula/${id}/inscripcion`);
+        }
         return;
       }
-      setResultado(data);
       toast.success("Preinscripción registrada correctamente.");
+      navigate("/matricula");
     } catch (error) {
       // 400 edad/año, 409 cédula, cupo o matrícula duplicada: mensaje del backend
       const mensaje = extractErrorMessage(
@@ -441,43 +513,8 @@ function Preinscripcion() {
       toast.error(mensaje);
     } finally {
       setEnviando(false);
+      onSubmitting?.(false);
     }
-  };
-
-  const manejarSubmit = (ev) => {
-    ev.preventDefault();
-    if (paso < PASOS.length - 1) siguiente();
-    else enviar();
-  };
-
-  const descargarConstancia = async () => {
-    setDescargando(true);
-    try {
-      const { data } = await api.get(
-        `/matriculas/${resultado.matriculaId}/constancia-asignacion-cupo`,
-        { responseType: "blob" },
-      );
-      descargarArchivo(
-        data,
-        `constancia-aceptacion-cupo-${resultado.matriculaId}.pdf`,
-      );
-    } catch (error) {
-      toast.error(
-        await mensajeErrorBlob(error, "No se pudo descargar la constancia."),
-      );
-    } finally {
-      setDescargando(false);
-    }
-  };
-
-  const nueva = () => {
-    setForm(VACIO);
-    setErrores({});
-    setErrorEnvio("");
-    setResultado(null);
-    setPaso(0);
-    setModoRepresentante("buscar");
-    setBusquedaRepresentante("");
   };
 
   const seleccionarRepresentante = (representante) => {
@@ -520,119 +557,32 @@ function Preinscripcion() {
   };
 
   if (cargandoEdicion) {
-    return <div className="mod-main"><p>Cargando preinscripción...</p></div>;
-  }
-
-  // ---------- Pantalla de resultado ----------
-  if (resultado) {
-    return (
-      <div className="mod-main">
-        <div className="mod-heading">
-          <h1>{id ? "Editar preinscripción" : "Preinscripción"}</h1>
-        </div>
-
-        <div className="empleado-form wiz wiz-exito">
-          <span className="wiz-exito-icono" aria-hidden="true">
-            <Icon icon={ICONOS.exito} width="44" height="44" />
-          </span>
-          <h2>Preinscripción registrada</h2>
-          <p className="wiz-exito-texto">
-            Se asignó el cupo a{" "}
-            <strong>{resultado.estudianteNombreCompleto}</strong>.
-          </p>
-
-          <dl className="wiz-resumen">
-            <div>
-              <dt>Cédula del estudiante</dt>
-              <dd>{resultado.estudianteCedula ?? "—"}</dd>
-            </div>
-            <div>
-              <dt>Número de solicitud</dt>
-              <dd>{resultado.matriculaId}</dd>
-            </div>
-            <div>
-              <dt>Estado</dt>
-              <dd>{resultado.estadoMatricula}</dd>
-            </div>
-            <div>
-              <dt>Representante</dt>
-              <dd>{resultado.representanteNombreCompleto}</dd>
-            </div>
-            <div>
-              <dt>Sección</dt>
-              <dd>
-                {seccionElegida
-                  ? `${seccionElegida.gradoNombre ?? ""} · Sección ${seccionElegida.letraSeccion}`
-                  : resultado.seccionId}
-              </dd>
-            </div>
-            <div>
-              <dt>Año escolar</dt>
-              <dd>{anioNombre}</dd>
-            </div>
-            <div>
-              <dt>Tipo de ingreso</dt>
-              <dd>{resultado.tipoIngreso}</dd>
-            </div>
-            <div>
-              <dt>Cupos restantes en la sección</dt>
-              <dd>{resultado.cuposDisponibles}</dd>
-            </div>
-          </dl>
-
-          <div className="form-actions wiz-acciones-final">
-            <button type="button" className="btn-secondary" onClick={nueva}>
-              Registrar otra preinscripción
-            </button>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={descargarConstancia}
-              disabled={descargando}
-            >
-              <Icon icon={ICONOS.descargar} className="icono-inline" />{" "}
-              {descargando ? "Descargando..." : "Descargar constancia de cupo"}
-            </button>
-          </div>
-        </div>
-      </div>
+    return embedded ? (
+      <p className="wiz-info">Cargando ficha...</p>
+    ) : (
+      <div className="mod-main"><p>Cargando ficha...</p></div>
     );
   }
 
   const { est, rep } = form;
 
   return (
-    <div className="mod-main">
-      <div className="mod-heading">
-        <h1>{id ? "Editar preinscripción" : "Preinscripción"}</h1>
-      </div>
+    <div className={embedded ? "wiz-inline" : "mod-main"}>
+      {!embedded && (
+        <div className="mod-heading">
+          <h1>{id ? "Editar ficha de matrícula" : "Crear matrícula"}</h1>
+        </div>
+      )}
 
-      <form className="empleado-form wiz" onSubmit={manejarSubmit} noValidate>
-        {/* Indicador de progreso */}
-        <ol className="wiz-pasos" aria-label="Progreso de la preinscripción">
-          {PASOS.map((titulo, i) => (
-            <li
-              key={titulo}
-              className={`wiz-paso${i === paso ? " activo" : ""}${i < paso ? " hecho" : ""}`}
-              aria-current={i === paso ? "step" : undefined}
-            >
-              <button
-                type="button"
-                onClick={() => setPaso(i)}
-                disabled={i > paso}
-              >
-                <span className="wiz-paso-num">
-                  {i < paso ? <Icon icon={ICONOS.check} /> : i + 1}
-                </span>
-                <span className="wiz-paso-titulo">{titulo}</span>
-              </button>
-            </li>
-          ))}
-        </ol>
-        <p className="wiz-contador">
-          Paso {paso + 1} de {PASOS.length} · Año escolar {anioNombre}
-        </p>
-
+      <form
+        id={formId}
+        className="empleado-form wiz wiz-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void enviar();
+        }}
+        noValidate
+      >
         {errorDatos && <p className="error-msg">{errorDatos}</p>}
         {!cargandoDatos && calendario && !periodoVigente && (
           <p className="wiz-aviso">
@@ -648,9 +598,25 @@ function Preinscripcion() {
           </p>
         )}
 
-        {/* Paso 1 */}
-        {paso === 0 && (
-          <div className="wiz-seccion-form">
+        <section className="ins-tarjeta wiz-card">
+          <h2 className="ins-seccion-titulo">Datos del estudiante</h2>
+          <div className="wiz-seccion-actual">
+            <div>
+              <strong>{seccionElegida
+                ? `${seccionElegida.gradoNombre} · Sección ${seccionElegida.letraSeccion}`
+                : "Sección sin seleccionar"}</strong>
+              <small>Año escolar {anioNombre}</small>
+            </div>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={abrirModalSeccion}
+              disabled={grupos.length === 0}
+            >
+              {seccionElegida ? "Cambiar sección" : "Seleccionar sección"}
+            </button>
+          </div>
+          {err("seccionId")}
             <div className="form-grid-2">
               <label className="wiz-check wiz-identidad-toggle">
                 <input
@@ -805,12 +771,10 @@ function Preinscripcion() {
                 {err("institucionProcedencia")}
               </label>
             </div>
-          </div>
-        )}
+        </section>
 
-        {/* Paso 2 */}
-        {paso === 1 && (
-          <div className="wiz-seccion-form">
+        <section className="ins-tarjeta wiz-card">
+          <h2 className="ins-seccion-titulo">Representantes vinculados</h2>
             <div className="wiz-representante-opciones">
               {modoRepresentante === "buscar" ? (
                 <>
@@ -1066,130 +1030,116 @@ function Preinscripcion() {
                 Recibe comunicados del plantel
               </label>
             </div>}
-          </div>
-        )}
+        </section>
 
-        {/* Paso 3 */}
-        {paso === 2 && (
-          <div className="wiz-seccion-form">
-            {cargandoDatos ? (
-              <p>Cargando secciones...</p>
-            ) : grupos.length === 0 ? (
-              <p className="wiz-aviso">
-                <Icon icon={ICONOS.aviso} className="icono-inline" /> No hay
-                secciones activas para el año escolar {anioNombre}.
-              </p>
-            ) : (
-              <fieldset className="wiz-grupos">
-                <legend>Selecciona la sección *</legend>
-                {grupos.map(([grado, lista]) => (
-                  <div key={grado} className="wiz-grado">
-                    <h3>{grado}</h3>
-                    <div className="wiz-secciones">
-                      {lista.map((s) => {
-                        const conCupos = typeof s.cuposDisponibles === "number";
-                        const agotada = conCupos && s.cuposDisponibles <= 0;
-                        return (
-                          <label
-                            key={s.id}
-                            className={`wiz-seccion${agotada ? " agotada" : ""}`}
-                          >
-                            <input
-                              type="radio"
-                              name="seccionId"
-                              value={s.id}
-                              checked={String(form.seccionId) === String(s.id)}
-                              disabled={agotada}
-                              onChange={() =>
-                                setRaiz("seccionId", String(s.id))
-                              }
-                            />
-                            <span className="wiz-seccion-nombre">
-                              Sección {s.letraSeccion}
-                            </span>
-                            <span className="wiz-seccion-cupos">
-                              {conCupos
-                                ? agotada
-                                  ? "Sin cupos"
-                                  : `${s.cuposDisponibles} cupos disponibles`
-                                : `Capacidad: ${s.capacidadMaxima ?? "—"}`}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-                {err("seccionId")}
-              </fieldset>
-            )}
-
-            {seccionElegida && (
-              <dl className="wiz-resumen">
-                <div>
-                  <dt>Estudiante</dt>
-                  <dd>
-                    {est.nombre} {est.apellido} (
-                    {est.tieneCedulaIdentidad
-                      ? `${est.cedulaTipo}-${est.cedulaNumero}`
-                      : id && String(est.cedulaActual ?? "").startsWith("CE-")
-                        ? est.cedulaActual
-                        : "CI escolar por generar"})
-                    )
-                  </dd>
-                </div>
-                <div>
-                  <dt>Representante</dt>
-                  <dd>
-                    {rep.nombre} {rep.apellido} · {rep.parentesco}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Sección</dt>
-                  <dd>
-                    {seccionElegida.gradoNombre} · Sección{" "}
-                    {seccionElegida.letraSeccion}
-                  </dd>
-                </div>
-              </dl>
-            )}
-
-            {errorEnvio && <p className="error-msg">{errorEnvio}</p>}
-          </div>
-        )}
-
-        <div className="form-actions">
-          {paso > 0 && (
+        {errorEnvio && <p className="error-msg">{errorEnvio}</p>}
+        {!embedded && (
+          <div className="form-actions wiz-form-actions">
+            {id && (
             <button
               type="button"
               className="btn-secondary"
-              onClick={anterior}
+              onClick={() => {
+                if (onCancel) onCancel();
+                else navigate(`/matricula/${id}/inscripcion`);
+              }}
               disabled={enviando}
             >
-              Anterior
+              Cancelar
             </button>
-          )}
-          {paso < PASOS.length - 1 ? (
-            <button type="submit" className="btn-primary">
-              Siguiente
-            </button>
-          ) : (
+            )}
             <button
               type="submit"
               className="btn-primary"
-              disabled={enviando || !form.seccionId}
+              disabled={enviando || Boolean(errorDatos)}
             >
-              {enviando
-                ? id
-                  ? "Guardando..."
-                  : "Registrando..."
-                : id
-                  ? "Guardar cambios"
-                  : "Registrar preinscripción"}
+              {enviando ? "Guardando..." : id ? "Actualizar" : "Guardar"}
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </form>
+      {modalSeccionAbierto && (
+        <div
+          className="wiz-modal-overlay"
+          role="presentation"
+          onClick={() => setModalSeccionAbierto(false)}
+        >
+          <section
+            className="wiz-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="wiz-modal-seccion-titulo"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="wiz-modal-seccion-titulo">Cambiar sección</h2>
+            <div className="form-grid-2">
+              <label>
+                Grado *
+                <select
+                  value={gradoModalId}
+                  onChange={(event) => {
+                    setGradoModalId(event.target.value);
+                    setSeccionModalId("");
+                  }}
+                >
+                  <option value="">Selecciona un grado...</option>
+                  {grupos.map(([gradoId, grupo]) => (
+                    <option key={gradoId} value={gradoId}>
+                      {grupo.nombre}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Sección *
+                <select
+                  value={seccionModalId}
+                  disabled={!gradoModalId}
+                  onChange={(event) => setSeccionModalId(event.target.value)}
+                >
+                  <option value="">Selecciona una sección...</option>
+                  {seccionesModal.map((seccion) => {
+                    const agotada =
+                      typeof seccion.cuposDisponibles === "number" &&
+                      seccion.cuposDisponibles <= 0 &&
+                      String(seccion.id) !== String(form.seccionId);
+                    return (
+                      <option
+                        key={seccion.id}
+                        value={seccion.id}
+                        disabled={agotada}
+                      >
+                        Sección {seccion.letraSeccion} —{" "}
+                        {agotada
+                          ? "Sin cupos"
+                          : `${seccion.cuposDisponibles ?? seccion.capacidadMaxima ?? "—"} cupos`}
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
+            </div>
+            {err("seccionId")}
+            <div className="form-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setModalSeccionAbierto(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={!seccionModalId}
+                onClick={guardarSeccionModal}
+              >
+                Usar sección
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

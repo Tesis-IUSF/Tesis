@@ -6,6 +6,83 @@
   max-width: 780px;
 }
 
+.wiz-inline {
+  width: 100%;
+}
+
+.empleado-form.wiz-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-width: none;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.wiz-form .wiz-card {
+  margin-bottom: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: 14px;
+  background: var(--blanco);
+  box-shadow: 0 4px 16px rgba(47, 90, 138, 0.07);
+}
+
+.wiz-form .wiz-periodo {
+  margin: -0.5rem 0 1rem;
+  color: var(--texto-suave);
+}
+
+.wiz-form-actions {
+  margin-top: 0.5rem;
+}
+
+.wiz-seccion-actual {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #d0dcea;
+  border-radius: 10px;
+  background: #f5f8fc;
+}
+
+.wiz-seccion-actual > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.wiz-seccion-actual small {
+  color: var(--texto-suave);
+}
+
+.wiz-modal-overlay {
+  position: fixed;
+  z-index: 1100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.wiz-modal {
+  width: min(100%, 620px);
+  padding: 1.5rem;
+  border-radius: 14px;
+  background: var(--blanco);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
+}
+
+.wiz-modal h2 {
+  margin: 0 0 1.25rem;
+  font-family: var(--font-titulos);
+  color: var(--azul-oscuro);
+}
+
 /* ===== Indicador de progreso ===== */
 .wiz-pasos {
   display: flex;
@@ -179,6 +256,10 @@
   color: var(--texto-suave);
 }
 
+.wiz-grupos .form-grid-2 {
+  margin-bottom: 0.25rem;
+}
+
 .wiz-grado + .wiz-grado {
   margin-top: 1rem;
 }
@@ -303,6 +384,15 @@
 }
 
 @media (max-width: 640px) {
+  .wiz-form .wiz-card {
+    padding: 1rem;
+  }
+
+  .wiz-seccion-actual {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .wiz-paso-titulo {
     font-size: 0.72rem;
   }

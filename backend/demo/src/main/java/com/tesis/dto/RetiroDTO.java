@@ -39,6 +39,15 @@ public class RetiroDTO {
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
+    public static class RepresentanteSolicitanteDTO {
+        private Integer id;
+        private String nombreCompleto;
+        private String cedula;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class RetiroResponseDTO {
         private Integer retiroId;
         private Integer matriculaId;

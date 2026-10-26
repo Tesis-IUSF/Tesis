@@ -39,6 +39,67 @@
   color: var(--texto-suave);
 }
 
+.ins-seccion-titulo {
+  margin: 0 0 1rem;
+  font-family: var(--font-titulos);
+  color: var(--azul-oscuro);
+}
+
+.ins-datos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem 1.25rem;
+  margin: 0;
+}
+
+.ins-datos-grid > div {
+  min-width: 0;
+}
+
+.ins-datos-grid dt {
+  margin-bottom: 0.2rem;
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.ins-datos-grid dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ins-dato-completo {
+  grid-column: 1 / -1;
+}
+
+.ins-representantes {
+  display: grid;
+  gap: 1rem;
+}
+
+.ins-representante {
+  padding: 1rem;
+  border: 1px solid #d0dcea;
+  border-radius: 10px;
+}
+
+.ins-representante h4 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.9rem;
+  color: var(--azul-oscuro);
+}
+
+.ins-principal {
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1e40af;
+  font-size: 0.72rem;
+}
+
 .ins-cabecera-datos {
   display: flex;
   flex-direction: column;
@@ -295,8 +356,58 @@
   line-height: 1.5;
 }
 
+.ins-historial-overlay {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.ins-historial-modal {
+  width: min(100%, 980px);
+  max-height: min(85vh, 720px);
+  overflow: auto;
+  padding: 1.25rem;
+  border-radius: 14px;
+  background: var(--blanco);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
+}
+
+.ins-historial-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ins-historial-cabecera h2 {
+  margin: 0;
+  font-family: var(--font-titulos);
+  color: var(--azul-oscuro);
+}
+
 @media (max-width: 640px) {
+  .ins-datos-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .ins-cabecera-datos {
+    align-items: flex-start;
+  }
+
+  .ins-historial-overlay {
+    padding: 0.5rem;
+  }
+
+  .ins-historial-modal {
+    padding: 1rem;
+  }
+
+  .ins-historial-cabecera {
     align-items: flex-start;
   }
   .ins-item-fila {
