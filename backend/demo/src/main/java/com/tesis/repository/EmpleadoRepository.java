@@ -26,6 +26,11 @@ public interface EmpleadoRepository extends JpaRepository<Empleado, Integer> {
 
     java.util.List<Empleado> findByActivoTrue(Sort sort);
 
+    @Query("select e from Empleado e join fetch e.cargo c "
+            + "where e.activo = true and lower(c.nombreCargo) = lower(:nombreCargo) "
+            + "order by e.apellido, e.nombre")
+    java.util.List<Empleado> findActivosPorNombreCargo(@Param("nombreCargo") String nombreCargo);
+
     @EntityGraph(attributePaths = {"cargo", "departamento", "usuario"})
     @Query("select e from Empleado e where "
             + "(:cargoId is null or e.cargo.id = :cargoId) and "

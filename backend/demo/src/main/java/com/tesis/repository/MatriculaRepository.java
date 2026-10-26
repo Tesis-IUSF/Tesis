@@ -109,6 +109,16 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
 
     List<Matricula> findBySeccion_IdAndAnioEscolar(Integer seccionId, Short anioEscolar);
 
+    boolean existsBySeccion_Id(Integer seccionId);
+
+    boolean existsBySeccion_Grado_Id(Integer gradoId);
+
+    boolean existsBySeccion_IdAndAnioEscolarAndEstadoMatriculaIn(
+            Integer seccionId, Short anioEscolar, List<String> estados);
+
+    boolean existsBySeccion_Grado_IdAndAnioEscolarAndEstadoMatriculaIn(
+            Integer gradoId, Short anioEscolar, List<String> estados);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select m from Matricula m where m.id = :matriculaId")
     java.util.Optional<Matricula> findByIdForUpdate(@Param("matriculaId") Integer matriculaId);

@@ -1,0 +1,112 @@
+.calendario-matricula .mod-heading {
+  align-items: center;
+}
+
+.calendario-intro {
+  margin: 0.45rem 0 0;
+  color: var(--texto-suave);
+}
+
+.calendario-nota,
+.calendario-modal-ayuda {
+  padding: 0.8rem 1rem;
+  border-left: 4px solid var(--azul);
+  border-radius: 6px;
+  background: var(--azul-claro);
+  color: var(--texto);
+  font-size: 0.9rem;
+}
+
+.calendario-anios {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.calendario-anio,
+.calendario-vacio {
+  padding: 1.25rem;
+  border-radius: 14px;
+  background: var(--blanco);
+  box-shadow: 0 4px 16px rgba(47, 90, 138, 0.07);
+}
+
+.calendario-anio-cabecera,
+.calendario-anio-titulo,
+.calendario-acciones {
+  display: flex;
+  align-items: center;
+}
+
+.calendario-anio-cabecera {
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.calendario-anio-titulo {
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.calendario-anio-titulo h2,
+.calendario-vacio h2 {
+  margin: 0;
+  color: var(--azul-oscuro);
+  font-family: var(--font-titulos);
+  font-size: 1.35rem;
+}
+
+.calendario-anio-cabecera p {
+  margin: 0.4rem 0 0;
+  color: var(--texto-suave);
+}
+
+.calendario-acciones {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.calendario-estado {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.calendario-estado.activo {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.calendario-periodos-vacios,
+.calendario-vacio p {
+  margin: 0;
+  padding: 1rem 0;
+  color: var(--texto-suave);
+}
+
+.calendario-modal-ayuda {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.calendario-modal-ayuda + label {
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 760px) {
+  .calendario-matricula .mod-heading,
+  .calendario-anio-cabecera {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .calendario-acciones {
+    justify-content: flex-start;
+  }
+}

@@ -46,6 +46,8 @@ public class SecurityConfig {
                 .hasRole("DIRECTOR")
             .requestMatchers(HttpMethod.DELETE, "/api/catalogos/turnos/*")
                 .hasRole("DIRECTOR")
+            .requestMatchers(HttpMethod.GET, "/api/catalogos/turnos/**")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR", "COORDINADOR")
             .requestMatchers("/api/catalogos/turnos/**")
                 .hasAnyRole("DIRECTOR", "COORDINADOR")
             .requestMatchers(HttpMethod.GET, "/api/catalogos/departamentos/**",
@@ -60,6 +62,20 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.DELETE, "/api/catalogos/departamentos/*",
                     "/api/catalogos/cargos/*")
                 .hasRole("DIRECTOR")
+            .requestMatchers(HttpMethod.GET, "/api/catalogos/docentes")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
+            .requestMatchers(HttpMethod.GET, "/api/catalogos/grados/**",
+                    "/api/catalogos/secciones/**")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR", "COORDINADOR", "ADMINISTRATIVO")
+            .requestMatchers(HttpMethod.POST, "/api/catalogos/grados",
+                    "/api/catalogos/secciones")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
+            .requestMatchers(HttpMethod.PUT, "/api/catalogos/grados/*",
+                    "/api/catalogos/secciones/*")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
+            .requestMatchers(HttpMethod.DELETE, "/api/catalogos/grados/*",
+                    "/api/catalogos/secciones/*")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
             .requestMatchers(HttpMethod.POST, "/api/catalogos/requisitos-matricula")
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
             .requestMatchers(HttpMethod.PUT, "/api/catalogos/requisitos-matricula/*")
@@ -72,6 +88,19 @@ public class SecurityConfig {
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
             .requestMatchers("/api/catalogos/departamentos/**", "/api/catalogos/cargos/**")
                 .hasRole("DIRECTOR")
+            .requestMatchers(HttpMethod.POST, "/api/matriculas/gestion/anios",
+                    "/api/matriculas/gestion/anios/*/activar",
+                    "/api/matriculas/gestion/anios/*/periodos")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
+            .requestMatchers(HttpMethod.PUT, "/api/matriculas/gestion/anios/*",
+                    "/api/matriculas/gestion/periodos/*")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
+            .requestMatchers(HttpMethod.PATCH,
+                    "/api/matriculas/gestion/periodos/*/activar",
+                    "/api/matriculas/gestion/periodos/*/desactivar")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
+            .requestMatchers(HttpMethod.DELETE, "/api/matriculas/gestion/periodos/*")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
             .requestMatchers(HttpMethod.POST, "/api/matriculas/*/retiros")
                 .hasRole("COORDINADOR")
             .requestMatchers(HttpMethod.GET, "/api/matriculas/**")

@@ -1,16 +1,20 @@
 package com.tesis.service;
 
 import com.tesis.entity.Departamento;
+import com.tesis.entity.AnioEscolar;
 import com.tesis.entity.NivelEducativo;
 import com.tesis.entity.Grado;
 import com.tesis.entity.RequisitoMatricula;
+import com.tesis.entity.Seccion;
 import com.tesis.entity.Turno;
+import com.tesis.repository.AnioEscolarRepository;
 import com.tesis.repository.CargoRepository;
 import com.tesis.repository.ChecklistMatriculaRepository;
 import com.tesis.repository.DepartamentoRepository;
 import com.tesis.repository.EmpleadoRepository;
 import com.tesis.repository.GradoRepository;
 import com.tesis.repository.NivelEducativoRepository;
+import com.tesis.repository.MatriculaRepository;
 import com.tesis.repository.RequisitoMatriculaRepository;
 import com.tesis.repository.RolesRepository;
 import com.tesis.repository.SeccionRepository;
@@ -57,6 +61,10 @@ class CatalogoServiceTest {
     private SeccionRepository seccionRepository;
     @Mock
     private RequisitoMatriculaRepository requisitoMatriculaRepository;
+    @Mock
+    private MatriculaRepository matriculaRepository;
+    @Mock
+    private AnioEscolarRepository anioEscolarRepository;
 
     private CatalogoService catalogoService;
 
@@ -72,7 +80,9 @@ class CatalogoServiceTest {
                 gradoRepository,
                 seccionRepository,
                 requisitoMatriculaRepository,
-                checklistMatriculaRepository
+                checklistMatriculaRepository,
+                matriculaRepository,
+                anioEscolarRepository
         );
     }
 
@@ -288,5 +298,81 @@ class CatalogoServiceTest {
                 () -> catalogoService.crearGrado(grado));
 
         assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, error.getStatusCode());
+    }
+
+    @Test
+    void noPermiteDesactivarGradoConMatriculasActivasEnElAnioVigente() {
+        Grado actual = new Grado();
+        actual.setId(5);
+        actual.setActivo(true);
+        NivelEducativo nivel = new NivelEducativo();
+        nivel.setId(2);
+        when(gradoRepository.findByIdForUpdate(5)).thenReturn(Optional.of(actual));
+        when(nivelEducativoRepository.findById(2)).thenReturn(Optional.of(nivel));
+        when(seccionRepository.findByGrado_IdForUpdate(5)).thenReturn(List.of(new Seccion()));
+        AnioEscolar anioActivo = new AnioEscolar();
+        anioActivo.setAnio((short) 2026);
+        when(anioEscolarRepository.findFirstByActivoTrue()).thenReturn(Optional.of(anioActivo));
+        when(matriculaRepository.existsBySeccion_Grado_IdAndAnioEscolarAndEstadoMatriculaIn(
+                org.mockito.ArgumentMatchers.eq(5),
+                org.mockito.ArgumentMatchers.eq((short) 2026),
+                any())).thenReturn(true);
+
+        Grado solicitud = new Grado();
+        solicitud.setNivelEducativo(nivel);
+        solicitud.setNumeroGrado((short) 1);
+        solicitud.setEdadMinima((short) 5);
+        solicitud.setEdadMaxima((short) 8);
+        solicitud.setActivo(false);
+        org.springframework.web.server.ResponseStatusException error = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> catalogoService.actualizarGrado(5, solicitud));
+
+        assertEquals(org.springframework.http.HttpStatus.CONFLICT, error.getStatusCode());
+        verify(seccionRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void desactivarGradoSinMatriculasVigentesDesactivaSusSecciones() {
+        Grado actual = new Grado();
+        actual.setId(5);
+        actual.setActivo(true);
+        NivelEducativo nivel = new NivelEducativo();
+        nivel.setId(2);
+        Seccion seccion = new Seccion();
+        seccion.setActivo(true);
+        when(gradoRepository.findByIdForUpdate(5)).thenReturn(Optional.of(actual));
+        when(nivelEducativoRepository.findById(2)).thenReturn(Optional.of(nivel));
+        when(seccionRepository.findByGrado_IdForUpdate(5)).thenReturn(List.of(seccion));
+        when(anioEscolarRepository.findFirstByActivoTrue()).thenReturn(Optional.empty());
+        when(gradoRepository.save(any(Grado.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Grado solicitud = new Grado();
+        solicitud.setNivelEducativo(nivel);
+        solicitud.setNumeroGrado((short) 1);
+        solicitud.setEdadMinima((short) 5);
+        solicitud.setEdadMaxima((short) 8);
+        solicitud.setActivo(false);
+
+        catalogoService.actualizarGrado(5, solicitud);
+
+        assertEquals(false, seccion.getActivo());
+        assertEquals(false, actual.getActivo());
+        verify(seccionRepository).saveAll(List.of(seccion));
+    }
+
+    @Test
+    void noPermiteEliminarSeccionConMatriculasHistoricas() {
+        Seccion seccion = new Seccion();
+        seccion.setId(12);
+        when(seccionRepository.findByIdForUpdate(12)).thenReturn(Optional.of(seccion));
+        when(matriculaRepository.existsBySeccion_Id(12)).thenReturn(true);
+
+        org.springframework.web.server.ResponseStatusException error = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> catalogoService.eliminarSeccion(12));
+
+        assertEquals(org.springframework.http.HttpStatus.CONFLICT, error.getStatusCode());
+        verify(seccionRepository, never()).deleteById(12);
     }
 }

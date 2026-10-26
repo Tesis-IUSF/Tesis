@@ -67,12 +67,16 @@ Herramientas analíticas para la toma de decisiones directivas.
 
 En los módulos cubiertos por RBAC, los permisos son:
 
-- **Administrador:** administración de usuarios y de matrículas, excepto registrar retiros.
+- **Administrador:** administración de usuarios, matrículas excepto retiros, calendario de matrícula, grados y secciones.
 - **Coordinador:** gestión de empleados, carnets y matrículas, incluidos los retiros; acceso total a publicaciones y categorías del blog. Puede consultar los catálogos de cargos, departamentos y turnos usados por el formulario de empleados, pero no modificarlos.
-- **Director:** gestión de departamentos, cargos y turnos; consulta de empleados, matrículas y expedientes en modo de solo lectura, asistencia de hoy e histórico; acceso total al blog.
+- **Director:** gestión de departamentos, cargos, turnos, calendario de matrícula, grados y secciones; consulta de empleados, matrículas y expedientes en modo de solo lectura, asistencia de hoy e histórico; acceso total al blog.
 - **Administrativo:** gestión de matrículas y expedientes, excepto registrar retiros.
 - **Escáner:** registro de asistencia mediante QR.
 - **Público:** consulta de publicaciones y categorías activas del blog sin iniciar sesión.
+
+La opción **Calendario de matrícula** del panel está disponible para Administrador y Director. Permite crear y editar años escolares, configurar períodos de preinscripción, inscripción y atención extemporánea, y activar o desactivar períodos. Solo puede existir un año escolar activo: al activar otro, el actual se desactiva. Para activar un año se requiere al menos un período activo de cada tipo; el backend también valida rangos y solapamientos.
+
+Las opciones **Grados** y **Secciones** también son exclusivas de Administrador y Director. No se puede desactivar un grado o una sección con matrículas activas en el año escolar vigente; al desactivar un grado se desactivan sus secciones. El grado puede reactivarse sin reactivar automáticamente las secciones. No se pueden borrar grados con matrículas históricas ni grados que aún tengan secciones; una sección solo puede borrarse si no tiene matrículas asociadas en ningún año. Las secciones permiten asignar docentes activos con cargo «Docente» y turnos.
 
 ### Caché de consultas frecuentes
 
