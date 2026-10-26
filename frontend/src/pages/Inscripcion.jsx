@@ -111,6 +111,9 @@ function Inscripcion({ soloConsulta = false }) {
     !!data &&
     ["preinscrito", "en_proceso", "completada"].includes(data.estadoMatricula);
   const formalizada = data?.estadoMatricula === "completada";
+  // Los requisitos solo se muestran mientras la matrícula sigue abierta
+  const mostrarRequisitos =
+    !!data && ["preinscrito", "en_proceso"].includes(data.estadoMatricula);
   const checklistEditable = editable && editandoFicha;
 
   const items = useMemo(() => {
@@ -533,176 +536,179 @@ function Inscripcion({ soloConsulta = false }) {
       )}
 
       {/* Requisitos */}
-      <section className="ins-tarjeta">
-        <div className="ins-progreso-cab">
-          <h3>Requisitos de inscripción</h3>
-          {editable && (
-            <strong>
-              {hechos} de {total} obligatorios
-            </strong>
-          )}
-        </div>
-        {editable && (
-          <div
-            className="ins-barra"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={pct}
-            aria-label="Requisitos obligatorios cumplidos"
-          >
-            <span style={{ width: `${pct}%` }} />
+      {mostrarRequisitos && (
+        <section className="ins-tarjeta">
+          <div className="ins-progreso-cab">
+            <h3>Requisitos de inscripción</h3>
+            {editable && (
+              <strong>
+                {hechos} de {total} obligatorios
+              </strong>
+            )}
           </div>
-        )}
+          {editable && (
+            <div
+              className="ins-barra"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={pct}
+              aria-label="Requisitos obligatorios cumplidos"
+            >
+              <span style={{ width: `${pct}%` }} />
+            </div>
+          )}
 
-        {items.length === 0 ? (
-          <p className="ins-vacio">
-            No hay requisitos configurados para el nivel y el tipo de ingreso de
-            este estudiante. Pide al administrador que los registre en el
-            catálogo de requisitos.
-          </p>
-        ) : (
-          <ul className="ins-lista">
-            {items.map((item) => {
-              const abierto = abiertos.has(item.requisitoId);
-              const esFoto = esRequisitoFoto(item);
-              const b = checklistEditable
-                ? (checklistBorrador[item.requisitoId] ?? {
-                    cumplido: Boolean(item.cumplido),
-                    notas: item.notas ?? "",
-                    archivoUrl: item.archivoUrl ?? "",
-                  })
-                : item;
-              const cumplidoMostrado = checklistEditable
-                ? Boolean(b.cumplido)
-                : Boolean(item.cumplido);
-              const ocupado = Boolean(guardandoId) || guardandoFicha;
-              return (
-                <li
-                  key={item.requisitoId}
-                  className={`ins-item${cumplidoMostrado ? " cumplido" : ""}`}
-                >
-                  <div className="ins-item-fila">
-                    <label className="ins-check">
-                      <input
-                        type="checkbox"
-                        checked={
-                          checklistEditable
-                            ? (checklistBorrador[item.requisitoId]?.cumplido ??
-                              item.cumplido ??
-                              false)
-                            : (item.cumplido ?? false)
-                        }
-                        disabled={!checklistEditable || ocupado}
-                        onChange={() =>
-                          cambiarRequisitoBorrador(
-                            item.requisitoId,
-                            !(
-                              checklistBorrador[item.requisitoId]?.cumplido ??
-                              item.cumplido ??
-                              false
-                            ),
-                          )
-                        }
-                      />
-                      <span className="ins-item-texto">
-                        <strong>{item.nombreRequisito}</strong>
-                        {item.descripcionRequisito && (
-                          <small>{item.descripcionRequisito}</small>
-                        )}
-                        {esFoto && (
-                          <small>
-                            {fotoEstudiante
-                              ? "Foto cargada en la ficha. Marca el requisito cuando esté verificado o si entregó la foto impresa."
-                              : "Sin foto cargada. Marca el requisito si entregó la foto impresa."}
-                          </small>
-                        )}
-                        {item.cumplido && item.fechaVerificacion && (
-                          <small className="ins-verificado">
-                            Verificado el{" "}
-                            {formatFechaHora(item.fechaVerificacion)}
-                          </small>
-                        )}
-                      </span>
-                    </label>
-
-                    <span
-                      className={`ins-etiqueta${item.obligatorio ? " obligatorio" : ""}`}
-                    >
-                      {item.obligatorio ? "Obligatorio" : "Opcional"}
-                    </span>
-
-                    <button
-                      type="button"
-                      className="btn-edit"
-                      onClick={() => alternarDetalle(item.requisitoId)}
-                      aria-expanded={abierto}
-                    >
-                      {abierto ? "Ocultar" : "Detalle"}
-                    </button>
-                  </div>
-
-                  {abierto && b && (
-                    <div className="ins-detalle">
-                      {esFoto && (
-                        <div className="ins-foto-req">
-                          <FotoCarnet
-                            etiqueta="Foto del estudiante"
-                            archivo={null}
-                            urlActual={fotoEstudiante}
-                            soloLectura
-                          />
-                          <p className="ins-foto-ayuda">
-                            Para cambiar la foto, usa <strong>Editar</strong> y
-                            súbela en los datos del estudiante.
-                          </p>
-                        </div>
-                      )}
-                      <label>
-                        Notas
-                        <textarea
-                          rows={2}
-                          value={b.notas}
-                          disabled={!checklistEditable}
-                          onChange={(e) =>
-                            setChecklistBorrador((actual) => ({
-                              ...actual,
-                              [item.requisitoId]: {
-                                ...b,
-                                notas: e.target.value,
-                              },
-                            }))
+          {items.length === 0 ? (
+            <p className="ins-vacio">
+              No hay requisitos configurados para el nivel y el tipo de ingreso
+              de este estudiante. Pide al administrador que los registre en el
+              catálogo de requisitos.
+            </p>
+          ) : (
+            <ul className="ins-lista">
+              {items.map((item) => {
+                const abierto = abiertos.has(item.requisitoId);
+                const esFoto = esRequisitoFoto(item);
+                const b = checklistEditable
+                  ? (checklistBorrador[item.requisitoId] ?? {
+                      cumplido: Boolean(item.cumplido),
+                      notas: item.notas ?? "",
+                      archivoUrl: item.archivoUrl ?? "",
+                    })
+                  : item;
+                const cumplidoMostrado = checklistEditable
+                  ? Boolean(b.cumplido)
+                  : Boolean(item.cumplido);
+                const ocupado = Boolean(guardandoId) || guardandoFicha;
+                return (
+                  <li
+                    key={item.requisitoId}
+                    className={`ins-item${cumplidoMostrado ? " cumplido" : ""}`}
+                  >
+                    <div className="ins-item-fila">
+                      <label className="ins-check">
+                        <input
+                          type="checkbox"
+                          checked={
+                            checklistEditable
+                              ? (checklistBorrador[item.requisitoId]
+                                  ?.cumplido ??
+                                item.cumplido ??
+                                false)
+                              : (item.cumplido ?? false)
                           }
-                          placeholder="Observaciones sobre este requisito"
+                          disabled={!checklistEditable || ocupado}
+                          onChange={() =>
+                            cambiarRequisitoBorrador(
+                              item.requisitoId,
+                              !(
+                                checklistBorrador[item.requisitoId]?.cumplido ??
+                                item.cumplido ??
+                                false
+                              ),
+                            )
+                          }
                         />
+                        <span className="ins-item-texto">
+                          <strong>{item.nombreRequisito}</strong>
+                          {item.descripcionRequisito && (
+                            <small>{item.descripcionRequisito}</small>
+                          )}
+                          {esFoto && (
+                            <small>
+                              {fotoEstudiante
+                                ? "Foto cargada en la ficha. Marca el requisito cuando esté verificado o si entregó la foto impresa."
+                                : "Sin foto cargada. Marca el requisito si entregó la foto impresa."}
+                            </small>
+                          )}
+                          {item.cumplido && item.fechaVerificacion && (
+                            <small className="ins-verificado">
+                              Verificado el{" "}
+                              {formatFechaHora(item.fechaVerificacion)}
+                            </small>
+                          )}
+                        </span>
                       </label>
-                      {!esFoto && (
+
+                      <span
+                        className={`ins-etiqueta${item.obligatorio ? " obligatorio" : ""}`}
+                      >
+                        {item.obligatorio ? "Obligatorio" : "Opcional"}
+                      </span>
+
+                      <button
+                        type="button"
+                        className="btn-edit"
+                        onClick={() => alternarDetalle(item.requisitoId)}
+                        aria-expanded={abierto}
+                      >
+                        {abierto ? "Ocultar" : "Detalle"}
+                      </button>
+                    </div>
+
+                    {abierto && b && (
+                      <div className="ins-detalle">
+                        {esFoto && (
+                          <div className="ins-foto-req">
+                            <FotoCarnet
+                              etiqueta="Foto del estudiante"
+                              archivo={null}
+                              urlActual={fotoEstudiante}
+                              soloLectura
+                            />
+                            <p className="ins-foto-ayuda">
+                              Para cambiar la foto, usa <strong>Editar</strong>{" "}
+                              y súbela en los datos del estudiante.
+                            </p>
+                          </div>
+                        )}
                         <label>
-                          Enlace del documento
-                          <input
-                            value={b.archivoUrl}
+                          Notas
+                          <textarea
+                            rows={2}
+                            value={b.notas}
                             disabled={!checklistEditable}
                             onChange={(e) =>
                               setChecklistBorrador((actual) => ({
                                 ...actual,
                                 [item.requisitoId]: {
                                   ...b,
-                                  archivoUrl: e.target.value,
+                                  notas: e.target.value,
                                 },
                               }))
                             }
-                            placeholder="https://..."
+                            placeholder="Observaciones sobre este requisito"
                           />
                         </label>
-                      )}
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+                        {!esFoto && (
+                          <label>
+                            Enlace del documento
+                            <input
+                              value={b.archivoUrl}
+                              disabled={!checklistEditable}
+                              onChange={(e) =>
+                                setChecklistBorrador((actual) => ({
+                                  ...actual,
+                                  [item.requisitoId]: {
+                                    ...b,
+                                    archivoUrl: e.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder="https://..."
+                            />
+                          </label>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
 
       {/* Cierre */}
       {formalizada ? (

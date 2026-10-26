@@ -9,11 +9,13 @@ import org.openpdf.text.pdf.PdfReader;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CarnetPdfGeneratorTest {
@@ -31,32 +33,68 @@ class CarnetPdfGeneratorTest {
                 "archivo", "foto.png", "image/png", imagen)).url();
         CarnetPdfGenerator generator = new CarnetPdfGenerator(fotoService, "Escuela");
 
-        byte[] pdf = generator.generar(empleado(fotoUrl), "qr-token");
+        byte[] pdf = generator.generar(empleado(fotoUrl, "M"), "qr-token");
 
+        // foto del empleado + QR
         assertEquals(2, contarImagenes(pdf));
     }
 
     @Test
-    void muestraUnMarcadorConInicialesCuandoElEmpleadoNoTieneFoto() throws Exception {
+    void usaLaSiluetaCuandoElEmpleadoNoTieneFotoYSuSexoEsMasculinoOFemenino() throws Exception {
         CarnetPdfGenerator generator = new CarnetPdfGenerator(
                 new FotoService(uploadsDirectory.toString()), "Escuela");
 
-        byte[] pdf = generator.generar(empleado(null), "qr-token");
+        byte[] pdfHombre = generator.generar(empleado(null, "M"), "qr-token");
+        byte[] pdfMujer = generator.generar(empleado(null, "F"), "qr-token");
 
-        PdfReader reader = new PdfReader(pdf);
-        assertTrue(new String(reader.getPageContent(1), java.nio.charset.StandardCharsets.ISO_8859_1)
-                .contains("SIN FOTO"));
-        reader.close();
-        assertEquals(1, contarImagenes(pdf));
+        // silueta + QR; ya no se muestra el marcador "SIN FOTO"
+        assertEquals(2, contarImagenes(pdfHombre));
+        assertEquals(2, contarImagenes(pdfMujer));
+        assertFalse(contenido(pdfHombre).contains("SIN FOTO"));
+        assertFalse(contenido(pdfMujer).contains("SIN FOTO"));
     }
 
-    private Empleado empleado(String fotoUrl) {
+    @Test
+    void usaLaSiluetaNeutralCuandoNoHayFotoNiSexoDefinido() throws Exception {
+        CarnetPdfGenerator generator = new CarnetPdfGenerator(
+                new FotoService(uploadsDirectory.toString()), "Escuela");
+
+        byte[] sinSexo = generator.generar(empleado(null, null), "qr-token");
+        byte[] otro = generator.generar(empleado(null, "Otro"), "qr-token");
+
+        assertEquals(2, contarImagenes(sinSexo));
+        assertEquals(2, contarImagenes(otro));
+        assertFalse(contenido(sinSexo).contains("SIN FOTO"));
+    }
+
+    @Test
+    void muestraLaCedulaDeIdentidadDelEmpleado() throws Exception {
+        CarnetPdfGenerator generator = new CarnetPdfGenerator(
+                new FotoService(uploadsDirectory.toString()), "Escuela");
+
+        byte[] pdf = generator.generar(empleado(null, "F"), "qr-token");
+
+        assertTrue(contenido(pdf).contains("C.I.: V-12345678"));
+    }
+
+    private Empleado empleado(String fotoUrl, String sexo) {
         Empleado empleado = new Empleado();
         empleado.setId(1);
         empleado.setNombre("Ana");
         empleado.setApellido("Pérez");
+        empleado.setCedula("V-12345678");
+        empleado.setSexo(sexo);
         empleado.setFotoUrl(fotoUrl);
         return empleado;
+    }
+
+    private String contenido(byte[] pdf) throws Exception {
+        PdfReader reader = new PdfReader(pdf);
+        try {
+            return new String(reader.getPageContent(1), StandardCharsets.ISO_8859_1);
+        } finally {
+            reader.close();
+        }
     }
 
     private byte[] crearImagenPng() throws Exception {
@@ -68,7 +106,7 @@ class CarnetPdfGeneratorTest {
 
     private int contarImagenes(byte[] pdf) {
         Matcher matcher = IMAGE_OBJECT.matcher(
-                new String(pdf, java.nio.charset.StandardCharsets.ISO_8859_1));
+                new String(pdf, StandardCharsets.ISO_8859_1));
         int cantidad = 0;
         while (matcher.find()) {
             cantidad++;
