@@ -42,7 +42,7 @@ const formatFechaISO = (v) => {
   return `${d}/${m}/${a}`;
 };
 
-function Matricula() {
+function Matricula({ soloConsulta = false, permitirRetiros = false }) {
   const toast = useToast();
 
   const [tab, setTab] = useState("todos");
@@ -246,6 +246,7 @@ function Matricula() {
 
   // ---------- Acciones ----------
   const abrirRetiro = async (matricula) => {
+    if (!permitirRetiros) return;
     setAccionId(matricula.matriculaId);
     try {
       const { data } = await api.get(
@@ -364,7 +365,8 @@ function Matricula() {
         Constancia
       </button>
     );
-    const botonRetirar = (
+    // Solo el rol con permiso de retiros ve el botón (el backend también lo valida)
+    const botonRetirar = permitirRetiros ? (
       <button
         type="button"
         className="btn-delete"
@@ -373,14 +375,14 @@ function Matricula() {
       >
         {ocupada ? "Cargando..." : "Retirar"}
       </button>
-    );
+    ) : null;
 
     switch (tabActual.clave) {
       case "preinscritos":
         return (
           <div className="mat-acciones">
             <Link to={ruta} className="btn-edit">
-              Inscribir
+              {soloConsulta ? "Ver" : "Inscribir"}
             </Link>
             {botonConstancia("cupo")}
             {botonRetirar}
@@ -390,7 +392,7 @@ function Matricula() {
         return (
           <div className="mat-acciones">
             <Link to={ruta} className="btn-edit">
-              Continuar
+              {soloConsulta ? "Ver" : "Continuar"}
             </Link>
             {botonConstancia("cupo")}
             {botonRetirar}
@@ -423,11 +425,13 @@ function Matricula() {
     <div className="mod-main">
       <div className="mod-heading">
         <h1>Matrícula</h1>
-        <div className="mod-heading-actions">
-          <Link to="/matricula/preinscripcion" className="btn-primary">
-            + Nueva preinscripción
-          </Link>
-        </div>
+        {!soloConsulta && (
+          <div className="mod-heading-actions">
+            <Link to="/matricula/preinscripcion" className="btn-primary">
+              + Nueva preinscripción
+            </Link>
+          </div>
+        )}
       </div>
 
       <form className="mat-filtros" onSubmit={aplicarBusqueda}>
@@ -569,7 +573,7 @@ function Matricula() {
         </div>
       )}
 
-      {retiroMatricula && (
+      {permitirRetiros && retiroMatricula && (
         <ModalFormulario
           titulo="Registrar retiro de matrícula"
           onCerrar={() => setRetiroMatricula(null)}

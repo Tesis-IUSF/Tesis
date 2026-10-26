@@ -36,7 +36,7 @@ const formatFechaHora = (v) => {
 // El requisito de la foto carnet se reconoce por su nombre
 const esRequisitoFoto = (item) => /foto/i.test(item.nombreRequisito ?? "");
 
-function Inscripcion() {
+function Inscripcion({ soloConsulta = false }) {
   const { id } = useParams();
   const toast = useToast();
 
@@ -76,6 +76,7 @@ function Inscripcion() {
         const datosExpediente = expedienteResponse.data;
         // Sin requisitos todavía: el backend los crea según nivel y tipo de ingreso
         if (
+          !soloConsulta &&
           seguimiento.checklist.length === 0 &&
           ["preinscrito", "en_proceso"].includes(seguimiento.estadoMatricula)
         ) {
@@ -94,7 +95,7 @@ function Inscripcion() {
         setCargando(false);
       }
     },
-    [id],
+    [id, soloConsulta],
   );
 
   useEffect(() => {
@@ -102,8 +103,11 @@ function Inscripcion() {
   }, [cargar]);
 
   const editable =
-    !!data && ["preinscrito", "en_proceso"].includes(data.estadoMatricula);
+    !soloConsulta &&
+    !!data &&
+    ["preinscrito", "en_proceso"].includes(data.estadoMatricula);
   const fichaEditable =
+    !soloConsulta &&
     !!data &&
     ["preinscrito", "en_proceso", "completada"].includes(data.estadoMatricula);
   const formalizada = data?.estadoMatricula === "completada";
@@ -327,6 +331,7 @@ function Inscripcion() {
       <div className="mod-heading">
         <h1>Expediente de matrícula</h1>
         <div className="mod-heading-actions">
+          {soloConsulta && <span className="badge-estado">Solo lectura</span>}
           {!editandoFicha && (
             <button
               type="button"

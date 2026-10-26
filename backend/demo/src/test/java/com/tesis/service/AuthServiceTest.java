@@ -51,13 +51,14 @@ class AuthServiceTest {
     @Test
     void loginExitosoDevuelveTokenYActualizaUltimoAcceso() {
         Usuario usuario = usuarioActivo();
+        usuario.setPasswordHash("$2a$10$" + "a".repeat(53));
         AuthDTO.LoginRequest solicitud = AuthDTO.LoginRequest.builder()
                 .email("ana@example.com")
                 .password("clave")
                 .build();
 
         when(usuarioRepository.findByEmail("ana@example.com")).thenReturn(Optional.of(usuario));
-        when(passwordEncoder.matches("clave", "hash")).thenReturn(true);
+        when(passwordEncoder.matches("clave", usuario.getPasswordHash())).thenReturn(true);
         when(jwtProvider.generarToken(7, "ana@example.com", "ana", "Administrativo"))
             .thenReturn("jwt-de-prueba");
 
@@ -111,8 +112,10 @@ class AuthServiceTest {
 
     @Test
     void loginConContrasenaIncorrectaFalla() {
-        when(usuarioRepository.findByEmail("ana@example.com")).thenReturn(Optional.of(usuarioActivo()));
-        when(passwordEncoder.matches("incorrecta", "hash")).thenReturn(false);
+        Usuario usuario = usuarioActivo();
+        usuario.setPasswordHash("$2a$10$" + "a".repeat(53));
+        when(usuarioRepository.findByEmail("ana@example.com")).thenReturn(Optional.of(usuario));
+        when(passwordEncoder.matches("incorrecta", usuario.getPasswordHash())).thenReturn(false);
         AuthDTO.LoginRequest solicitud = AuthDTO.LoginRequest.builder()
                 .email("ana@example.com")
                 .password("incorrecta")
@@ -121,6 +124,24 @@ class AuthServiceTest {
         assertThrows(AuthenticationException.class, () -> authService.login(solicitud));
 
         verify(usuarioRepository, never()).save(org.mockito.ArgumentMatchers.any(Usuario.class));
+    }
+
+    @Test
+    void loginMigraUnaContrasenaGuardadaEnTextoPlano() {
+        Usuario usuario = usuarioActivo();
+        usuario.setPasswordHash("clave-antigua");
+        when(usuarioRepository.findByEmail("ana@example.com")).thenReturn(Optional.of(usuario));
+        when(passwordEncoder.encode("clave-antigua")).thenReturn("$2a$hash-generado");
+        when(jwtProvider.generarToken(7, "ana@example.com", "ana", "Administrativo"))
+                .thenReturn("jwt-de-prueba");
+
+        authService.login(AuthDTO.LoginRequest.builder()
+                .email("ana@example.com")
+                .password("clave-antigua")
+                .build());
+
+        assertEquals("$2a$hash-generado", usuario.getPasswordHash());
+        verify(usuarioRepository).save(usuario);
     }
 
     private AuthDTO.LoginRequest solicitudLogin() {

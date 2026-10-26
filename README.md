@@ -39,7 +39,7 @@ Sustitución de las planillas impresas tradicionales.
 
 #### Carnet QR de empleados
 
-- `POST /api/empleados/{id}/carnet` emite un carnet PDF tamaño tarjeta con un QR firmado. Solo los roles `Administrador` y `Director` pueden emitirlo.
+- `POST /api/empleados/{id}/carnet` emite un carnet PDF tamaño tarjeta con un QR firmado. Solo el rol `COORDINADOR` puede emitirlo.
 - `POST /api/asistencias/qr` recibe `{"qrToken":"..."}` y solo admite usuarios con rol `Escaner`. El token no contiene datos personales, tiene vigencia predeterminada de 365 días y se revoca al emitir un carnet nuevo.
 - `GET /api/asistencias/hoy` devuelve empleados con asistencia registrada hoy, sus horas de entrada/salida y duración trabajada en minutos y formato `H:mm`. Si aún no han marcado salida, la duración se calcula hasta la hora actual del servidor.
 - `GET /api/asistencias/historico?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` consulta el histórico. Admite filtros opcionales `empleadoId`, `departamentoId`, `turnoId` y `estado` (por ejemplo, `tardanza`); el rango máximo es de 366 días.
@@ -65,13 +65,22 @@ Herramientas analíticas para la toma de decisiones directivas.
 
 ## 👥 Roles de Usuario
 
-El sistema adapta sus funciones dependiendo del rol del usuario que inicie sesión:
+En los módulos cubiertos por RBAC, los permisos son:
 
-1. **Director:** Acceso integral a los paneles de estadísticas (matrícula) y exportación de reportes consolidados (asistencia).
-2. **Administrativo:** Gestión de inscripciones, control de cupos, y administración de la ficha técnica del personal.
-3. **Coordinador:** Encargado de la redacción y publicación de comunicados oficiales en el blog.
-4. **Empleado:** Acceso al sistema de marcaje diario de asistencia.
-5. **Visitante / Representante:** Usuario sin sesión iniciada que consume el blog de noticias e inicia procesos de censo público.
+- **Administrador:** administración de usuarios, matrículas excepto retiros, calendario de matrícula, grados y secciones.
+- **Coordinador:** gestión de empleados, carnets y matrículas, incluidos los retiros; acceso total a publicaciones y categorías del blog. Puede consultar los catálogos de cargos, departamentos y turnos usados por el formulario de empleados, pero no modificarlos.
+- **Director:** gestión de departamentos, cargos, turnos, calendario de matrícula, grados y secciones; consulta de empleados, matrículas y expedientes en modo de solo lectura, asistencia de hoy e histórico; acceso total al blog.
+- **Administrativo:** gestión de matrículas y expedientes, excepto registrar retiros.
+- **Escáner:** registro de asistencia mediante QR.
+- **Público:** consulta de publicaciones y categorías activas del blog sin iniciar sesión.
+
+La opción **Calendario de matrícula** del panel está disponible para Administrador y Director. Permite crear y editar años escolares, configurar períodos de preinscripción, inscripción y atención extemporánea, y activar o desactivar períodos. Solo puede existir un año escolar activo: al activar otro, el actual se desactiva. Para activar un año se requiere al menos un período activo de cada tipo; el backend también valida rangos y solapamientos.
+
+Las opciones **Grados** y **Secciones** también son exclusivas de Administrador y Director. No se puede desactivar un grado o una sección con matrículas activas en el año escolar vigente; al desactivar un grado se desactivan sus secciones. El grado puede reactivarse sin reactivar automáticamente las secciones. No se pueden borrar grados con matrículas históricas ni grados que aún tengan secciones; una sección solo puede borrarse si no tiene matrículas asociadas en ningún año. Las secciones permiten asignar docentes activos con cargo «Docente» y turnos.
+
+### Caché de consultas frecuentes
+
+Se almacenan en memoria las respuestas de los catálogos estáticos durante cinco minutos y las del calendario escolar y el blog público durante un minuto. Las escrituras relacionadas invalidan sus cachés; las publicaciones también expiran pronto para reflejar cambios de visibilidad por fecha. Las secciones no se almacenan en caché porque incluyen cupos ocupados, que deben mantenerse actualizados. La ruta pública `/noticias` y sus detalles no requieren iniciar sesión; sus datos se consultan en los endpoints públicos del blog.
 
 ---
 
@@ -99,7 +108,7 @@ El sistema adapta sus funciones dependiendo del rol del usuario que inicie sesi�
 
 ### Primer administrador y datos iniciales
 
-Al iniciar, el backend crea de forma idempotente los roles base (`ADMINISTRADOR`, `DIRECTOR`, `ADMINISTRATIVO` y `ESCANER`). No crea catálogos escolares ni datos del plantel, porque dependen de cada institución.
+Al iniciar, el backend crea de forma idempotente los roles base (`ADMINISTRADOR`, `DIRECTOR`, `COORDINADOR`, `ADMINISTRATIVO` y `ESCANER`). No crea catálogos escolares ni datos del plantel, porque dependen de cada institución.
 
 Antes de iniciar el backend, configura `INITIAL_ADMIN_SETUP_TOKEN` en `.env` con un secreto aleatorio de al menos 32 caracteres. Puedes generarlo con:
 

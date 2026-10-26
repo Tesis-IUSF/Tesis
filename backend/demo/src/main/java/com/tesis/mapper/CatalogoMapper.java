@@ -59,32 +59,36 @@ public interface CatalogoMapper {
     CatalogoDTO.GradoResponseDTO gradoToGradoResponseDTO(Grado grado);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "nivelEducativo", ignore = true)
+    @Mapping(source = "nivelEducativoId", target = "nivelEducativo.id")
     @Mapping(target = "creadoEn", ignore = true)
     Grado gradoRequestDTOToGrado(CatalogoDTO.GradoRequestDTO dto);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "nivelEducativo", ignore = true)
+    @Mapping(source = "nivelEducativoId", target = "nivelEducativo.id")
     @Mapping(target = "creadoEn", ignore = true)
     void updateGradoFromDTO(CatalogoDTO.GradoRequestDTO dto, @MappingTarget Grado grado);
 
     @Mapping(source = "grado.id", target = "gradoId")
     @Mapping(source = "grado.nombreEspecial", target = "gradoNombre")
     @Mapping(source = "docentePrincipal.id", target = "docentePrincipalId")
+    @Mapping(target = "docentePrincipalNombre",
+            expression = "java(seccion.getDocentePrincipal() == null ? null : "
+                    + "seccion.getDocentePrincipal().getNombre() + \" \" "
+                    + "+ seccion.getDocentePrincipal().getApellido())")
     @Mapping(source = "turno.id", target = "turnoId")
     CatalogoDTO.SeccionResponseDTO seccionToSeccionResponseDTO(Seccion seccion);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "grado", ignore = true)
-    @Mapping(target = "docentePrincipal", ignore = true)
-    @Mapping(target = "turno", ignore = true)
+    @Mapping(source = "gradoId", target = "grado.id")
+    @Mapping(source = "docentePrincipalId", target = "docentePrincipal.id")
+    @Mapping(source = "turnoId", target = "turno.id")
     @Mapping(target = "creadoEn", ignore = true)
     Seccion seccionRequestDTOToSeccion(CatalogoDTO.SeccionRequestDTO dto);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "grado", ignore = true)
-    @Mapping(target = "docentePrincipal", ignore = true)
-    @Mapping(target = "turno", ignore = true)
+    @Mapping(source = "gradoId", target = "grado.id")
+    @Mapping(source = "docentePrincipalId", target = "docentePrincipal.id")
+    @Mapping(source = "turnoId", target = "turno.id")
     @Mapping(target = "creadoEn", ignore = true)
     void updateSeccionFromDTO(CatalogoDTO.SeccionRequestDTO dto, @MappingTarget Seccion seccion);
 

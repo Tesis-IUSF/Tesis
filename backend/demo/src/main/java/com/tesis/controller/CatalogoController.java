@@ -5,6 +5,7 @@ import com.tesis.dto.PaginacionDTO;
 import com.tesis.dto.RolDTO;
 import com.tesis.entity.Cargo;
 import com.tesis.entity.Departamento;
+import com.tesis.entity.Empleado;
 import com.tesis.entity.Grado;
 import com.tesis.entity.NivelEducativo;
 import com.tesis.entity.RequisitoMatricula;
@@ -19,6 +20,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -49,6 +52,7 @@ public class CatalogoController {
     }
 
     @GetMapping("/departamentos")
+    @Cacheable(cacheNames = "catalogos", key = "'departamentos:' + #p0.page + ':' + #p0.size")
     public PaginacionDTO.Respuesta<CatalogoDTO.DepartamentoResponseDTO> listarDepartamentos(
             @ModelAttribute PaginacionDTO.Solicitud paginacion) {
         return paginar(catalogoService.listarDepartamentos(paginacion.toPageable()),
@@ -56,6 +60,7 @@ public class CatalogoController {
     }
 
     @PostMapping("/departamentos")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public ResponseEntity<CatalogoDTO.DepartamentoResponseDTO> crearDepartamento(@Valid @RequestBody CatalogoDTO.DepartamentoRequestDTO request) {
         Departamento departamento = catalogoMapper.departamentoRequestDTOToDepartamento(request);
         Departamento creado = catalogoService.crearDepartamento(departamento);
@@ -63,6 +68,7 @@ public class CatalogoController {
     }
 
     @PutMapping("/departamentos/{id}")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public CatalogoDTO.DepartamentoResponseDTO actualizarDepartamento(@PathVariable Integer id,
                                                                     @Valid @RequestBody CatalogoDTO.DepartamentoRequestDTO request) {
         Departamento departamento = catalogoMapper.departamentoRequestDTOToDepartamento(request);
@@ -70,12 +76,14 @@ public class CatalogoController {
     }
 
     @DeleteMapping("/departamentos/{id}")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public ResponseEntity<Void> eliminarDepartamento(@PathVariable Integer id) {
         catalogoService.eliminarDepartamento(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/cargos")
+    @Cacheable(cacheNames = "catalogos", key = "'cargos:' + #p0.page + ':' + #p0.size")
     public PaginacionDTO.Respuesta<CatalogoDTO.CargoResponseDTO> listarCargos(
             @ModelAttribute PaginacionDTO.Solicitud paginacion) {
         return paginar(catalogoService.listarCargos(paginacion.toPageable()),
@@ -83,24 +91,28 @@ public class CatalogoController {
     }
 
     @PostMapping("/cargos")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public ResponseEntity<CatalogoDTO.CargoResponseDTO> crearCargo(@Valid @RequestBody CatalogoDTO.CargoRequestDTO request) {
         Cargo cargo = catalogoMapper.cargoRequestDTOToCargo(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(catalogoMapper.cargoToCargoResponseDTO(catalogoService.crearCargo(cargo)));
     }
 
     @PutMapping("/cargos/{id}")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public CatalogoDTO.CargoResponseDTO actualizarCargo(@PathVariable Integer id, @Valid @RequestBody CatalogoDTO.CargoRequestDTO request) {
         Cargo cargo = catalogoMapper.cargoRequestDTOToCargo(request);
         return catalogoMapper.cargoToCargoResponseDTO(catalogoService.actualizarCargo(id, cargo));
     }
 
     @DeleteMapping("/cargos/{id}")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public ResponseEntity<Void> eliminarCargo(@PathVariable Integer id) {
         catalogoService.eliminarCargo(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/turnos")
+    @Cacheable(cacheNames = "catalogos", key = "'turnos:' + #p0.page + ':' + #p0.size")
     public PaginacionDTO.Respuesta<CatalogoDTO.TurnoResponseDTO> listarTurnos(
             @ModelAttribute PaginacionDTO.Solicitud paginacion) {
         return paginar(catalogoService.listarTurnos(paginacion.toPageable()),
@@ -108,48 +120,56 @@ public class CatalogoController {
     }
 
     @PostMapping("/turnos")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public ResponseEntity<CatalogoDTO.TurnoResponseDTO> crearTurno(@Valid @RequestBody CatalogoDTO.TurnoRequestDTO request) {
         Turno turno = catalogoMapper.turnoRequestDTOToTurno(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(catalogoMapper.turnoToTurnoResponseDTO(catalogoService.crearTurno(turno)));
     }
 
     @PutMapping("/turnos/{id}")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public CatalogoDTO.TurnoResponseDTO actualizarTurno(@PathVariable Integer id, @Valid @RequestBody CatalogoDTO.TurnoRequestDTO request) {
         Turno turno = catalogoMapper.turnoRequestDTOToTurno(request);
         return catalogoMapper.turnoToTurnoResponseDTO(catalogoService.actualizarTurno(id, turno));
     }
 
     @DeleteMapping("/turnos/{id}")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public ResponseEntity<Void> eliminarTurno(@PathVariable Integer id) {
         catalogoService.eliminarTurno(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/roles")
+    @Cacheable(cacheNames = "catalogos", key = "'roles:' + #p0.page + ':' + #p0.size")
     public PaginacionDTO.Respuesta<RolDTO.RolResponseDTO> listarRoles(
             @ModelAttribute PaginacionDTO.Solicitud paginacion) {
         return paginar(catalogoService.listarRoles(paginacion.toPageable()), rolMapper::rolToRolResponseDTO);
     }
 
     @PostMapping("/roles")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public ResponseEntity<RolDTO.RolResponseDTO> crearRol(@Valid @RequestBody RolDTO.RolRequestDTO request) {
         Roles roles = rolMapper.rolRequestDTOToRol(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(rolMapper.rolToRolResponseDTO(catalogoService.crearRol(roles)));
     }
 
     @PutMapping("/roles/{id}")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public RolDTO.RolResponseDTO actualizarRol(@PathVariable Integer id, @Valid @RequestBody RolDTO.RolRequestDTO request) {
         Roles roles = rolMapper.rolRequestDTOToRol(request);
         return rolMapper.rolToRolResponseDTO(catalogoService.actualizarRol(id, roles));
     }
 
     @DeleteMapping("/roles/{id}")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public ResponseEntity<Void> eliminarRol(@PathVariable Integer id) {
         catalogoService.eliminarRol(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/niveles-educativos")
+    @Cacheable(cacheNames = "catalogos", key = "'niveles:' + #p0.page + ':' + #p0.size")
     public PaginacionDTO.Respuesta<CatalogoDTO.NivelEducativoResponseDTO> listarNivelesEducativos(
             @ModelAttribute PaginacionDTO.Solicitud paginacion) {
         return paginar(catalogoService.listarNivelesEducativos(paginacion.toPageable()),
@@ -157,12 +177,14 @@ public class CatalogoController {
     }
 
     @PostMapping("/niveles-educativos")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public ResponseEntity<CatalogoDTO.NivelEducativoResponseDTO> crearNivelEducativo(@Valid @RequestBody CatalogoDTO.NivelEducativoRequestDTO request) {
         NivelEducativo nivelEducativo = catalogoMapper.nivelEducativoRequestDTOToNivelEducativo(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(catalogoMapper.nivelEducativoToNivelEducativoResponseDTO(catalogoService.crearNivelEducativo(nivelEducativo)));
     }
 
     @PutMapping("/niveles-educativos/{id}")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public CatalogoDTO.NivelEducativoResponseDTO actualizarNivelEducativo(@PathVariable Integer id,
                                                                          @Valid @RequestBody CatalogoDTO.NivelEducativoRequestDTO request) {
         NivelEducativo nivelEducativo = catalogoMapper.nivelEducativoRequestDTOToNivelEducativo(request);
@@ -170,12 +192,22 @@ public class CatalogoController {
     }
 
     @DeleteMapping("/niveles-educativos/{id}")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public ResponseEntity<Void> eliminarNivelEducativo(@PathVariable Integer id) {
         catalogoService.eliminarNivelEducativo(id);
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/docentes")
+    public List<CatalogoDTO.DocenteOptionDTO> listarDocentesActivos() {
+        return catalogoService.listarDocentesActivos().stream()
+                .map(empleado -> new CatalogoDTO.DocenteOptionDTO(
+                        empleado.getId(), empleado.getNombre(), empleado.getApellido()))
+                .toList();
+    }
+
     @GetMapping("/grados")
+    @Cacheable(cacheNames = "catalogos", key = "'grados:' + #p0 + ':' + #p1.page + ':' + #p1.size")
     public PaginacionDTO.Respuesta<CatalogoDTO.GradoResponseDTO> listarGrados(
             @RequestParam(required = false) Integer nivelEducativoId,
             @ModelAttribute PaginacionDTO.Solicitud paginacion) {
@@ -188,18 +220,21 @@ public class CatalogoController {
     }
 
     @PostMapping("/grados")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public ResponseEntity<CatalogoDTO.GradoResponseDTO> crearGrado(@Valid @RequestBody CatalogoDTO.GradoRequestDTO request) {
         Grado grado = catalogoMapper.gradoRequestDTOToGrado(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(catalogoMapper.gradoToGradoResponseDTO(catalogoService.crearGrado(grado)));
     }
 
     @PutMapping("/grados/{id}")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public CatalogoDTO.GradoResponseDTO actualizarGrado(@PathVariable Integer id, @Valid @RequestBody CatalogoDTO.GradoRequestDTO request) {
         Grado grado = catalogoMapper.gradoRequestDTOToGrado(request);
         return catalogoMapper.gradoToGradoResponseDTO(catalogoService.actualizarGrado(id, grado));
     }
 
     @DeleteMapping("/grados/{id}")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public ResponseEntity<Void> eliminarGrado(@PathVariable Integer id) {
         catalogoService.eliminarGrado(id);
         return ResponseEntity.noContent().build();
@@ -259,6 +294,7 @@ public class CatalogoController {
     }
 
     @GetMapping("/requisitos-matricula")
+    @Cacheable(cacheNames = "catalogos", key = "'requisitos:' + #p0.page + ':' + #p0.size")
     public PaginacionDTO.Respuesta<CatalogoDTO.RequisitoMatriculaResponseDTO> listarRequisitosMatricula(
             @ModelAttribute PaginacionDTO.Solicitud paginacion) {
         return paginar(catalogoService.listarRequisitosMatricula(paginacion.toPageable()),
@@ -266,12 +302,14 @@ public class CatalogoController {
     }
 
     @PostMapping("/requisitos-matricula")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public ResponseEntity<CatalogoDTO.RequisitoMatriculaResponseDTO> crearRequisitoMatricula(@Valid @RequestBody CatalogoDTO.RequisitoMatriculaRequestDTO request) {
         RequisitoMatricula requisitoMatricula = catalogoMapper.requisitoMatriculaRequestDTOToRequisitoMatricula(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(catalogoMapper.requisitoMatriculaToRequisitoMatriculaResponseDTO(catalogoService.crearRequisitoMatricula(requisitoMatricula)));
     }
 
     @PutMapping("/requisitos-matricula/{id}")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public CatalogoDTO.RequisitoMatriculaResponseDTO actualizarRequisitoMatricula(@PathVariable Integer id,
                                                                                 @Valid @RequestBody CatalogoDTO.RequisitoMatriculaRequestDTO request) {
         RequisitoMatricula requisitoMatricula = catalogoMapper.requisitoMatriculaRequestDTOToRequisitoMatricula(request);
@@ -279,6 +317,7 @@ public class CatalogoController {
     }
 
     @DeleteMapping("/requisitos-matricula/{id}")
+    @CacheEvict(cacheNames = "catalogos", allEntries = true)
     public ResponseEntity<Void> eliminarRequisitoMatricula(@PathVariable Integer id) {
         catalogoService.eliminarRequisitoMatricula(id);
         return ResponseEntity.noContent().build();

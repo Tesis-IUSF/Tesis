@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 
 @Service
 @RequiredArgsConstructor
@@ -51,9 +53,22 @@ public class AuthService {
         }
 
         // Verificar la contraseña
-        if (!passwordEncoder.matches(loginRequest.getPassword(), usuario.getPasswordHash())) {
+        String passwordHash = usuario.getPasswordHash();
+        boolean hashBcrypt = passwordHash != null
+                && passwordHash.matches("^\\$2[aby]\\$\\d{2}\\$[./A-Za-z0-9]{53}$");
+        boolean passwordValida = hashBcrypt
+                ? passwordEncoder.matches(loginRequest.getPassword(), passwordHash)
+                : passwordHash != null && MessageDigest.isEqual(
+                        loginRequest.getPassword().getBytes(StandardCharsets.UTF_8),
+                        passwordHash.getBytes(StandardCharsets.UTF_8));
+
+        if (!passwordValida) {
             log.warn("Contraseña incorrecta para el usuario: {}", loginRequest.getEmail());
             throw new AuthenticationException("Email o contraseña incorrectos");
+        }
+
+        if (!hashBcrypt) {
+            usuario.setPasswordHash(passwordEncoder.encode(loginRequest.getPassword()));
         }
 
         // Generar el token JWT

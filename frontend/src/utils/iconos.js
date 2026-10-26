@@ -15,6 +15,7 @@ export const ICONOS = {
   usuario: "mdi:account-circle-outline",
   panel: "mdi:view-dashboard-outline",
   empleados: "mdi:account-group-outline",
+  usuarios: "mdi:account-multiple-outline",
   departamentos: "mdi:domain",
   cargos: "mdi:badge-account-horizontal-outline",
   asistenciaHoy: "mdi:calendar-check-outline",

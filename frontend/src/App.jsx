@@ -3,6 +3,8 @@ import { ToastProvider } from "./context/ToastContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Empleados from "./pages/Empleados";
+import Usuarios from "./pages/Usuarios";
+import UsuarioForm from "./pages/UsuarioForm";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import PublicLayout from "./components/PublicLayout";
@@ -27,6 +29,29 @@ import Preinscripcion from "./pages/Preinscripcion";
 import Matricula from "./pages/Matricula";
 import Inscripcion from "./pages/Inscripcion";
 import Requisitos from "./pages/Requisitos";
+import EmpleadoDetalle from "./pages/EmpleadoDetalle";
+import CalendarioMatricula from "./pages/CalendarioMatricula";
+import Grados from "./pages/Grados";
+import Secciones from "./pages/Secciones";
+import { getRol } from "./utils/auth";
+
+function EmpleadosPorRol() {
+  return <Empleados soloConsulta={getRol() === ROLES.DIRECTOR} />;
+}
+
+function MatriculaPorRol() {
+  const rol = getRol();
+  return (
+    <Matricula
+      soloConsulta={rol === ROLES.DIRECTOR}
+      permitirRetiros={rol === ROLES.COORDINADOR}
+    />
+  );
+}
+
+function InscripcionPorRol() {
+  return <Inscripcion soloConsulta={getRol() === ROLES.DIRECTOR} />;
+}
 
 function App() {
   return (
@@ -48,20 +73,64 @@ function App() {
             <Route path="/escaner" element={<EscanerQR />} />
           </Route>
 
-          {/* Admin, Director, Administrativo (con menú lateral) */}
+          {/* Perfiles del panel (con menú lateral) */}
           <Route
             element={
               <ProtectedRoute
                 allowedRoles={[
                   ROLES.ADMIN,
                   ROLES.DIRECTOR,
+                  ROLES.COORDINADOR,
                   ROLES.ADMINISTRATIVO,
                 ]}
               />
             }
           >
             <Route element={<Layout />}>
-              {/* Solo Admin y Director */}
+              <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
+                <Route path="/usuarios" element={<Usuarios />} />
+                <Route path="/usuarios/nuevo" element={<UsuarioForm />} />
+                <Route path="/usuarios/:id/editar" element={<UsuarioForm />} />
+              </Route>
+
+              <Route
+                element={<ProtectedRoute allowedRoles={[ROLES.COORDINADOR]} />}
+              >
+                <Route path="/empleados/nuevo" element={<EmpleadoForm />} />
+                <Route
+                  path="/empleados/:id/editar"
+                  element={<EmpleadoForm />}
+                />
+                <Route path="/carnets" element={<Carnets />} />
+              </Route>
+
+              <Route
+                element={
+                  <ProtectedRoute
+                    allowedRoles={[ROLES.DIRECTOR, ROLES.COORDINADOR]}
+                  />
+                }
+              >
+                <Route path="/empleados" element={<EmpleadosPorRol />} />
+                <Route path="/empleados/:id" element={<EmpleadoDetalle />} />
+              </Route>
+
+              <Route
+                element={<ProtectedRoute allowedRoles={[ROLES.DIRECTOR]} />}
+              >
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route
+                  path="/asistencia/hoy"
+                  element={<AsistenciaHoy soloConsulta />}
+                />
+                <Route path="/asistencia/historico" element={<Historico />} />
+                <Route path="/turnos" element={<Turnos />} />
+                <Route path="/turnos/nuevo" element={<TurnoForm />} />
+                <Route path="/turnos/:id/editar" element={<TurnoForm />} />
+                <Route path="/departamentos" element={<Departamentos />} />
+                <Route path="/cargos" element={<Cargos />} />
+              </Route>
+
               <Route
                 element={
                   <ProtectedRoute
@@ -69,46 +138,73 @@ function App() {
                   />
                 }
               >
-                <Route path="/carnets" element={<Carnets />} />
+                <Route
+                  path="/matricula/calendario"
+                  element={<CalendarioMatricula />}
+                />
                 <Route path="/matricula/requisitos" element={<Requisitos />} />
+                <Route path="/grados" element={<Grados />} />
+                <Route path="/secciones" element={<Secciones />} />
               </Route>
 
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/empleados" element={<Empleados />} />
-              <Route path="/empleados/nuevo" element={<EmpleadoForm />} />
-              <Route path="/empleados/:id/editar" element={<EmpleadoForm />} />
-              <Route path="/asistencia/hoy" element={<AsistenciaHoy />} />
-              <Route path="/asistencia/historico" element={<Historico />} />
-              <Route path="/turnos" element={<Turnos />} />
-              <Route path="/turnos/nuevo" element={<TurnoForm />} />
-              <Route path="/turnos/:id/editar" element={<TurnoForm />} />
-              <Route path="/departamentos" element={<Departamentos />} />
-              <Route path="/cargos" element={<Cargos />} />
-              <Route path="/blog/categorias" element={<BlogCategorias />} />
-              <Route path="/blog/comunicados" element={<BlogComunicados />} />
               <Route
-                path="/blog/comunicados/nuevo"
-                element={<BlogComunicadoForm />}
-              />
-              <Route
-                path="/blog/comunicados/:id/editar"
-                element={<BlogComunicadoForm />}
-              />
+                element={
+                  <ProtectedRoute
+                    allowedRoles={[ROLES.DIRECTOR, ROLES.COORDINADOR]}
+                  />
+                }
+              >
+                <Route path="/blog/categorias" element={<BlogCategorias />} />
+                <Route path="/blog/comunicados" element={<BlogComunicados />} />
+                <Route
+                  path="/blog/comunicados/nuevo"
+                  element={<BlogComunicadoForm />}
+                />
+                <Route
+                  path="/blog/comunicados/:id/editar"
+                  element={<BlogComunicadoForm />}
+                />
+              </Route>
 
-              {/* Matrícula */}
               <Route
-                path="/matricula/preinscripcion"
-                element={<Preinscripcion />}
-              />
+                element={
+                  <ProtectedRoute
+                    allowedRoles={[
+                      ROLES.DIRECTOR,
+                      ROLES.COORDINADOR,
+                      ROLES.ADMINISTRATIVO,
+                      ROLES.ADMIN,
+                    ]}
+                  />
+                }
+              >
+                <Route path="/matricula" element={<MatriculaPorRol />} />
+                <Route
+                  path="/matricula/:id/inscripcion"
+                  element={<InscripcionPorRol />}
+                />
+              </Route>
+
               <Route
-                path="/matricula/:id/preinscripcion/editar"
-                element={<Preinscripcion />}
-              />
-              <Route path="/matricula" element={<Matricula />} />
-              <Route
-                path="/matricula/:id/inscripcion"
-                element={<Inscripcion />}
-              />
+                element={
+                  <ProtectedRoute
+                    allowedRoles={[
+                      ROLES.ADMIN,
+                      ROLES.COORDINADOR,
+                      ROLES.ADMINISTRATIVO,
+                    ]}
+                  />
+                }
+              >
+                <Route
+                  path="/matricula/preinscripcion"
+                  element={<Preinscripcion />}
+                />
+                <Route
+                  path="/matricula/:id/preinscripcion/editar"
+                  element={<Preinscripcion />}
+                />
+              </Route>
             </Route>
           </Route>
         </Routes>
