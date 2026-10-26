@@ -7,7 +7,11 @@ import com.tesis.dto.AsistenciaDTO.EscaneoQrRequestDTO;
 import com.tesis.service.AsistenciaService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -59,6 +63,24 @@ public class AsistenciaController {
             @RequestParam(required = false) String estado) {
         return asistenciaService.buscarHistorico(desde, hasta, empleadoId,
                 departamentoId, cargoId, turnoId, estado);
+    }
+
+    @GetMapping(value = "/historico/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> exportarHistoricoPdf(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) Integer empleadoId,
+            @RequestParam(required = false) Integer departamentoId,
+            @RequestParam(required = false) Integer cargoId,
+            @RequestParam(required = false) Integer turnoId,
+            @RequestParam(required = false) String estado) {
+        byte[] pdf = asistenciaService.generarHistoricoPdf(
+                desde, hasta, empleadoId, departamentoId, cargoId, turnoId, estado);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename("reporte-asistencia.pdf").build().toString())
+                .body(pdf);
     }
 
     @GetMapping("/ausencias")
