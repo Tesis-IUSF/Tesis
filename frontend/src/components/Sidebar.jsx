@@ -70,7 +70,6 @@ const SECCIONES = [
         icono: ICONOS.requisitos,
         roles: [ROLES.ADMIN, ROLES.DIRECTOR],
       },
-      { etiqueta: "Reportes", icono: ICONOS.reportes, pronto: true },
     ],
   },
   {

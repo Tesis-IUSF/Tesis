@@ -449,3 +449,30 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Formulario dentro del modal "Cambiar sección": campos con el estilo de empleado, sin tarjeta propia */
+.wiz-modal .empleado-form.wiz-modal-form {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.wiz-modal .wiz-modal-form .form-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.wiz-modal .wiz-modal-form input,
+.wiz-modal .wiz-modal-form select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .wiz-modal .wiz-modal-form .form-grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

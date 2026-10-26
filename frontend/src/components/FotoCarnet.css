@@ -5,7 +5,7 @@
   flex-direction: column;
   gap: 0.5rem;
   width: 100%;
-  max-width: 170px;
+  aspect-ratio: 4 / 5; /* antes 3 / 4 */
 }
 
 .fc-etiqueta {

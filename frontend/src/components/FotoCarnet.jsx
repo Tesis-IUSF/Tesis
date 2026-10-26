@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { ICONOS } from "../utils/iconos";
+import { cargarFotoBlob } from "../utils/fotos";
 import "./FotoCarnet.css";
 
 const TIPOS_VALIDOS = ["image/jpeg", "image/png", "image/webp"];
@@ -11,7 +12,8 @@ const MAX_MB = 2;
  * Espacio para la foto tipo carnet: elegir imagen, vista previa y quitar.
  * - archivo: File elegido (o null)
  * - onChange(file | null): se llama al elegir o quitar
- * - urlActual: foto ya guardada en el servidor (para cuando se edite un registro)
+ * - urlActual: URL de la foto ya guardada en el servidor ("/api/fotos/...")
+ * - soloLectura: solo muestra la foto, sin botones
  */
 function FotoCarnet({
   etiqueta = "Foto tipo carnet",
@@ -19,9 +21,11 @@ function FotoCarnet({
   onChange,
   urlActual = null,
   disabled = false,
+  soloLectura = false,
 }) {
   const inputRef = useRef(null);
   const [vista, setVista] = useState(null);
+  const [guardada, setGuardada] = useState(null);
   const [error, setError] = useState("");
 
   // Vista previa del archivo elegido
@@ -38,7 +42,30 @@ function FotoCarnet({
     };
   }, [archivo]);
 
-  const imagen = archivo ? vista : urlActual;
+  // Foto ya guardada: se pide con el token y se libera al cambiar o salir
+  useEffect(() => {
+    if (!urlActual) return undefined;
+    let cancelado = false;
+    let objeto = null;
+    cargarFotoBlob(urlActual)
+      .then((resultado) => {
+        if (cancelado) {
+          URL.revokeObjectURL(resultado);
+        } else {
+          objeto = resultado;
+          setGuardada(resultado);
+        }
+      })
+      .catch(() => {
+        if (!cancelado) setGuardada(null);
+      });
+    return () => {
+      cancelado = true;
+      if (objeto) URL.revokeObjectURL(objeto);
+    };
+  }, [urlActual]);
+
+  const imagen = archivo ? vista : urlActual ? guardada : null;
 
   const abrirSelector = () => inputRef.current?.click();
 
@@ -63,6 +90,24 @@ function FotoCarnet({
     onChange(null);
   };
 
+  const contenido = imagen ? (
+    <img src={imagen} alt="Foto" />
+  ) : (
+    <span className="fc-vacio">
+      <Icon icon={ICONOS.persona} width="44" height="44" />
+      <span>Sin foto</span>
+    </span>
+  );
+
+  if (soloLectura) {
+    return (
+      <div className="fc">
+        <span className="fc-etiqueta">{etiqueta}</span>
+        <div className="fc-marco fc-marco--lectura">{contenido}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="fc">
       <span className="fc-etiqueta">{etiqueta}</span>
@@ -74,14 +119,7 @@ function FotoCarnet({
         disabled={disabled}
         aria-label={imagen ? "Cambiar imagen" : "Elegir imagen"}
       >
-        {imagen ? (
-          <img src={imagen} alt="Vista previa de la foto" />
-        ) : (
-          <span className="fc-vacio">
-            <Icon icon={ICONOS.persona} width="44" height="44" />
-            <span>Sin foto</span>
-          </span>
-        )}
+        {contenido}
       </button>
 
       <input

@@ -421,3 +421,22 @@
     flex-direction: column-reverse;
   }
 }
+
+/* Requisito de la foto carnet */
+.ins-foto-req {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.ins-foto-req .fc {
+  flex: none;
+  width: 130px;
+}
+
+.ins-foto-ayuda {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+}

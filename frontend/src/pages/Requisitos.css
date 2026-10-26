@@ -185,3 +185,17 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Acciones en una sola fila */
+.req-acciones {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.req-acciones > button {
+  flex: none;
+  white-space: nowrap;
+  margin: 0;
+}

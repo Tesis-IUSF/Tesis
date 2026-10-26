@@ -306,11 +306,15 @@ function Matricula() {
               solicitanteCedula: datosSolicitante.cedula.trim(),
             }),
       };
-      await api.post(
+      const { data: respuesta } = await api.post(
         `/matriculas/${retiroMatricula.matriculaId}/retiros`,
         request,
       );
-      toast.success("Retiro registrado correctamente.");
+      toast.success(
+        respuesta?.operacion === "preinscripcion_eliminada"
+          ? "Preinscripción eliminada: el estudiante no tenía historial de matrícula."
+          : "Retiro registrado correctamente.",
+      );
       setRetiroMatricula(null);
       setCargando(true);
       setRecargar((version) => version + 1);
