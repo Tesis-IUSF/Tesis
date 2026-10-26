@@ -156,6 +156,50 @@
   color: var(--texto-suave);
 }
 
+.mat-nomina-modal {
+  max-width: 720px;
+}
+
+.mat-nomina-opciones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0;
+  padding: 0.8rem;
+  border: 1px solid #d0dcea;
+  border-radius: 0.5rem;
+}
+
+.mat-nomina-opciones legend {
+  padding: 0 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.mat-nomina-opciones .mat-nomina-check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  letter-spacing: normal;
+  text-transform: none;
+  color: inherit;
+}
+
+.mat-nomina-opciones .mat-nomina-check input {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  padding: 0;
+}
+
+.mat-nomina-filtros-academicos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
 @media (max-width: 900px) {
   .mat-filtros {
     grid-template-columns: repeat(2, minmax(150px, 1fr));
@@ -168,6 +212,10 @@
 
 @media (max-width: 520px) {
   .mat-filtros {
+    grid-template-columns: 1fr;
+  }
+
+  .mat-nomina-filtros-academicos {
     grid-template-columns: 1fr;
   }
 }

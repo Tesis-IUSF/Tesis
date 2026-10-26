@@ -100,6 +100,20 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
 
     @EntityGraph(attributePaths = {"estudiante", "seccion.grado.nivelEducativo"})
     @Query("select m from Matricula m where m.anioEscolar = :anioEscolar "
+            + "and m.estadoMatricula in :estados "
+            + "and (:nivelId is null or m.seccion.grado.nivelEducativo.id = :nivelId) "
+            + "and (:gradoId is null or m.seccion.grado.id = :gradoId) "
+            + "and (:seccionId is null or m.seccion.id = :seccionId) "
+            + "order by m.estudiante.apellido, m.estudiante.nombre, m.estudiante.cedula")
+    List<Matricula> listarParaNominaEstudiantil(
+            @Param("anioEscolar") Short anioEscolar,
+            @Param("estados") List<String> estados,
+            @Param("nivelId") Integer nivelId,
+            @Param("gradoId") Integer gradoId,
+            @Param("seccionId") Integer seccionId);
+
+    @EntityGraph(attributePaths = {"estudiante", "seccion.grado.nivelEducativo"})
+    @Query("select m from Matricula m where m.anioEscolar = :anioEscolar "
             + "order by m.fechaSolicitud asc, m.id asc")
     List<Matricula> findAllForContinuityByAnio(@Param("anioEscolar") Short anioEscolar);
 
