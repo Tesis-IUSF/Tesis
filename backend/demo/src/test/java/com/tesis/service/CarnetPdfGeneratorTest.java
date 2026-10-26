@@ -47,9 +47,10 @@ class CarnetPdfGeneratorTest {
         byte[] pdfHombre = generator.generar(empleado(null, "M"), "qr-token");
         byte[] pdfMujer = generator.generar(empleado(null, "F"), "qr-token");
 
-        // silueta + QR; ya no se muestra el marcador "SIN FOTO"
-        assertEquals(2, contarImagenes(pdfHombre));
-        assertEquals(2, contarImagenes(pdfMujer));
+        // Silueta + QR: más de una imagen (sin silueta solo estaría el QR).
+        // Las siluetas son PNG con transparencia, por eso el PDF las cuenta con su máscara.
+        assertTrue(contarImagenes(pdfHombre) > 1);
+        assertTrue(contarImagenes(pdfMujer) > 1);
         assertFalse(contenido(pdfHombre).contains("SIN FOTO"));
         assertFalse(contenido(pdfMujer).contains("SIN FOTO"));
     }
@@ -62,9 +63,10 @@ class CarnetPdfGeneratorTest {
         byte[] sinSexo = generator.generar(empleado(null, null), "qr-token");
         byte[] otro = generator.generar(empleado(null, "Otro"), "qr-token");
 
-        assertEquals(2, contarImagenes(sinSexo));
-        assertEquals(2, contarImagenes(otro));
+        assertTrue(contarImagenes(sinSexo) > 1);
+        assertTrue(contarImagenes(otro) > 1);
         assertFalse(contenido(sinSexo).contains("SIN FOTO"));
+        assertFalse(contenido(otro).contains("SIN FOTO"));
     }
 
     @Test
