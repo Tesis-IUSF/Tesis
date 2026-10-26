@@ -19,6 +19,9 @@ class EstadisticasPdfGeneratorTest {
     void generaDesglosePorNivelYSeccionConTotalesHembrasYVarones() throws Exception {
         EstadisticasPdfGenerator generator = new EstadisticasPdfGenerator();
         ReflectionTestUtils.setField(generator, "institucion", "Institución de prueba");
+        ReflectionTestUtils.setField(generator, "municipio", "San Francisco");
+        ReflectionTestUtils.setField(generator, "estado", "Zulia");
+        ReflectionTestUtils.setField(generator, "codigoPlantel", "OD34942317");
         Map<String, Long> porSexo = new LinkedHashMap<>();
         porSexo.put("F", 3L);
         porSexo.put("M", 2L);
@@ -39,6 +42,10 @@ class EstadisticasPdfGeneratorTest {
         reader.close();
 
         String textoNormalizado = texto.replaceAll("\\s+", " ");
+        assertTrue(textoNormalizado.contains("República Bolivariana de Venezuela"));
+        assertTrue(textoNormalizado.contains("Ministerio del Poder Popular para la Educación"));
+        assertTrue(textoNormalizado.contains("Municipio San Francisco"));
+        assertTrue(textoNormalizado.contains("Cod. Plantel: OD34942317"));
         assertTrue(textoNormalizado.contains("REPORTE DE ESTADÍSTICAS DE MATRÍCULA"));
         assertTrue(textoNormalizado.contains("Cupos disponibles10 Cupos ocupados8"));
         assertTrue(textoNormalizado.contains("Ocupación 44.44%"));

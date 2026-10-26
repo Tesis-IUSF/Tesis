@@ -20,10 +20,16 @@ final class MembretePdf {
 
     static PdfPTable crear(String institucion, String municipio, String estado, String codigoPlantel)
             throws Exception {
+        return crear(institucion, municipio, estado, codigoPlantel, 135);
+    }
+
+    static PdfPTable crear(String institucion, String municipio, String estado, String codigoPlantel,
+                           float anchoLogoMinisterio)
+            throws Exception {
         PdfPTable tabla = new PdfPTable(new float[] {1.2f, 3.6f, 1.2f});
         tabla.setWidthPercentage(100);
 
-        tabla.addCell(celdaImagen("logo-ministerio.png", 135, 48, Element.ALIGN_LEFT));
+        tabla.addCell(celdaImagen("logo-ministerio.png", anchoLogoMinisterio, 48, Element.ALIGN_LEFT));
 
         Paragraph centro = new Paragraph();
         centro.setAlignment(Element.ALIGN_CENTER);
