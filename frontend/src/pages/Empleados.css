@@ -332,3 +332,11 @@ tbody td {
   margin-top: -0.5rem;
   margin-bottom: 1rem;
 }
+
+td[data-label="Acciones"] {
+  white-space: nowrap;
+}
+
+td[data-label="Acciones"] > .btn-edit + .btn-delete {
+  margin-left: 0.4rem;
+}

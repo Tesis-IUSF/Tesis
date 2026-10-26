@@ -11,6 +11,7 @@ import ModalFormulario from "../components/ModalFormulario";
 import "./Matricula.css";
 
 const TABS = [
+  { clave: "todos", etiqueta: "Todos", estado: null },
   { clave: "preinscritos", etiqueta: "Preinscritos", estado: "preinscrito" },
   { clave: "proceso", etiqueta: "En proceso", estado: "en_proceso" },
   { clave: "completadas", etiqueta: "Completadas", estado: "completada" },
@@ -19,13 +20,12 @@ const TABS = [
 ];
 
 const MENSAJE_VACIO = {
-  preinscritos: "No hay preinscripciones pendientes con los filtros seleccionados.",
-  proceso: "No hay inscripciones en proceso con los filtros seleccionados.",
-  completadas: "No hay matrículas completadas con los filtros seleccionados.",
-  retiradas: "No hay matrículas retiradas con los filtros seleccionados.",
+  todos: "No hay matrículas en el año escolar activo.",
+  preinscritos: "No hay preinscripciones pendientes.",
+  proceso: "No hay inscripciones en proceso.",
+  completadas: "No hay matrículas completadas.",
+  retiradas: "No hay matrículas retiradas.",
 };
-
-const FILTROS_VACIOS = { anioEscolar: "", seccionId: "" };
 
 const fechaLocalISO = () => {
   const fecha = new Date();
@@ -45,7 +45,7 @@ const formatFechaISO = (v) => {
 function Matricula({ soloConsulta = false, permitirRetiros = false }) {
   const toast = useToast();
 
-  const [tab, setTab] = useState("preinscritos");
+  const [tab, setTab] = useState("todos");
   const [filas, setFilas] = useState([]);
   const [pagina, setPagina] = useState({
     page: 0,
@@ -63,12 +63,13 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
   const [conteos, setConteos] = useState(
     Object.fromEntries(TABS.map((t) => [t.clave, "—"])),
   );
-  const [anioActivo, setAnioActivo] = useState(null);
-  const [anios, setAnios] = useState([]);
+  const [anioActivoNumero, setAnioActivoNumero] = useState("");
   const [secciones, setSecciones] = useState([]);
   const [accionId, setAccionId] = useState(null);
   const [retiroMatricula, setRetiroMatricula] = useState(null);
-  const [representantesAutorizados, setRepresentantesAutorizados] = useState([]);
+  const [representantesAutorizados, setRepresentantesAutorizados] = useState(
+    [],
+  );
   const [tipoSolicitante, setTipoSolicitante] = useState("representante");
   const [representanteRetiroId, setRepresentanteRetiroId] = useState("");
   const [datosSolicitante, setDatosSolicitante] = useState({
@@ -81,13 +82,44 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
   const [retirando, setRetirando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [busquedaAplicada, setBusquedaAplicada] = useState("");
-  const [filtros, setFiltros] = useState(FILTROS_VACIOS);
-  const [filtrosAplicados, setFiltrosAplicados] = useState(FILTROS_VACIOS);
 
   const tabActual = TABS.find((t) => t.clave === tab) ?? TABS[0];
-  const mostrarRequisitos = tabActual.clave !== "preinscritos";
+  // La barra de requisitos solo tiene sentido mientras se completa la inscripción
+  const mostrarRequisitos = tabActual.clave === "proceso";
 
+  // Catálogos: calendario (año activo) y secciones (para nombrar la sección)
   useEffect(() => {
+    let vigente = true;
+    Promise.allSettled([
+      api.get("/catalogos/secciones", { params: { page: 0, size: 100 } }),
+      api.get("/matriculas/calendario"),
+    ]).then(([respuestaSecciones, calendario]) => {
+      if (!vigente) return;
+      const errores = [];
+      if (respuestaSecciones.status === "fulfilled") {
+        setSecciones(respuestaSecciones.value.data.content);
+      } else {
+        errores.push("secciones");
+      }
+      if (calendario.status === "fulfilled") {
+        const activo = calendario.value.data.anioActivo;
+        setAnioActivoNumero(activo?.anio ? String(activo.anio) : "");
+      } else {
+        errores.push("año escolar activo");
+      }
+      if (errores.length > 0) {
+        setErrorCatalogos(`No se pudieron cargar: ${errores.join(", ")}.`);
+      }
+      setCatalogosCargados(true);
+    });
+    return () => {
+      vigente = false;
+    };
+  }, []);
+
+  // Conteos de las pestañas (del año escolar activo)
+  useEffect(() => {
+    if (!catalogosCargados) return undefined;
     let vigente = true;
     Promise.allSettled(
       TABS.map((t) =>
@@ -98,6 +130,9 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
           {
             params: {
               ...(t.estado ? { estado: t.estado } : {}),
+              ...(!t.graduados && anioActivoNumero
+                ? { anioEscolar: anioActivoNumero }
+                : {}),
               page: 0,
               size: 1,
             },
@@ -120,53 +155,7 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
     return () => {
       vigente = false;
     };
-  }, [recargarConteos]);
-
-  useEffect(() => {
-    let vigente = true;
-    Promise.allSettled([
-      api.get("/matriculas/gestion/anios"),
-      api.get("/catalogos/secciones", { params: { page: 0, size: 100 } }),
-      api.get("/matriculas/calendario"),
-    ]).then(([respuestaAnios, respuestaSecciones, calendario]) => {
-      if (!vigente) return;
-      const errores = [];
-      if (respuestaAnios.status === "fulfilled") {
-        setAnios(respuestaAnios.value.data);
-      } else {
-        errores.push("años escolares");
-      }
-      if (respuestaSecciones.status === "fulfilled") {
-        setSecciones(respuestaSecciones.value.data.content);
-      } else {
-        errores.push("secciones");
-      }
-      if (calendario.status === "fulfilled") {
-        const activo = calendario.value.data.anioActivo;
-        setAnioActivo(activo);
-        const anioActivoSeleccionado = activo?.anio
-          ? String(activo.anio)
-          : "";
-        const filtrosIniciales = {
-          anioEscolar: anioActivoSeleccionado,
-          seccionId: "",
-        };
-        setFiltros(filtrosIniciales);
-        setFiltrosAplicados(filtrosIniciales);
-      } else {
-        errores.push("año escolar activo");
-      }
-      if (errores.length > 0) {
-        setErrorCatalogos(
-          `No se pudieron cargar los filtros de ${errores.join(", ")}.`,
-        );
-      }
-      setCatalogosCargados(true);
-    });
-    return () => {
-      vigente = false;
-    };
-  }, []);
+  }, [catalogosCargados, anioActivoNumero, recargarConteos]);
 
   const nombreSeccion = useMemo(() => {
     const mapa = {};
@@ -176,43 +165,16 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
     return (id) => mapa[id] ?? "—";
   }, [secciones]);
 
-  const anioActivoNumero = anioActivo?.anio ? String(anioActivo.anio) : "";
-  const anioNombre =
-    anioActivo?.nombre ??
-    (anioActivo?.anio ? String(anioActivo.anio) : "—");
-
-  const seccionesFiltradas = useMemo(() => {
-    const anio = tabActual.graduados
-      ? anioActivoNumero
-      : filtros.anioEscolar;
-    return secciones.filter(
-      (seccion) =>
-        (!anio || String(seccion.anioEscolar) === anio),
-    );
-  }, [
-    anioActivoNumero,
-    filtros.anioEscolar,
-    secciones,
-    tabActual.graduados,
-  ]);
-
+  // Listado de la pestaña actual
   useEffect(() => {
     if (!catalogosCargados) return undefined;
     let vigente = true;
     const params = { page: paginaSolicitada, size: 25 };
     if (busquedaAplicada) params.q = busquedaAplicada;
-    if (tabActual.graduados) {
-      if (filtrosAplicados.seccionId) {
-        params.seccionId = filtrosAplicados.seccionId;
-      }
-    } else {
-      params.estado = tabActual.estado;
-      if (filtrosAplicados.anioEscolar) {
-        params.anioEscolar = filtrosAplicados.anioEscolar;
-      }
-      if (filtrosAplicados.seccionId) {
-        params.seccionId = filtrosAplicados.seccionId;
-      }
+    if (!tabActual.graduados) {
+      // En "Todos" el estado es null y no se envía el parámetro
+      if (tabActual.estado) params.estado = tabActual.estado;
+      if (anioActivoNumero) params.anioEscolar = anioActivoNumero;
     }
     const ruta = tabActual.graduados
       ? "/matriculas/posibles-graduados"
@@ -243,31 +205,28 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
       vigente = false;
     };
   }, [
+    anioActivoNumero,
     busquedaAplicada,
     catalogosCargados,
-    filtrosAplicados,
     paginaSolicitada,
     recargar,
     tabActual,
   ]);
 
-  const aplicarFiltros = (event) => {
+  const aplicarBusqueda = (event) => {
     event.preventDefault();
     setCargando(true);
     setError("");
     setBusquedaAplicada(busqueda.trim());
-    setFiltrosAplicados(filtros);
     setPaginaSolicitada(0);
     setRecargar((version) => version + 1);
   };
 
-  const limpiarFiltros = () => {
+  const limpiarBusqueda = () => {
     setCargando(true);
     setError("");
     setBusqueda("");
     setBusquedaAplicada("");
-    setFiltros(FILTROS_VACIOS);
-    setFiltrosAplicados(FILTROS_VACIOS);
     setPaginaSolicitada(0);
     setRecargar((version) => version + 1);
   };
@@ -324,8 +283,8 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
         ? Boolean(representanteRetiroId)
         : Boolean(
             datosSolicitante.nombre.trim() &&
-              datosSolicitante.apellido.trim() &&
-              datosSolicitante.cedula.trim(),
+            datosSolicitante.apellido.trim() &&
+            datosSolicitante.cedula.trim(),
           );
     if (
       !datosSolicitante.motivo.trim() ||
@@ -348,11 +307,15 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
               solicitanteCedula: datosSolicitante.cedula.trim(),
             }),
       };
-      await api.post(
+      const { data: respuesta } = await api.post(
         `/matriculas/${retiroMatricula.matriculaId}/retiros`,
         request,
       );
-      toast.success("Retiro registrado correctamente.");
+      toast.success(
+        respuesta?.operacion === "preinscripcion_eliminada"
+          ? "Preinscripción eliminada: el estudiante no tenía historial de matrícula."
+          : "Retiro registrado correctamente.",
+      );
       setRetiroMatricula(null);
       setCargando(true);
       setRecargar((version) => version + 1);
@@ -364,14 +327,22 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
     }
   };
 
-  const descargarConstancia = async (f) => {
+  // tipo: "cupo" (preinscritos y en proceso) | "inscripcion" (completadas)
+  const descargarConstancia = async (f, tipo) => {
+    const ruta =
+      tipo === "inscripcion"
+        ? "constancia-inscripcion"
+        : "constancia-asignacion-cupo";
+    const nombre =
+      tipo === "inscripcion"
+        ? `constancia-inscripcion-${f.matriculaId}.pdf`
+        : `constancia-aceptacion-cupo-${f.matriculaId}.pdf`;
     setAccionId(f.matriculaId);
     try {
-      const { data } = await api.get(
-        `/matriculas/${f.matriculaId}/constancia-asignacion-cupo`,
-        { responseType: "blob" },
-      );
-      descargarArchivo(data, `constancia-aceptacion-cupo-${f.matriculaId}.pdf`);
+      const { data } = await api.get(`/matriculas/${f.matriculaId}/${ruta}`, {
+        responseType: "blob",
+      });
+      descargarArchivo(data, nombre);
     } catch (err) {
       toast.error(
         await mensajeErrorBlob(err, "No se pudo descargar la constancia."),
@@ -380,6 +351,75 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
       setAccionId(null);
     }
   };
+
+  // Acciones de cada fila según la pestaña
+  const renderAcciones = (f, ocupada) => {
+    const ruta = `/matricula/${f.matriculaId}/inscripcion`;
+    const botonConstancia = (tipo) => (
+      <button
+        type="button"
+        className="btn-reactivar"
+        disabled={ocupada}
+        onClick={() => descargarConstancia(f, tipo)}
+      >
+        Constancia
+      </button>
+    );
+    // Solo el rol con permiso de retiros ve el botón (el backend también lo valida)
+    const botonRetirar = permitirRetiros ? (
+      <button
+        type="button"
+        className="btn-delete"
+        disabled={ocupada}
+        onClick={() => abrirRetiro(f)}
+      >
+        {ocupada ? "Cargando..." : "Retirar"}
+      </button>
+    ) : null;
+
+    switch (tabActual.clave) {
+      case "preinscritos":
+        return (
+          <div className="mat-acciones">
+            <Link to={ruta} className="btn-edit">
+              {soloConsulta ? "Ver" : "Inscribir"}
+            </Link>
+            {botonConstancia("cupo")}
+            {botonRetirar}
+          </div>
+        );
+      case "proceso":
+        return (
+          <div className="mat-acciones">
+            <Link to={ruta} className="btn-edit">
+              {soloConsulta ? "Ver" : "Continuar"}
+            </Link>
+            {botonConstancia("cupo")}
+            {botonRetirar}
+          </div>
+        );
+      case "completadas":
+        return (
+          <div className="mat-acciones">
+            <Link to={ruta} className="btn-edit">
+              Ver
+            </Link>
+            {botonConstancia("inscripcion")}
+          </div>
+        );
+      default:
+        // Todos, Retiradas y Posibles graduados
+        return (
+          <div className="mat-acciones">
+            <Link to={ruta} className="btn-edit">
+              Ver
+            </Link>
+          </div>
+        );
+    }
+  };
+
+  const columnas = mostrarRequisitos ? 6 : 5;
 
   return (
     <div className="mod-main">
@@ -394,22 +434,7 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
         )}
       </div>
 
-      <div className="stats-row">
-        <div className="stat-card stat-card--azul">
-          <div className="stat-value">{conteos.preinscritos}</div>
-          <div className="stat-label">Preinscritos</div>
-        </div>
-        <div className="stat-card stat-card--naranja">
-          <div className="stat-value">{conteos.proceso}</div>
-          <div className="stat-label">En proceso de inscripción</div>
-        </div>
-        <div className="stat-card stat-card--dorado">
-          <div className="stat-value mat-anio">{anioNombre}</div>
-          <div className="stat-label">Año escolar activo</div>
-        </div>
-      </div>
-
-      <form className="mat-filtros" onSubmit={aplicarFiltros}>
+      <form className="mat-filtros" onSubmit={aplicarBusqueda}>
         <label>
           Buscar estudiante
           <input
@@ -419,57 +444,6 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
             placeholder="Nombre completo o cédula"
           />
         </label>
-        <label>
-          Año escolar
-          {tabActual.graduados ? (
-            <input
-              value={anioActivo?.nombre ?? anioActivoNumero ?? ""}
-              disabled
-              aria-label="Año escolar activo para posibles graduados"
-            />
-          ) : (
-            <select
-              value={filtros.anioEscolar}
-              onChange={(event) =>
-                setFiltros((actual) => ({
-                  ...actual,
-                  anioEscolar: event.target.value,
-                  seccionId: "",
-                }))
-              }
-            >
-              <option value="">Todos los años</option>
-              {anios.map((anio) => (
-                <option key={anio.anio} value={anio.anio}>
-                  {anio.nombre}
-                </option>
-              ))}
-            </select>
-          )}
-        </label>
-        <label>
-          Grado - sección
-          <select
-            value={filtros.seccionId}
-            onChange={(event) =>
-              setFiltros((actual) => ({
-                ...actual,
-                seccionId: event.target.value,
-              }))
-            }
-          >
-            <option value="">Todos los grados y secciones</option>
-            {seccionesFiltradas.map((seccion) => (
-              <option key={seccion.id} value={seccion.id}>
-                {seccion.gradoNombre} - {seccion.letraSeccion}
-                {!filtros.anioEscolar &&
-                  ` ${anios.find(
-                    (anio) => String(anio.anio) === String(seccion.anioEscolar),
-                  )?.nombre ?? seccion.anioEscolar}`}
-              </option>
-            ))}
-          </select>
-        </label>
         <div className="mat-filtros-acciones">
           <button type="submit" className="btn-primary">
             Buscar
@@ -477,7 +451,7 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
           <button
             type="button"
             className="btn-secondary"
-            onClick={limpiarFiltros}
+            onClick={limpiarBusqueda}
           >
             Limpiar
           </button>
@@ -518,19 +492,21 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
           <tbody>
             {cargando ? (
               <tr>
-                <td colSpan={mostrarRequisitos ? 6 : 5} className="tabla-estado">
+                <td colSpan={columnas} className="tabla-estado">
                   Cargando matrículas...
                 </td>
               </tr>
             ) : filas.length === 0 ? (
               <tr>
-                <td colSpan={mostrarRequisitos ? 6 : 5} className="tabla-estado">
+                <td colSpan={columnas} className="tabla-estado">
                   <span className="tabla-estado-icono">
                     <Icon icon={ICONOS.matricula} />
                   </span>
-                  {tabActual.graduados
-                    ? "No hay posibles graduados con los filtros seleccionados."
-                    : MENSAJE_VACIO[tabActual.clave]}
+                  {busquedaAplicada
+                    ? "No hay resultados para esa búsqueda."
+                    : tabActual.graduados
+                      ? "No hay posibles graduados."
+                      : MENSAJE_VACIO[tabActual.clave]}
                 </td>
               </tr>
             ) : (
@@ -567,35 +543,7 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
                         )}
                       </td>
                     )}
-                    <td data-label="Acciones">
-                      <Link
-                        to={`/matricula/${f.matriculaId}/inscripcion`}
-                        className="btn-edit"
-                      >
-                        Ver expediente
-                      </Link>
-                      {permitirRetiros &&
-                        f.estadoMatricula === "completada" && (
-                        <button
-                          type="button"
-                          className="btn-reactivar"
-                          disabled={ocupada}
-                          onClick={() => abrirRetiro(f)}
-                        >
-                          {ocupada ? "Cargando..." : "Retirar"}
-                        </button>
-                        )}
-                      {f.estadoMatricula === "preinscrito" && (
-                          <button
-                            type="button"
-                            className="btn-reactivar"
-                            disabled={ocupada}
-                            onClick={() => descargarConstancia(f)}
-                          >
-                            Constancia de cupo
-                          </button>
-                      )}
-                    </td>
+                    <td data-label="Acciones">{renderAcciones(f, ocupada)}</td>
                   </tr>
                 );
               })
@@ -634,7 +582,8 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
           etiquetaGuardar="Registrar retiro"
         >
           <p>
-            Matrícula de <strong>{retiroMatricula.estudianteNombreCompleto}</strong>
+            Matrícula de{" "}
+            <strong>{retiroMatricula.estudianteNombreCompleto}</strong>
             {" · Año escolar "}
             {retiroMatricula.anioEscolar}
           </p>
@@ -657,7 +606,9 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
               Representante autorizado
               <select
                 value={representanteRetiroId}
-                onChange={(event) => setRepresentanteRetiroId(event.target.value)}
+                onChange={(event) =>
+                  setRepresentanteRetiroId(event.target.value)
+                }
                 required
               >
                 {representantesAutorizados.map((representante) => (

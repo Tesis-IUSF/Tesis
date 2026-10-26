@@ -1,0 +1,201 @@
+/* src/pages/Requisitos.css — prefijo req- */
+
+.req-subtitulo {
+  margin: -0.25rem 0 1rem;
+  color: var(--texto-suave);
+}
+
+/* ===== Tabla ===== */
+.req-nombre {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-width: 320px;
+}
+
+.req-nombre small {
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+}
+
+.req-plantilla {
+  font-size: 0.8rem;
+  color: var(--azul);
+}
+
+.req-etiqueta {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #eef2f7;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.req-etiqueta.obligatorio {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.req-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.req-chip {
+  padding: 0.1rem 0.5rem;
+  border-radius: 6px;
+  background: #fef3c7;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.req-todos {
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+}
+
+.req-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.req-acciones > button {
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* ===== Formulario (dentro del modal) ===== */
+.req-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.req-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+
+.req-form input:not([type="checkbox"]),
+.req-form select,
+.req-form textarea {
+  font-family: var(--font-texto);
+  font-size: 0.95rem;
+  padding: 0.6rem 0.75rem;
+  border: 1.5px solid #d0dcea;
+  border-radius: 8px;
+  background: var(--blanco);
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  color: var(--texto);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.req-form input:not([type="checkbox"]):focus,
+.req-form select:focus,
+.req-form textarea:focus {
+  outline: none;
+  border-color: var(--azul);
+}
+
+.req-form textarea {
+  resize: vertical;
+}
+
+.req-tipos {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.req-tipos legend {
+  padding: 0;
+  margin-bottom: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+
+.req-tipos-lista {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 1rem;
+}
+
+.req-form .req-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--texto);
+  cursor: pointer;
+}
+
+.req-form .req-check input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  accent-color: var(--azul);
+  cursor: pointer;
+}
+
+.req-interruptores {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.req-ayuda {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--texto-suave);
+}
+
+.req-confirmar {
+  margin: 0;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .req-tipos-lista {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Acciones en una sola fila */
+.req-acciones {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.req-acciones > button {
+  flex: none;
+  white-space: nowrap;
+  margin: 0;
+}

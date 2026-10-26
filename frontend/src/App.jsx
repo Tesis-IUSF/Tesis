@@ -28,6 +28,7 @@ import Cargos from "./pages/Cargos";
 import Preinscripcion from "./pages/Preinscripcion";
 import Matricula from "./pages/Matricula";
 import Inscripcion from "./pages/Inscripcion";
+import Requisitos from "./pages/Requisitos";
 import EmpleadoDetalle from "./pages/EmpleadoDetalle";
 import CalendarioMatricula from "./pages/CalendarioMatricula";
 import Grados from "./pages/Grados";
@@ -141,6 +142,7 @@ function App() {
                   path="/matricula/calendario"
                   element={<CalendarioMatricula />}
                 />
+                <Route path="/matricula/requisitos" element={<Requisitos />} />
                 <Route path="/grados" element={<Grados />} />
                 <Route path="/secciones" element={<Secciones />} />
               </Route>

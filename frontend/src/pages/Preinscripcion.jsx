@@ -6,6 +6,8 @@ import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
 import { ICONOS } from "../utils/iconos";
+import { subirFoto } from "../utils/fotos";
+import FotoCarnet from "../components/FotoCarnet";
 import "./Preinscripcion.css";
 
 const PARENTESCOS = ["Padre", "Madre", "Tutor", "Abuelo", "Otro"];
@@ -43,6 +45,8 @@ const VACIO = {
     sexo: "",
     correo: "",
     telefono: "",
+    foto: null, // File elegido; se sube al guardar
+    fotoCarnetUrl: "", // foto ya guardada
   },
   rep: {
     id: null,
@@ -56,6 +60,8 @@ const VACIO = {
     telefonoSecundario: "",
     direccion: "",
     ocupacion: "",
+    foto: null, // File elegido; se sube al guardar
+    fotoUrl: "", // foto ya guardada
   },
   institucionProcedencia: "",
   anioEscolar: null,
@@ -75,7 +81,8 @@ const serializarEstable = (valor) =>
       : dato,
   );
 
-const crearPayloadPreinscripcion = (formulario, id, anio) => {
+// urls: URL de fotos recién subidas { fotoCarnetUrl, fotoUrl } (opcional)
+const crearPayloadPreinscripcion = (formulario, id, anio, urls = {}) => {
   const { est, rep } = formulario;
   return {
     estudiante: {
@@ -93,6 +100,7 @@ const crearPayloadPreinscripcion = (formulario, id, anio) => {
       sexo: est.sexo,
       correo: o(est.correo),
       telefono: o(est.telefono),
+      fotoCarnetUrl: urls.fotoCarnetUrl ?? (est.fotoCarnetUrl || undefined),
     },
     representante: {
       id: rep.id,
@@ -105,6 +113,7 @@ const crearPayloadPreinscripcion = (formulario, id, anio) => {
       telefonoSecundario: o(rep.telefonoSecundario),
       direccion: o(rep.direccion),
       ocupacion: o(rep.ocupacion),
+      fotoUrl: urls.fotoUrl ?? (rep.fotoUrl || undefined),
     },
     seccionId: Number(formulario.seccionId),
     anioEscolar: Number(id ? formulario.anioEscolar : anio),
@@ -158,7 +167,9 @@ function Preinscripcion({
     id ? "seleccionado" : "buscar",
   );
   const [busquedaRepresentante, setBusquedaRepresentante] = useState("");
-  const [representantesEncontrados, setRepresentantesEncontrados] = useState([]);
+  const [representantesEncontrados, setRepresentantesEncontrados] = useState(
+    [],
+  );
   const [paginaRepresentantes, setPaginaRepresentantes] = useState({
     page: 0,
     totalPages: 0,
@@ -220,11 +231,14 @@ function Preinscripcion({
             sexo: estudiante.sexo ?? "",
             correo: estudiante.correo ?? "",
             telefono: estudiante.telefono ?? "",
+            fotoCarnetUrl: estudiante.fotoCarnetUrl ?? "",
           },
           rep: {
             ...VACIO.rep,
             ...representante,
             ...separarCedulaRepresentante(representante.cedula),
+            foto: null,
+            fotoUrl: representante.fotoUrl ?? "",
           },
           institucionProcedencia: data.institucionProcedencia ?? "",
           anioEscolar: data.anioEscolar ?? null,
@@ -239,7 +253,10 @@ function Preinscripcion({
       .catch((error) => {
         if (!activo) return;
         setErrorDatos(
-          extractErrorMessage(error, "No se pudieron cargar los datos para editar."),
+          extractErrorMessage(
+            error,
+            "No se pudieron cargar los datos para editar.",
+          ),
         );
       })
       .finally(() => {
@@ -251,7 +268,10 @@ function Preinscripcion({
   }, [id]);
 
   useEffect(() => {
-    if (modoRepresentante !== "buscar" || busquedaRepresentante.trim().length < 2) {
+    if (
+      modoRepresentante !== "buscar" ||
+      busquedaRepresentante.trim().length < 2
+    ) {
       return undefined;
     }
     let activo = true;
@@ -293,9 +313,10 @@ function Preinscripcion({
   const anio = id
     ? (form.anioEscolar ?? calendario?.anioActivo?.anio ?? null)
     : (calendario?.anioActivo?.anio ?? null);
-  const anioNombre = id && form.anioEscolar
-    ? String(form.anioEscolar)
-    : (calendario?.anioActivo?.nombre ?? (anio ? String(anio) : "—"));
+  const anioNombre =
+    id && form.anioEscolar
+      ? String(form.anioEscolar)
+      : (calendario?.anioActivo?.nombre ?? (anio ? String(anio) : "—"));
 
   const periodoVigente = useMemo(
     () =>
@@ -384,7 +405,8 @@ function Preinscripcion({
     const { est, rep } = form;
     if (n === 0) {
       if (est.tieneCedulaIdentidad) {
-        const cedula = `${est.cedulaTipo}-${est.cedulaNumero.trim()}`.toUpperCase();
+        const cedula =
+          `${est.cedulaTipo}-${est.cedulaNumero.trim()}`.toUpperCase();
         const valida =
           est.cedulaTipo === "E"
             ? CEDULA_EXTRANJERA.test(cedula)
@@ -395,14 +417,16 @@ function Preinscripcion({
           e["est.cedula"] =
             "Formato inválido o fuera de rango. Usa V-6000000 o E-80000000 como mínimo.";
       } else {
-        if (!est.nacionalidad) e["est.nacionalidad"] = "Selecciona la nacionalidad.";
+        if (!est.nacionalidad)
+          e["est.nacionalidad"] = "Selecciona la nacionalidad.";
         if (
           !est.ordenNacimiento ||
           !Number.isInteger(Number(est.ordenNacimiento)) ||
           Number(est.ordenNacimiento) < 1 ||
           Number(est.ordenNacimiento) > 9
         )
-          e["est.ordenNacimiento"] = "El orden de nacimiento debe estar entre 1 y 9.";
+          e["est.ordenNacimiento"] =
+            "El orden de nacimiento debe estar entre 1 y 9.";
       }
       if (!est.nombre.trim()) e["est.nombre"] = "El nombre es obligatorio.";
       if (!est.apellido.trim())
@@ -421,16 +445,20 @@ function Preinscripcion({
     }
     if (n === 1) {
       if (modoRepresentante === "buscar") {
-        e["rep.seleccion"] = "Selecciona un representante o registra uno nuevo.";
+        e["rep.seleccion"] =
+          "Selecciona un representante o registra uno nuevo.";
       } else {
-        const cedula = `${rep.cedulaTipo}-${rep.cedulaNumero.trim()}`.toUpperCase();
+        const cedula =
+          `${rep.cedulaTipo}-${rep.cedulaNumero.trim()}`.toUpperCase();
         const cedulaValida =
           rep.cedulaTipo === "E"
             ? CEDULA_EXTRANJERA.test(cedula)
             : CEDULA_IDENTIDAD.test(cedula);
-        if (!rep.cedulaNumero.trim()) e["rep.cedula"] = "La cédula es obligatoria.";
+        if (!rep.cedulaNumero.trim())
+          e["rep.cedula"] = "La cédula es obligatoria.";
         else if (!cedulaValida)
-          e["rep.cedula"] = "Formato inválido o fuera de rango para el prefijo seleccionado.";
+          e["rep.cedula"] =
+            "Formato inválido o fuera de rango para el prefijo seleccionado.";
         if (!rep.nombre.trim()) e["rep.nombre"] = "El nombre es obligatorio.";
         if (!rep.apellido.trim())
           e["rep.apellido"] = "El apellido es obligatorio.";
@@ -438,7 +466,8 @@ function Preinscripcion({
         if (!rep.correo.trim()) e["rep.correo"] = "El correo es obligatorio.";
         else if (!EMAIL.test(rep.correo.trim()))
           e["rep.correo"] = "Correo no válido.";
-        if (!rep.telefono.trim()) e["rep.telefono"] = "El teléfono principal es obligatorio.";
+        if (!rep.telefono.trim())
+          e["rep.telefono"] = "El teléfono principal es obligatorio.";
         else if (rep.telefono.trim().length > 20)
           e["rep.telefono"] = "Máximo 20 caracteres.";
         if (rep.telefonoSecundario.trim().length > 20)
@@ -454,11 +483,13 @@ function Preinscripcion({
 
   // ---------- Envío ----------
   const enviar = async () => {
-    const payload = crearPayloadPreinscripcion(form, id, anio);
+    const hayFotoNueva = Boolean(form.est.foto || form.rep.foto);
+    const payloadActual = crearPayloadPreinscripcion(form, id, anio);
     if (
       id &&
       formOriginal &&
-      serializarEstable(payload) ===
+      !hayFotoNueva &&
+      serializarEstable(payloadActual) ===
         serializarEstable(
           crearPayloadPreinscripcion(JSON.parse(formOriginal), id, anio),
         )
@@ -489,6 +520,12 @@ function Preinscripcion({
     onSubmitting?.(true);
     setErrorEnvio("");
     try {
+      // Las fotos nuevas se suben primero; las ya guardadas se conservan
+      const urls = {};
+      if (form.est.foto) urls.fotoCarnetUrl = await subirFoto(form.est.foto);
+      if (form.rep.foto) urls.fotoUrl = await subirFoto(form.rep.foto);
+      const payload = crearPayloadPreinscripcion(form, id, anio, urls);
+
       const { data } = id
         ? await api.put(`/matriculas/${id}/preinscripcion`, payload)
         : await api.post("/matriculas/preinscripciones", payload);
@@ -504,7 +541,7 @@ function Preinscripcion({
       toast.success("Preinscripción registrada correctamente.");
       navigate("/matricula");
     } catch (error) {
-      // 400 edad/año, 409 cédula, cupo o matrícula duplicada: mensaje del backend
+      // 400 edad/año/foto, 409 cédula, cupo o matrícula duplicada: mensaje del backend
       const mensaje = extractErrorMessage(
         error,
         "No se pudo registrar la preinscripción.",
@@ -533,6 +570,8 @@ function Preinscripcion({
         telefonoSecundario: representante.telefonoSecundario ?? "",
         direccion: representante.direccion ?? "",
         ocupacion: representante.ocupacion ?? "",
+        foto: null,
+        fotoUrl: representante.fotoUrl ?? "",
       },
     }));
     setErrores({});
@@ -560,11 +599,19 @@ function Preinscripcion({
     return embedded ? (
       <p className="wiz-info">Cargando ficha...</p>
     ) : (
-      <div className="mod-main"><p>Cargando ficha...</p></div>
+      <div className="mod-main">
+        <p>Cargando ficha...</p>
+      </div>
     );
   }
 
   const { est, rep } = form;
+  const conservaCiEscolar =
+    Boolean(id) &&
+    !est.tieneCedulaIdentidad &&
+    String(est.cedulaActual ?? "")
+      .toUpperCase()
+      .startsWith("CE-");
 
   return (
     <div className={embedded ? "wiz-inline" : "mod-main"}>
@@ -602,9 +649,11 @@ function Preinscripcion({
           <h2 className="ins-seccion-titulo">Datos del estudiante</h2>
           <div className="wiz-seccion-actual">
             <div>
-              <strong>{seccionElegida
-                ? `${seccionElegida.gradoNombre} · Sección ${seccionElegida.letraSeccion}`
-                : "Sección sin seleccionar"}</strong>
+              <strong>
+                {seccionElegida
+                  ? `${seccionElegida.gradoNombre} · Sección ${seccionElegida.letraSeccion}`
+                  : "Sección sin seleccionar"}
+              </strong>
               <small>Año escolar {anioNombre}</small>
             </div>
             <button
@@ -617,6 +666,14 @@ function Preinscripcion({
             </button>
           </div>
           {err("seccionId")}
+          <div className="wiz-con-foto">
+            <FotoCarnet
+              etiqueta="Foto del estudiante"
+              archivo={est.foto}
+              urlActual={est.fotoCarnetUrl || null}
+              onChange={(f) => setEst("foto", f)}
+              disabled={enviando}
+            />
             <div className="form-grid-2">
               <label className="wiz-check wiz-identidad-toggle">
                 <input
@@ -652,7 +709,9 @@ function Preinscripcion({
                         )
                       }
                       maxLength={8}
-                      placeholder={est.cedulaTipo === "E" ? "80000000" : "6000000"}
+                      placeholder={
+                        est.cedulaTipo === "E" ? "80000000" : "6000000"
+                      }
                       autoFocus
                     />
                     {err("est.cedula")}
@@ -685,14 +744,12 @@ function Preinscripcion({
                     />
                     {err("est.ordenNacimiento")}
                   </label>
-                  <p className="wiz-info wiz-identidad-ayuda">
-                    {id &&
-                    String(est.cedulaActual ?? "")
-                      .toUpperCase()
-                      .startsWith("CE-")
-                      ? "El estudiante conserva su CI escolar. Marca la opción anterior para sustituirla por una cédula real."
-                      : "El backend generará una cédula escolar con prefijo CE- al completar la preinscripción."}
-                  </p>
+                  {conservaCiEscolar && (
+                    <p className="wiz-info wiz-identidad-ayuda">
+                      El estudiante conserva su CI escolar. Marca la opción
+                      anterior para sustituirla por una cédula real.
+                    </p>
+                  )}
                 </>
               )}
               <label>
@@ -771,234 +828,250 @@ function Preinscripcion({
                 {err("institucionProcedencia")}
               </label>
             </div>
+          </div>
         </section>
 
         <section className="ins-tarjeta wiz-card">
           <h2 className="ins-seccion-titulo">Representantes vinculados</h2>
-            <div className="wiz-representante-opciones">
-              {modoRepresentante === "buscar" ? (
-                <>
-                  <label className="wiz-ancho">
-                    Buscar representante activo por nombre o cédula
-                    <input
-                      value={busquedaRepresentante}
-                      onChange={(e) => {
-                        setBusquedaRepresentante(e.target.value);
-                        setRepresentantesEncontrados([]);
-                        setBuscandoRepresentantes(false);
-                        setPaginaRepresentantes({ page: 0, totalPages: 0 });
-                        setErrorEnvio("");
-                      }}
-                      placeholder="Escribe al menos 2 caracteres"
-                      autoFocus
-                    />
-                  </label>
-                  {buscandoRepresentantes && <p>Buscando representantes...</p>}
-                  {!buscandoRepresentantes &&
-                    busquedaRepresentante.trim().length >= 2 &&
-                    representantesEncontrados.length === 0 && (
-                      <p>No se encontraron representantes activos.</p>
-                    )}
-                  {representantesEncontrados.length > 0 && (
-                    <div className="wiz-representantes-resultados" role="list">
-                      {representantesEncontrados.map((representante) => (
-                        <button
-                          key={representante.id}
-                          type="button"
-                          className="wiz-representante-opcion"
-                          onClick={() =>
-                            seleccionarRepresentante(representante)
-                          }
-                        >
-                          <strong>
-                            {representante.nombre} {representante.apellido}
-                          </strong>
-                          <span>{representante.cedula}</span>
-                          <span>{representante.telefono || "Sin teléfono"}</span>
-                        </button>
-                      ))}
-                    </div>
+          <div className="wiz-representante-opciones">
+            {modoRepresentante === "buscar" ? (
+              <>
+                <label className="wiz-ancho">
+                  Buscar representante activo por nombre o cédula
+                  <input
+                    value={busquedaRepresentante}
+                    onChange={(e) => {
+                      setBusquedaRepresentante(e.target.value);
+                      setRepresentantesEncontrados([]);
+                      setBuscandoRepresentantes(false);
+                      setPaginaRepresentantes({ page: 0, totalPages: 0 });
+                      setErrorEnvio("");
+                    }}
+                    placeholder="Escribe al menos 2 caracteres"
+                    autoFocus
+                  />
+                </label>
+                {buscandoRepresentantes && <p>Buscando representantes...</p>}
+                {!buscandoRepresentantes &&
+                  busquedaRepresentante.trim().length >= 2 &&
+                  representantesEncontrados.length === 0 && (
+                    <p>No se encontraron representantes activos.</p>
                   )}
-                  {paginaRepresentantes.totalPages > 1 && (
-                    <div className="wiz-representantes-paginacion">
+                {representantesEncontrados.length > 0 && (
+                  <div className="wiz-representantes-resultados" role="list">
+                    {representantesEncontrados.map((representante) => (
                       <button
+                        key={representante.id}
                         type="button"
-                        className="btn-secondary"
-                        disabled={paginaRepresentantes.page === 0 || buscandoRepresentantes}
-                        onClick={() =>
-                          setPaginaRepresentantes((p) => ({
-                            ...p,
-                            page: p.page - 1,
-                          }))
-                        }
+                        className="wiz-representante-opcion"
+                        onClick={() => seleccionarRepresentante(representante)}
                       >
-                        Anterior
+                        <strong>
+                          {representante.nombre} {representante.apellido}
+                        </strong>
+                        <span>{representante.cedula}</span>
+                        <span>{representante.telefono || "Sin teléfono"}</span>
                       </button>
-                      <span>
-                        Página {paginaRepresentantes.page + 1} de{" "}
-                        {paginaRepresentantes.totalPages}
-                      </span>
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        disabled={
-                          paginaRepresentantes.page + 1 >=
-                            paginaRepresentantes.totalPages ||
-                          buscandoRepresentantes
-                        }
-                        onClick={() =>
-                          setPaginaRepresentantes((p) => ({
-                            ...p,
-                            page: p.page + 1,
-                          }))
-                        }
-                      >
-                        Siguiente
-                      </button>
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    className="btn-secondary wiz-representante-cambiar"
-                    onClick={registrarNuevoRepresentante}
-                  >
-                    Registrar nuevo representante
-                  </button>
-                </>
-              ) : (
-                <>
-                  {modoRepresentante === "seleccionado" && (
-                    <p className="wiz-info">
-                      Representante seleccionado:{" "}
-                      <strong>
-                        {rep.nombre} {rep.apellido} ·{" "}
-                        {rep.id ? `ID ${rep.id}` : ""}
-                      </strong>
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    className="btn-secondary wiz-representante-cambiar"
-                    onClick={buscarOtroRepresentante}
-                  >
-                    Buscar representante existente
-                  </button>
-                </>
-              )}
-              {err("rep.seleccion")}
-              {errorEnvio && <p className="error-msg">{errorEnvio}</p>}
-            </div>
-            {modoRepresentante !== "buscar" && (
-            <div className="form-grid-2">
-              <label>
-                Prefijo de cédula *
-                <select
-                  value={rep.cedulaTipo}
-                  onChange={(e) => setRep("cedulaTipo", e.target.value)}
+                    ))}
+                  </div>
+                )}
+                {paginaRepresentantes.totalPages > 1 && (
+                  <div className="wiz-representantes-paginacion">
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      disabled={
+                        paginaRepresentantes.page === 0 ||
+                        buscandoRepresentantes
+                      }
+                      onClick={() =>
+                        setPaginaRepresentantes((p) => ({
+                          ...p,
+                          page: p.page - 1,
+                        }))
+                      }
+                    >
+                      Anterior
+                    </button>
+                    <span>
+                      Página {paginaRepresentantes.page + 1} de{" "}
+                      {paginaRepresentantes.totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      disabled={
+                        paginaRepresentantes.page + 1 >=
+                          paginaRepresentantes.totalPages ||
+                        buscandoRepresentantes
+                      }
+                      onClick={() =>
+                        setPaginaRepresentantes((p) => ({
+                          ...p,
+                          page: p.page + 1,
+                        }))
+                      }
+                    >
+                      Siguiente
+                    </button>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className="btn-secondary wiz-representante-cambiar"
+                  onClick={registrarNuevoRepresentante}
                 >
-                  <option value="V">Venezolana (V-)</option>
-                  <option value="E">Extranjera (E-)</option>
-                </select>
-              </label>
-              <label>
-                Número de cédula *
-                <input
-                  inputMode="numeric"
-                  value={rep.cedulaNumero}
-                  onChange={(e) =>
-                    setRep(
-                      "cedulaNumero",
-                      e.target.value.replace(/\D/g, "").slice(0, 8),
-                    )
-                  }
-                  maxLength={8}
-                  placeholder={rep.cedulaTipo === "E" ? "80000000" : "6000000"}
-                />
-                {err("rep.cedula")}
-              </label>
-              <label>
-                Parentesco *
-                <select
-                  value={rep.parentesco}
-                  onChange={(e) => setRep("parentesco", e.target.value)}
+                  Registrar nuevo representante
+                </button>
+              </>
+            ) : (
+              <>
+                {modoRepresentante === "seleccionado" && (
+                  <p className="wiz-info">
+                    Representante seleccionado:{" "}
+                    <strong>
+                      {rep.nombre} {rep.apellido} ·{" "}
+                      {rep.id ? `ID ${rep.id}` : ""}
+                    </strong>
+                  </p>
+                )}
+                <button
+                  type="button"
+                  className="btn-secondary wiz-representante-cambiar"
+                  onClick={buscarOtroRepresentante}
                 >
-                  <option value="">Selecciona...</option>
-                  {PARENTESCOS.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-                {err("rep.parentesco")}
-              </label>
-              <label>
-                Nombres *
-                <input
-                  value={rep.nombre}
-                  onChange={(e) => setRep("nombre", e.target.value)}
-                  maxLength={100}
-                />
-                {err("rep.nombre")}
-              </label>
-              <label>
-                Apellidos *
-                <input
-                  value={rep.apellido}
-                  onChange={(e) => setRep("apellido", e.target.value)}
-                  maxLength={100}
-                />
-                {err("rep.apellido")}
-              </label>
-              <label>
-                Correo *
-                <input
-                  type="email"
-                  value={rep.correo}
-                  onChange={(e) => setRep("correo", e.target.value)}
-                  placeholder="representante@correo.com"
-                />
-                {err("rep.correo")}
-              </label>
-              <label>
-                Teléfono principal *
-                <input
-                  value={rep.telefono}
-                  onChange={(e) => setRep("telefono", e.target.value)}
-                  maxLength={20}
-                  placeholder="04121234567"
-                  required
-                />
-                {err("rep.telefono")}
-              </label>
-              <label>
-                Teléfono secundario
-                <input
-                  value={rep.telefonoSecundario}
-                  onChange={(e) => setRep("telefonoSecundario", e.target.value)}
-                  maxLength={20}
-                />
-                {err("rep.telefonoSecundario")}
-              </label>
-              <label>
-                Ocupación
-                <input
-                  value={rep.ocupacion}
-                  onChange={(e) => setRep("ocupacion", e.target.value)}
-                  maxLength={100}
-                />
-              </label>
-              <label className="wiz-ancho">
-                Dirección
-                <input
-                  value={rep.direccion}
-                  onChange={(e) => setRep("direccion", e.target.value)}
-                  placeholder="Urbanización, calle, casa"
-                />
-              </label>
-            </div>
+                  Buscar representante existente
+                </button>
+              </>
             )}
+            {err("rep.seleccion")}
+            {errorEnvio && <p className="error-msg">{errorEnvio}</p>}
+          </div>
+          {modoRepresentante !== "buscar" && (
+            <div className="wiz-con-foto">
+              <FotoCarnet
+                etiqueta="Foto del representante"
+                archivo={rep.foto}
+                urlActual={rep.fotoUrl || null}
+                onChange={(f) => setRep("foto", f)}
+                disabled={enviando}
+              />
+              <div className="form-grid-2">
+                <label>
+                  Prefijo de cédula *
+                  <select
+                    value={rep.cedulaTipo}
+                    onChange={(e) => setRep("cedulaTipo", e.target.value)}
+                  >
+                    <option value="V">Venezolana (V-)</option>
+                    <option value="E">Extranjera (E-)</option>
+                  </select>
+                </label>
+                <label>
+                  Número de cédula *
+                  <input
+                    inputMode="numeric"
+                    value={rep.cedulaNumero}
+                    onChange={(e) =>
+                      setRep(
+                        "cedulaNumero",
+                        e.target.value.replace(/\D/g, "").slice(0, 8),
+                      )
+                    }
+                    maxLength={8}
+                    placeholder={
+                      rep.cedulaTipo === "E" ? "80000000" : "6000000"
+                    }
+                  />
+                  {err("rep.cedula")}
+                </label>
+                <label>
+                  Parentesco *
+                  <select
+                    value={rep.parentesco}
+                    onChange={(e) => setRep("parentesco", e.target.value)}
+                  >
+                    <option value="">Selecciona...</option>
+                    {PARENTESCOS.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                  {err("rep.parentesco")}
+                </label>
+                <label>
+                  Nombres *
+                  <input
+                    value={rep.nombre}
+                    onChange={(e) => setRep("nombre", e.target.value)}
+                    maxLength={100}
+                  />
+                  {err("rep.nombre")}
+                </label>
+                <label>
+                  Apellidos *
+                  <input
+                    value={rep.apellido}
+                    onChange={(e) => setRep("apellido", e.target.value)}
+                    maxLength={100}
+                  />
+                  {err("rep.apellido")}
+                </label>
+                <label>
+                  Correo *
+                  <input
+                    type="email"
+                    value={rep.correo}
+                    onChange={(e) => setRep("correo", e.target.value)}
+                    placeholder="representante@correo.com"
+                  />
+                  {err("rep.correo")}
+                </label>
+                <label>
+                  Teléfono principal *
+                  <input
+                    value={rep.telefono}
+                    onChange={(e) => setRep("telefono", e.target.value)}
+                    maxLength={20}
+                    placeholder="04121234567"
+                    required
+                  />
+                  {err("rep.telefono")}
+                </label>
+                <label>
+                  Teléfono secundario
+                  <input
+                    value={rep.telefonoSecundario}
+                    onChange={(e) =>
+                      setRep("telefonoSecundario", e.target.value)
+                    }
+                    maxLength={20}
+                  />
+                  {err("rep.telefonoSecundario")}
+                </label>
+                <label>
+                  Ocupación
+                  <input
+                    value={rep.ocupacion}
+                    onChange={(e) => setRep("ocupacion", e.target.value)}
+                    maxLength={100}
+                  />
+                </label>
+                <label className="wiz-ancho">
+                  Dirección
+                  <input
+                    value={rep.direccion}
+                    onChange={(e) => setRep("direccion", e.target.value)}
+                    placeholder="Urbanización, calle, casa"
+                  />
+                </label>
+              </div>
+            </div>
+          )}
 
-            {modoRepresentante !== "buscar" && <div className="wiz-checks">
+          {modoRepresentante !== "buscar" && (
+            <div className="wiz-checks">
               <label className="wiz-check">
                 <input
                   type="checkbox"
@@ -1029,24 +1102,25 @@ function Preinscripcion({
                 />
                 Recibe comunicados del plantel
               </label>
-            </div>}
+            </div>
+          )}
         </section>
 
         {errorEnvio && <p className="error-msg">{errorEnvio}</p>}
         {!embedded && (
           <div className="form-actions wiz-form-actions">
             {id && (
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => {
-                if (onCancel) onCancel();
-                else navigate(`/matricula/${id}/inscripcion`);
-              }}
-              disabled={enviando}
-            >
-              Cancelar
-            </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  if (onCancel) onCancel();
+                  else navigate(`/matricula/${id}/inscripcion`);
+                }}
+                disabled={enviando}
+              >
+                Cancelar
+              </button>
             )}
             <button
               type="submit"
@@ -1071,71 +1145,75 @@ function Preinscripcion({
             aria-labelledby="wiz-modal-seccion-titulo"
             onClick={(event) => event.stopPropagation()}
           >
-            <h2 id="wiz-modal-seccion-titulo">Cambiar sección</h2>
-            <div className="form-grid-2">
-              <label>
-                Grado *
-                <select
-                  value={gradoModalId}
-                  onChange={(event) => {
-                    setGradoModalId(event.target.value);
-                    setSeccionModalId("");
-                  }}
-                >
-                  <option value="">Selecciona un grado...</option>
-                  {grupos.map(([gradoId, grupo]) => (
-                    <option key={gradoId} value={gradoId}>
-                      {grupo.nombre}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Sección *
-                <select
-                  value={seccionModalId}
-                  disabled={!gradoModalId}
-                  onChange={(event) => setSeccionModalId(event.target.value)}
-                >
-                  <option value="">Selecciona una sección...</option>
-                  {seccionesModal.map((seccion) => {
-                    const agotada =
-                      typeof seccion.cuposDisponibles === "number" &&
-                      seccion.cuposDisponibles <= 0 &&
-                      String(seccion.id) !== String(form.seccionId);
-                    return (
-                      <option
-                        key={seccion.id}
-                        value={seccion.id}
-                        disabled={agotada}
-                      >
-                        Sección {seccion.letraSeccion} —{" "}
-                        {agotada
-                          ? "Sin cupos"
-                          : `${seccion.cuposDisponibles ?? seccion.capacidadMaxima ?? "—"} cupos`}
+            <h2 id="wiz-modal-seccion-titulo">
+              {seccionElegida ? "Cambiar sección" : "Seleccionar sección"}
+            </h2>
+            <div className="empleado-form wiz-modal-form">
+              <div className="form-grid-2">
+                <label>
+                  Grado *
+                  <select
+                    value={gradoModalId}
+                    onChange={(event) => {
+                      setGradoModalId(event.target.value);
+                      setSeccionModalId("");
+                    }}
+                  >
+                    <option value="">Selecciona un grado...</option>
+                    {grupos.map(([gradoId, grupo]) => (
+                      <option key={gradoId} value={gradoId}>
+                        {grupo.nombre}
                       </option>
-                    );
-                  })}
-                </select>
-              </label>
-            </div>
-            {err("seccionId")}
-            <div className="form-actions">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setModalSeccionAbierto(false)}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={!seccionModalId}
-                onClick={guardarSeccionModal}
-              >
-                Usar sección
-              </button>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Sección *
+                  <select
+                    value={seccionModalId}
+                    disabled={!gradoModalId}
+                    onChange={(event) => setSeccionModalId(event.target.value)}
+                  >
+                    <option value="">Selecciona una sección...</option>
+                    {seccionesModal.map((seccion) => {
+                      const agotada =
+                        typeof seccion.cuposDisponibles === "number" &&
+                        seccion.cuposDisponibles <= 0 &&
+                        String(seccion.id) !== String(form.seccionId);
+                      return (
+                        <option
+                          key={seccion.id}
+                          value={seccion.id}
+                          disabled={agotada}
+                        >
+                          Sección {seccion.letraSeccion} —{" "}
+                          {agotada
+                            ? "Sin cupos"
+                            : `${seccion.cuposDisponibles ?? seccion.capacidadMaxima ?? "—"} cupos`}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+              </div>
+              {err("seccionId")}
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setModalSeccionAbierto(false)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={!seccionModalId}
+                  onClick={guardarSeccionModal}
+                >
+                  Usar sección
+                </button>
+              </div>
             </div>
           </section>
         </div>

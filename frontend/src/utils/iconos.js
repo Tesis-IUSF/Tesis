@@ -44,4 +44,6 @@ export const ICONOS = {
   seccion: "mdi:view-grid-outline",
   descargar: "mdi:download-outline",
   check: "mdi:check",
+  persona: "mdi:account-outline",
+  requisitos: "mdi:clipboard-check-outline",
 };

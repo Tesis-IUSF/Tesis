@@ -22,6 +22,7 @@ import com.tesis.entity.Empleado;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
@@ -30,6 +31,7 @@ import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
@@ -45,6 +47,9 @@ public class CarnetPdfGenerator {
     private static final int QR_SIZE = 320;
     private static final float CARD_WIDTH = 242.65f;
     private static final float CARD_HEIGHT = 153.07f;
+    private static final String AVATAR_HOMBRE = "carnet/pngegg(1).png";
+    private static final String AVATAR_MUJER = "carnet/pngegg.png";
+    private static final String AVATAR_NEUTRO = "carnet/avatar-neutro.png";
     private static final Pattern FOTO_URL = Pattern.compile(
             "^/api/fotos/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
                     + "[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.(?:jpg|png|webp))$",
@@ -55,7 +60,7 @@ public class CarnetPdfGenerator {
 
     public CarnetPdfGenerator(
             FotoService fotoService,
-            @Value("${app.institucion.nombre:Sistema Educativo}") String institucion) {
+            @Value("${app.institucion.nombre:C.E.N. Lcda. Roraima Asansa Escandela}") String institucion) {
         this.fotoService = fotoService;
         this.institucion = institucion;
     }
@@ -64,6 +69,9 @@ public class CarnetPdfGenerator {
         try {
             byte[] qrImage = generarImagenQr(qrToken);
             byte[] foto = cargarFoto(empleado);
+            if (foto == null) {
+                foto = cargarAvatar(empleado);
+            }
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             Document document = new Document(new Rectangle(CARD_WIDTH, CARD_HEIGHT), 12, 12, 10, 10);
             PdfWriter.getInstance(document, output);
@@ -92,15 +100,15 @@ public class CarnetPdfGenerator {
             PdfPCell details = new PdfPCell();
             details.setBorder(Rectangle.NO_BORDER);
             details.setPaddingTop(7);
-            details.addElement(new Paragraph("CARNET DE PERSONAL", font(8, Font.BOLD, new Color(28, 79, 72))));
             details.addElement(new Paragraph(
                     empleado.getNombre() + " " + empleado.getApellido(), font(11, Font.BOLD, Color.BLACK)));
-            details.addElement(new Paragraph("ID: " + empleado.getId(), font(8, Font.NORMAL, Color.DARK_GRAY)));
             details.addElement(new Paragraph("Cargo: " + texto(empleado.getCargo() == null
                     ? null : empleado.getCargo().getNombreCargo()), font(7, Font.NORMAL, Color.DARK_GRAY)));
             details.addElement(new Paragraph("Departamento: " + texto(empleado.getDepartamento() == null
                     ? null : empleado.getDepartamento().getNombre()), font(7, Font.NORMAL, Color.DARK_GRAY)));
-            details.addElement(new Paragraph("QR para registro de asistencia", font(6, Font.NORMAL, Color.GRAY)));
+            // Cédula de identidad debajo del departamento
+            details.addElement(new Paragraph("C.I.: " + texto(empleado.getCedula()),
+                    font(7, Font.NORMAL, Color.DARK_GRAY)));
             card.addCell(details);
 
             Image qr = Image.getInstance(qrImage);
@@ -179,6 +187,32 @@ public class CarnetPdfGenerator {
                 return null;
             }
             throw exception;
+        }
+    }
+
+    // Devuelve el avatar genérico según el sexo del empleado:
+    // F = mujer, M = hombre, cualquier otro valor o vacío = silueta neutral.
+    private byte[] cargarAvatar(Empleado empleado) {
+        String sexo = empleado.getSexo();
+        String inicial = sexo == null || sexo.isBlank()
+                ? ""
+                : sexo.strip().substring(0, 1).toUpperCase(Locale.ROOT);
+
+        String ruta;
+        if ("F".equals(inicial)) {
+            ruta = AVATAR_MUJER;
+        } else if ("M".equals(inicial)) {
+            ruta = AVATAR_HOMBRE;
+        } else {
+            ruta = AVATAR_NEUTRO;
+        }
+
+        try (InputStream entrada = new ClassPathResource(ruta).getInputStream()) {
+            return entrada.readAllBytes();
+        } catch (IOException exception) {
+            log.warn("No se pudo cargar el avatar {} del empleado {}; se usará el marcador sin foto",
+                    ruta, empleado.getId());
+            return null;
         }
     }
 
