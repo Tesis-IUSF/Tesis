@@ -7,6 +7,9 @@ import com.tesis.dto.PaginacionDTO;
 import com.tesis.service.EmpleadoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -39,6 +42,19 @@ public class EmpleadoController {
             @ModelAttribute PaginacionDTO.Solicitud paginacion) {
         Pageable pageable = paginacion.toPageable();
         return PaginacionDTO.Respuesta.desde(empleadoService.listar(cargoId, turnoId, activo, pageable));
+    }
+
+    @GetMapping(value = "/nomina", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> generarNomina(
+            @RequestParam(required = false) Integer cargoId,
+            @RequestParam(required = false) Integer turnoId,
+            @RequestParam(required = false) Boolean activo) {
+        byte[] pdf = empleadoService.generarNominaPDF(cargoId, turnoId, activo);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename("nomina-personal.pdf").build().toString())
+                .body(pdf);
     }
 
     @GetMapping("/{id}")

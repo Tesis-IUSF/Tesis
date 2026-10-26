@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
+import { descargarArchivo, mensajeErrorBlob } from "../utils/descargas";
 import { useCargos, useTurnos } from "../hooks/useCatalogos";
 import ConfirmDialog from "../components/ConfirmDialog";
 import "./Empleados.css";
@@ -25,6 +26,7 @@ function Empleados({ soloConsulta = false }) {
   const [error, setError] = useState("");
   const [eliminando, setEliminando] = useState(false);
   const [empleadoAEliminar, setEmpleadoAEliminar] = useState(null);
+  const [descargandoNomina, setDescargandoNomina] = useState(false);
   const [filtroCargoId, setFiltroCargoId] = useState("");
   const [filtroTurnoId, setFiltroTurnoId] = useState("");
   const [filtroActivo, setFiltroActivo] = useState("");
@@ -88,18 +90,50 @@ function Empleados({ soloConsulta = false }) {
     setFiltroActivo("");
   };
 
+  const descargarNomina = async () => {
+    setDescargandoNomina(true);
+    try {
+      const params = {};
+      if (filtroCargoId) params.cargoId = Number(filtroCargoId);
+      if (filtroTurnoId) params.turnoId = Number(filtroTurnoId);
+      if (filtroActivo === "true") params.activo = true;
+      if (filtroActivo === "false") params.activo = false;
+
+      const { data } = await api.get("/empleados/nomina", {
+        params,
+        responseType: "blob",
+      });
+      descargarArchivo(data, "nomina-personal.pdf");
+    } catch (err) {
+      toast.error(
+        await mensajeErrorBlob(err, "No se pudo descargar la nómina de personal."),
+      );
+    } finally {
+      setDescargandoNomina(false);
+    }
+  };
+
   return (
     <>
       <div className="mod-main">
         <div className="mod-heading">
           <h1>Empleados</h1>
-          {!soloConsulta && (
-            <div className="mod-heading-actions">
+          <div className="mod-heading-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={descargandoNomina}
+              onClick={descargarNomina}
+            >
+              <Icon icon={ICONOS.descargar} className="icono-inline" />{" "}
+              {descargandoNomina ? "Generando nómina..." : "Descargar nómina"}
+            </button>
+            {!soloConsulta && (
               <Link to="/empleados/nuevo" className="btn-primary">
                 + Crear Empleado
               </Link>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <div className="filters-bar">

@@ -38,6 +38,12 @@ class EstadisticasPdfGeneratorTest {
         String texto = new PdfTextExtractor(reader).getTextFromPage(1);
         reader.close();
 
+        String textoNormalizado = texto.replaceAll("\\s+", " ");
+        assertTrue(textoNormalizado.contains("REPORTE DE ESTADÍSTICAS DE MATRÍCULA"));
+        assertTrue(textoNormalizado.contains("Cupos disponibles10 Cupos ocupados8"));
+        assertTrue(textoNormalizado.contains("Ocupación 44.44%"));
+        assertTrue(textoNormalizado.contains("Nuevo ingreso2"));
+        assertTrue(textoNormalizado.contains("Regulares pendientes1"));
         assertTrue(texto.contains("INICIAL"));
         assertTrue(texto.contains("Grupo I"));
         assertTrue(texto.contains("MEDIA GENERAL"));
