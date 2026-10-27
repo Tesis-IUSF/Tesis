@@ -364,7 +364,7 @@ function Secciones() {
                         </button>
                         <button
                           type="button"
-                          className="btn-secondary"
+                          className={`btn-estado ${seccion.activo ? "btn-estado--desactivar" : "btn-estado--activar"}`}
                           onClick={() => cambiarEstado(seccion)}
                         >
                           {seccion.activo ? "Desactivar" : "Activar"}

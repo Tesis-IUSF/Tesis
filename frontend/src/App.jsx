@@ -91,6 +91,8 @@ function App() {
                 <Route path="/usuarios" element={<Usuarios />} />
                 <Route path="/usuarios/nuevo" element={<UsuarioForm />} />
                 <Route path="/usuarios/:id/editar" element={<UsuarioForm />} />
+                <Route path="/departamentos" element={<Departamentos />} />
+                <Route path="/cargos" element={<Cargos />} />
               </Route>
 
               <Route
@@ -127,14 +129,12 @@ function App() {
                 <Route path="/turnos" element={<Turnos />} />
                 <Route path="/turnos/nuevo" element={<TurnoForm />} />
                 <Route path="/turnos/:id/editar" element={<TurnoForm />} />
-                <Route path="/departamentos" element={<Departamentos />} />
-                <Route path="/cargos" element={<Cargos />} />
               </Route>
 
               <Route
                 element={
                   <ProtectedRoute
-                    allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR]}
+                    allowedRoles={[ROLES.ADMIN]}
                   />
                 }
               >
@@ -173,7 +173,6 @@ function App() {
                       ROLES.DIRECTOR,
                       ROLES.COORDINADOR,
                       ROLES.ADMINISTRATIVO,
-                      ROLES.ADMIN,
                     ]}
                   />
                 }
@@ -189,7 +188,6 @@ function App() {
                 element={
                   <ProtectedRoute
                     allowedRoles={[
-                      ROLES.ADMIN,
                       ROLES.COORDINADOR,
                       ROLES.ADMINISTRATIVO,
                     ]}

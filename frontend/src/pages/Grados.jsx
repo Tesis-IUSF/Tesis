@@ -294,7 +294,7 @@ function Grados() {
                       </button>
                       <button
                         type="button"
-                        className="btn-secondary"
+                        className={`btn-estado ${grado.activo ? "btn-estado--desactivar" : "btn-estado--activar"}`}
                         onClick={() => cambiarEstado(grado)}
                       >
                         {grado.activo ? "Desactivar" : "Activar"}

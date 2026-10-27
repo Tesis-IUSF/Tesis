@@ -253,7 +253,7 @@ function BlogCategorias() {
                       </button>
                       <button
                         type="button"
-                        className={c.activo ? "btn-delete" : "btn-reactivar"}
+                        className={`btn-estado ${c.activo ? "btn-estado--desactivar" : "btn-estado--activar"}`}
                         onClick={() => alternarActivo(c)}
                       >
                         {c.activo ? "Desactivar" : "Activar"}

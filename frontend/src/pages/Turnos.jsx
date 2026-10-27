@@ -146,7 +146,7 @@ function Turnos() {
                         Editar
                       </Link>
                       <button
-                        className={t.activo ? "btn-delete" : "btn-reactivar"}
+                        className={`btn-estado ${t.activo ? "btn-estado--desactivar" : "btn-estado--activar"}`}
                         onClick={() => alternarActivo(t)}
                       >
                         {t.activo ? "Desactivar" : "Activar"}
