@@ -124,6 +124,22 @@ class UsuarioServiceTest {
     }
 
     @Test
+    void crearUsuarioRechazaPasswordQueSuperaElLimiteDeBcrypt() {
+        UsuarioDTO.UsuarioRequestDTO request = UsuarioDTO.UsuarioRequestDTO.builder()
+                .nombreUsuario("usuario")
+                .email("usuario@test.com")
+                .password("a".repeat(73))
+                .rolId(1)
+                .build();
+
+        org.springframework.web.server.ResponseStatusException error = org.junit.jupiter.api.Assertions
+                .assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                        () -> usuarioService.crear(request));
+
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, error.getStatusCode());
+    }
+
+    @Test
     void actualizarUsuarioSinPasswordConservaLaPasswordActual() {
         Roles rol = new Roles();
         rol.setId(2);

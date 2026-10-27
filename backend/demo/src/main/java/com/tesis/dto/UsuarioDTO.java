@@ -1,6 +1,11 @@
 package com.tesis.dto;
 
 import com.tesis.entity.TipoUsuario;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,11 +23,23 @@ public class UsuarioDTO {
     @AllArgsConstructor
     @Builder
     public static class UsuarioRequestDTO {
+        @NotBlank
+        @Size(max = 100)
         private String nombreUsuario;
+
+        @NotBlank
+        @Email
+        @Size(max = 150)
         private String email;
+
+        @Size(max = 72)
         private String password;
         @Deprecated
+        @Size(max = 72)
         private String passwordHash;
+
+        @NotNull
+        @Positive
         private Integer rolId;
         @Builder.Default
         private TipoUsuario tipoUsuario = TipoUsuario.PERSONAL;

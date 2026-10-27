@@ -5,6 +5,7 @@ import com.tesis.dto.CatalogoDTO;
 import com.tesis.dto.EmpleadoDTO;
 import com.tesis.dto.AuthDTO;
 import com.tesis.dto.PreinscripcionDTO;
+import com.tesis.dto.UsuarioDTO;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
@@ -117,6 +118,26 @@ class InputValidationTest {
         solicitud.setPassword("clave");
 
         assertTrue(tieneViolacion(solicitud, "email"));
+    }
+
+    @Test
+    void validaCamposYLimitesDeUsuario() {
+        UsuarioDTO.UsuarioRequestDTO solicitud = new UsuarioDTO.UsuarioRequestDTO();
+        solicitud.setNombreUsuario("x".repeat(101));
+        solicitud.setEmail("incorrecto");
+        solicitud.setPassword("clave");
+        solicitud.setRolId(0);
+
+        assertTrue(tieneViolacion(solicitud, "nombreUsuario"));
+        assertTrue(tieneViolacion(solicitud, "email"));
+        assertTrue(tieneViolacion(solicitud, "rolId"));
+
+        solicitud.setNombreUsuario("usuario");
+        solicitud.setEmail("usuario@ejemplo.com");
+        solicitud.setRolId(1);
+        assertFalse(tieneViolacion(solicitud, "nombreUsuario"));
+        assertFalse(tieneViolacion(solicitud, "email"));
+        assertFalse(tieneViolacion(solicitud, "rolId"));
     }
 
     private boolean tieneViolacion(Object objeto, String campo) {
