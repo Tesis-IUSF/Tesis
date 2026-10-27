@@ -2,6 +2,7 @@ package com.tesis.controller;
 
 import com.tesis.dto.AuthDTO;
 import com.tesis.service.AuthService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,7 +15,8 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<AuthDTO.LoginResponse> login(@RequestBody AuthDTO.LoginRequest loginRequest) {
+    public ResponseEntity<AuthDTO.LoginResponse> login(
+            @Valid @RequestBody AuthDTO.LoginRequest loginRequest) {
         AuthDTO.LoginResponse response = authService.login(loginRequest);
         return ResponseEntity.ok(response);
     }

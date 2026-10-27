@@ -5,6 +5,7 @@ import DOMPurify from "dompurify";
 import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
+import { soloDigitos } from "../utils/validacionesEntrada";
 import "./BlogComunicadoForm.css";
 
 const VACIO = {
@@ -156,6 +157,13 @@ function BlogComunicadoForm() {
       e.contenidoHtml = "El contenido es obligatorio.";
     if (form.imagenUrl.trim().length > 500)
       e.imagenUrl = "Máximo 500 caracteres.";
+    const ordenVisualizacion = Number(form.ordenVisualizacion);
+    if (
+      !Number.isInteger(ordenVisualizacion) ||
+      ordenVisualizacion < 0 ||
+      ordenVisualizacion > 999
+    )
+      e.ordenVisualizacion = "El orden debe ser un entero entre 0 y 999.";
     if (
       form.fechaPublicacion &&
       form.fechaExpiracion &&
@@ -255,10 +263,22 @@ function BlogComunicadoForm() {
           <label>
             Orden de visualización
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={form.ordenVisualizacion}
-              onChange={(e) => actualizar("ordenVisualizacion", e.target.value)}
+              onChange={(e) =>
+                actualizar(
+                  "ordenVisualizacion",
+                  soloDigitos(e.target.value),
+                )
+              }
             />
+            {errores.ordenVisualizacion && (
+              <span className="campo-error">
+                {errores.ordenVisualizacion}
+              </span>
+            )}
             <span className="bfrm-ayuda">
               Los números menores salen primero en el blog.
             </span>

@@ -3,6 +3,7 @@ package com.tesis.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.groups.Default;
@@ -40,8 +41,10 @@ public class EmpleadoDTO {
         private String correo;
 
         @Size(max = 20)
+        @Pattern(regexp = "^(?:\\+?58\\s?|0)?(?:2\\d{2}|412|414|424|416|426)\\d{7}$")
         private String telefono;
 
+        @PastOrPresent
         private LocalDate fechaNacimiento;
 
         @Pattern(regexp = "M|F|Otro")
