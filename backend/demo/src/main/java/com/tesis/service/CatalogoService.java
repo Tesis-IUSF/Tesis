@@ -335,9 +335,12 @@ public class CatalogoService {
     private void validarRangoEdad(Grado grado) {
         Short minima = grado.getEdadMinima();
         Short maxima = grado.getEdadMaxima();
-        if (minima == null || maxima == null || minima < 0 || maxima > 120 || minima > maxima) {
+        if (minima == null || maxima == null
+                || minima < 1 || maxima < 1
+                || minima > 20 || maxima > 20
+                || minima > maxima) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Debe indicar un rango de edad válido entre 0 y 120 años");
+                    "Debe indicar un rango de edad válido entre 1 y 20 años");
         }
     }
 
@@ -381,8 +384,10 @@ public class CatalogoService {
         if (seccion == null || seccion.getGrado() == null || seccion.getGrado().getId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe indicar el grado");
         }
-        if (seccion.getLetraSeccion() == null || seccion.getLetraSeccion().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe indicar la letra de la sección");
+        if (seccion.getLetraSeccion() == null
+                || !seccion.getLetraSeccion().matches("[A-Z]")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "La letra de la sección debe ser una letra mayúscula de la A a la Z");
         }
         if (seccion.getAnioEscolar() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe indicar el año escolar");
@@ -407,8 +412,10 @@ public class CatalogoService {
         if (seccion == null || seccion.getGrado() == null || seccion.getGrado().getId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe indicar el grado");
         }
-        if (seccion.getLetraSeccion() == null || seccion.getLetraSeccion().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe indicar la letra de la sección");
+        if (seccion.getLetraSeccion() == null
+                || !seccion.getLetraSeccion().matches("[A-Z]")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "La letra de la sección debe ser una letra mayúscula de la A a la Z");
         }
         if (seccion.getAnioEscolar() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe indicar el año escolar");

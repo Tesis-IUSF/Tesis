@@ -37,13 +37,16 @@ class InputValidationTest {
     void limitaCapacidadMaximaDeSeccionA60() {
         CatalogoDTO.SeccionRequestDTO solicitud = new CatalogoDTO.SeccionRequestDTO();
         solicitud.setGradoId(1);
-        solicitud.setLetraSeccion("A");
+        solicitud.setLetraSeccion("1");
         solicitud.setCapacidadMaxima((short) 61);
         solicitud.setAnioEscolar((short) 2026);
 
         assertTrue(tieneViolacion(solicitud, "capacidadMaxima"));
+        assertTrue(tieneViolacion(solicitud, "letraSeccion"));
         solicitud.setCapacidadMaxima((short) 60);
+        solicitud.setLetraSeccion("A");
         assertFalse(tieneViolacion(solicitud, "capacidadMaxima"));
+        assertFalse(tieneViolacion(solicitud, "letraSeccion"));
     }
 
     @Test
@@ -54,6 +57,20 @@ class InputValidationTest {
         grado.setEdadMinima((short) 0);
         grado.setEdadMaxima((short) 12);
         assertTrue(tieneViolacion(grado, "numeroGrado"));
+        assertTrue(tieneViolacion(grado, "edadMinima"));
+        grado.setEdadMinima((short) 1);
+        assertFalse(tieneViolacion(grado, "edadMinima"));
+        grado.setEdadMinima((short) 21);
+        assertTrue(tieneViolacion(grado, "edadMinima"));
+        grado.setEdadMinima((short) 1);
+        grado.setEdadMaxima((short) 0);
+        assertTrue(tieneViolacion(grado, "edadMaxima"));
+        grado.setEdadMaxima((short) 21);
+        assertTrue(tieneViolacion(grado, "edadMaxima"));
+        grado.setEdadMaxima((short) 20);
+        assertFalse(tieneViolacion(grado, "edadMaxima"));
+        grado.setEdadMaxima(null);
+        assertTrue(tieneViolacion(grado, "edadMaxima"));
 
         CatalogoDTO.TurnoRequestDTO turno = new CatalogoDTO.TurnoRequestDTO();
         turno.setNombre("Mañana");
