@@ -28,6 +28,7 @@ public class AsistenciaDTO {
         private Integer id;
         private Integer empleadoId;
         private String empleadoNombre;
+        private String empleadoCedula;
         private LocalDate fecha;
         private Integer turnoId;
         private String turnoNombre;
@@ -62,6 +63,7 @@ public class AsistenciaDTO {
         private Integer empleadoId;
         private String nombre;
         private String apellido;
+        private String cedula;
         private LocalDate fecha;
         private Integer turnoId;
         private String turnoNombre;

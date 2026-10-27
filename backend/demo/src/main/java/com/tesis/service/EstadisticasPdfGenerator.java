@@ -33,6 +33,15 @@ public class EstadisticasPdfGenerator {
     @Value("${app.institucion.nombre:Sistema Educativo}")
     private String institucion;
 
+    @Value("${app.institucion.municipio:San Francisco}")
+    private String municipio;
+
+    @Value("${app.institucion.estado:Zulia}")
+    private String estado;
+
+    @Value("${app.institucion.codigo-plantel:OD34942317}")
+    private String codigoPlantel;
+
     public byte[] generar(EstadisticasMatriculaDTO estadisticas) {
         try {
             ByteArrayOutputStream output = new ByteArrayOutputStream();
@@ -40,12 +49,11 @@ public class EstadisticasPdfGenerator {
             PdfWriter.getInstance(document, output);
             document.open();
 
-            Paragraph encabezado = new Paragraph(institucion,
-                    new Font(Font.HELVETICA, 17, Font.BOLD, new Color(28, 79, 72)));
-            encabezado.setAlignment(Element.ALIGN_CENTER);
-            document.add(encabezado);
+            document.add(MembretePdf.crear(
+                    institucion, municipio, estado, codigoPlantel, 90));
 
-            Paragraph titulo = new Paragraph("REPORTE DE INSCRIPCIÓN AL " + LocalDate.now().format(FORMATO_FECHA),
+            Paragraph titulo = new Paragraph("REPORTE DE ESTADÍSTICAS DE MATRÍCULA AL "
+                    + LocalDate.now().format(FORMATO_FECHA),
                     new Font(Font.HELVETICA, 14, Font.BOLD));
             titulo.setAlignment(Element.ALIGN_CENTER);
             titulo.setSpacingBefore(24);

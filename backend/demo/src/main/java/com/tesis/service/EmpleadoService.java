@@ -41,6 +41,7 @@ public class EmpleadoService {
     private final AsignacionTurnoRepository asignacionTurnoRepository;
     private final TurnoRepository turnoRepository;
     private final CredencialQrRepository credencialQrRepository;
+    private final NominaPersonalPdfGenerator nominaPersonalPdfGenerator;
 
     public EmpleadoService(EmpleadoRepository empleadoRepository,
                            CargoRepository cargoRepository,
@@ -48,7 +49,8 @@ public class EmpleadoService {
                            UsuarioRepository usuarioRepository,
                            AsignacionTurnoRepository asignacionTurnoRepository,
                            TurnoRepository turnoRepository,
-                           CredencialQrRepository credencialQrRepository) {
+                           CredencialQrRepository credencialQrRepository,
+                           NominaPersonalPdfGenerator nominaPersonalPdfGenerator) {
         this.empleadoRepository = empleadoRepository;
         this.cargoRepository = cargoRepository;
         this.departamentoRepository = departamentoRepository;
@@ -56,6 +58,7 @@ public class EmpleadoService {
         this.asignacionTurnoRepository = asignacionTurnoRepository;
         this.turnoRepository = turnoRepository;
         this.credencialQrRepository = credencialQrRepository;
+        this.nominaPersonalPdfGenerator = nominaPersonalPdfGenerator;
     }
 
     @Transactional(readOnly = true)
@@ -75,6 +78,34 @@ public class EmpleadoService {
         Map<Integer, AsignacionTurno> turnosVigentes = buscarTurnosVigentes(
             empleados.getContent().stream().map(empleado -> empleado.getId()).toList());
         return empleados.map(empleado -> toResponse(empleado, turnosVigentes.get(empleado.getId())));
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] generarNominaPDF(Integer cargoId, Integer turnoId, Boolean activo) {
+        List<Empleado> empleados = empleadoRepository.buscarTodosConFiltros(
+                cargoId, turnoId, activo, LocalDate.now());
+        List<Integer> empleadoIds = empleados.stream().map(Empleado::getId).toList();
+        Map<Integer, List<AsignacionTurno>> historialPorEmpleado = empleadoIds.isEmpty()
+                ? Map.of()
+                : asignacionTurnoRepository.buscarHistorialPorEmpleados(empleadoIds).stream()
+                        .collect(Collectors.groupingBy(
+                                asignacion -> asignacion.getPersonal().getId()));
+        LocalDate hoy = LocalDate.now();
+        List<EmpleadoResponseDTO> filas = empleados.stream()
+                .map(empleado -> {
+                    LocalDate fechaReferencia = Boolean.FALSE.equals(empleado.getActivo())
+                            && empleado.getFechaEgreso() != null ? empleado.getFechaEgreso() : hoy;
+                    AsignacionTurno asignacion = historialPorEmpleado
+                            .getOrDefault(empleado.getId(), List.of()).stream()
+                            .filter(item -> !item.getFechaDesde().isAfter(fechaReferencia))
+                            .filter(item -> item.getFechaHasta() == null
+                                    || !item.getFechaHasta().isBefore(fechaReferencia))
+                            .findFirst()
+                            .orElse(null);
+                    return toResponse(empleado, asignacion);
+                })
+                .toList();
+        return nominaPersonalPdfGenerator.generar(filas, activo == null || Boolean.FALSE.equals(activo));
     }
 
     @Transactional(readOnly = true)

@@ -26,4 +26,8 @@ public interface RelacionEstudianteRepresentanteRepository
         @EntityGraph(attributePaths = "representante")
         List<RelacionEstudianteRepresentante>
                 findByEstudiante_IdAndActivoTrueOrderByRelacionPrincipalDesc(Integer estudianteId);
+
+        @EntityGraph(attributePaths = {"estudiante", "representante"})
+        List<RelacionEstudianteRepresentante>
+                findByEstudiante_IdInAndActivoTrueAndRelacionPrincipalTrue(List<Integer> estudianteIds);
 }

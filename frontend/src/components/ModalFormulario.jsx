@@ -8,6 +8,7 @@ function ModalFormulario({
   onSubmit,
   guardando,
   etiquetaGuardar,
+  className = "",
   children,
 }) {
   // Esc cierra el modal (salvo mientras se guarda)
@@ -22,7 +23,7 @@ function ModalFormulario({
   return (
     <div className="mf-overlay" onClick={() => !guardando && onCerrar()}>
       <form
-        className="mf-modal"
+        className={`mf-modal ${className}`.trim()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="mf-titulo"

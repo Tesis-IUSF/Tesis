@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -45,15 +46,17 @@ public class AsistenciaService {
     private final CredencialQrRepository credencialQrRepository;
     private final JwtProvider jwtProvider;
     private final Clock clock;
+    private final AsistenciaPdfGenerator asistenciaPdfGenerator;
 
     @Autowired
     public AsistenciaService(AsistenciaRepository asistenciaRepository,
                              AsignacionTurnoRepository asignacionTurnoRepository,
                              EmpleadoRepository empleadoRepository,
                              CredencialQrRepository credencialQrRepository,
-                             JwtProvider jwtProvider) {
+                             JwtProvider jwtProvider,
+                             AsistenciaPdfGenerator asistenciaPdfGenerator) {
         this(asistenciaRepository, asignacionTurnoRepository, empleadoRepository,
-                credencialQrRepository, jwtProvider, Clock.systemDefaultZone());
+                credencialQrRepository, jwtProvider, Clock.systemDefaultZone(), asistenciaPdfGenerator);
     }
 
     AsistenciaService(AsistenciaRepository asistenciaRepository,
@@ -62,12 +65,24 @@ public class AsistenciaService {
                       CredencialQrRepository credencialQrRepository,
                       JwtProvider jwtProvider,
                       Clock clock) {
+        this(asistenciaRepository, asignacionTurnoRepository, empleadoRepository,
+                credencialQrRepository, jwtProvider, clock, new AsistenciaPdfGenerator());
+    }
+
+    AsistenciaService(AsistenciaRepository asistenciaRepository,
+                      AsignacionTurnoRepository asignacionTurnoRepository,
+                      EmpleadoRepository empleadoRepository,
+                      CredencialQrRepository credencialQrRepository,
+                      JwtProvider jwtProvider,
+                      Clock clock,
+                      AsistenciaPdfGenerator asistenciaPdfGenerator) {
         this.asistenciaRepository = asistenciaRepository;
         this.asignacionTurnoRepository = asignacionTurnoRepository;
         this.empleadoRepository = empleadoRepository;
         this.credencialQrRepository = credencialQrRepository;
         this.jwtProvider = jwtProvider;
         this.clock = clock;
+        this.asistenciaPdfGenerator = asistenciaPdfGenerator;
     }
 
     public AsistenciaResponseDTO registrarEscaneo(String qrToken) {
@@ -214,6 +229,30 @@ public class AsistenciaService {
     }
 
     @Transactional(readOnly = true)
+    public byte[] generarHistoricoPdf(LocalDate desde,
+                                      LocalDate hasta,
+                                      Integer empleadoId,
+                                      Integer departamentoId,
+                                      Integer cargoId,
+                                      Integer turnoId,
+                                      String estado) {
+        List<AsistenciaResponseDTO> registros = buscarHistorico(
+                desde, hasta, empleadoId, departamentoId, cargoId, turnoId, estado);
+        List<AusenciaDTO> ausencias = listarAusencias(
+                desde, hasta, empleadoId, departamentoId, cargoId, turnoId);
+        Set<String> asistenciasRegistradas = registros.stream()
+                .map(registro -> claveAsistencia(registro.getEmpleadoId(), registro.getFecha()))
+                .collect(Collectors.toSet());
+        List<AusenciaDTO> ausenciasSinRegistro = ausencias.stream()
+                .filter(ausencia -> !asistenciasRegistradas.contains(
+                        claveAsistencia(ausencia.getEmpleadoId(), ausencia.getFecha())))
+                .toList();
+        return asistenciaPdfGenerator.generar(
+                desde, hasta, registros, ausenciasSinRegistro, estado == null || estado.isBlank()
+                        || "ausente".equalsIgnoreCase(estado.trim()));
+    }
+
+    @Transactional(readOnly = true)
     public List<AusenciaDTO> listarAusencias(LocalDate desde,
                                               LocalDate hasta,
                                               Integer empleadoId,
@@ -266,6 +305,7 @@ public class AsistenciaService {
                     && cargoId.equals(empleado.getCargo().getId())))
                     && (turnoId == null || (turno != null && turnoId.equals(turno.getId())))) {
                 ausencias.add(new AusenciaDTO(empleado.getId(), empleado.getNombre(), empleado.getApellido(),
+                        empleado.getCedula(),
                         asistencia.getFecha(), turno == null ? null : turno.getId(),
                         turno == null ? null : turno.getNombre(), "ausente"));
             }
@@ -282,6 +322,7 @@ public class AsistenciaService {
                         Empleado empleado = asignacion.getPersonal();
                         Turno turno = asignacion.getTurno();
                         ausencias.add(new AusenciaDTO(id, empleado.getNombre(), empleado.getApellido(),
+                                empleado.getCedula(),
                                 fecha, turno.getId(), turno.getNombre(), "ausente"));
                     }
                 }
@@ -420,6 +461,7 @@ public class AsistenciaService {
                 asistencia.getId(),
                 empleado.getId(),
                 empleado.getNombre() + " " + empleado.getApellido(),
+                empleado.getCedula(),
                 asistencia.getFecha(),
                 turno == null ? null : turno.getId(),
                 turno == null ? null : turno.getNombre(),

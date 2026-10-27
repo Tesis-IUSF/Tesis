@@ -22,6 +22,7 @@ import com.tesis.service.CalendarioMatriculaService;
 import com.tesis.service.PreinscripcionService;
 import com.tesis.service.ConstanciaService;
 import com.tesis.service.ContinuidadService;
+import com.tesis.service.NominaEstudiantilService;
 import jakarta.validation.Valid;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -56,17 +57,20 @@ public class MatriculaController {
     private final ConstanciaService constanciaService;
     private final CalendarioMatriculaService calendarioService;
     private final ContinuidadService continuidadService;
+    private final NominaEstudiantilService nominaEstudiantilService;
 
     public MatriculaController(PreinscripcionService preinscripcionService,
                                InscripcionService inscripcionService,
                                ConstanciaService constanciaService,
                                CalendarioMatriculaService calendarioService,
-                               ContinuidadService continuidadService) {
+                               ContinuidadService continuidadService,
+                               NominaEstudiantilService nominaEstudiantilService) {
         this.preinscripcionService = preinscripcionService;
         this.inscripcionService = inscripcionService;
         this.constanciaService = constanciaService;
         this.calendarioService = calendarioService;
         this.continuidadService = continuidadService;
+        this.nominaEstudiantilService = nominaEstudiantilService;
     }
 
     @GetMapping("/calendario")
@@ -219,6 +223,23 @@ public class MatriculaController {
             @ModelAttribute PaginacionDTO.Solicitud paginacion) {
         return PaginacionDTO.Respuesta.desde(inscripcionService.listarPosiblesGraduados(
                 gradoId, seccionId, q, paginacion.toPageable()));
+    }
+
+    @GetMapping(value = "/nomina-estudiantil/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> generarNominaEstudiantil(
+            @RequestParam Short anioEscolar,
+            @RequestParam(required = false) List<String> estados,
+            @RequestParam(required = false) Integer nivelId,
+            @RequestParam(required = false) Integer gradoId,
+            @RequestParam(required = false) Integer seccionId,
+            @RequestParam List<String> columnas) {
+        byte[] pdf = nominaEstudiantilService.generar(
+                anioEscolar, estados, nivelId, gradoId, seccionId, columnas);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename("nomina-estudiantil-" + anioEscolar + ".pdf").build().toString())
+                .body(pdf);
     }
 
     @GetMapping("/{matriculaId}/checklist")

@@ -12,6 +12,23 @@
   margin: 0 0 1.5rem;
 }
 
+.mod-main > .mod-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.mod-main > .mod-heading h1 {
+  margin-bottom: 1.5rem;
+}
+
+.hist-heading-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1.5rem;
+}
+
 .filters-panel {
   background: var(--blanco);
   border-radius: 14px;
@@ -38,14 +55,40 @@
   letter-spacing: 0.06em;
 }
 
-.filters-grid input {
+.filters-grid input,
+.filters-grid select {
   font-family: var(--font-texto);
   font-size: 0.9rem;
   padding: 0.5rem 0.75rem;
   border: 1.5px solid #d0dcea;
   border-radius: 8px;
   background: var(--blanco);
-  max-width: 170px;
+  min-width: 165px;
+  min-height: 38px;
+}
+
+.hist-periodos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.hist-periodos > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.hist-periodos .btn-secondary {
+  padding: 0.4rem 0.65rem;
+  height: 38px;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .btn-secondary {
@@ -215,6 +258,25 @@ tbody td {
 }
 
 @media (max-width: 640px) {
+  .mod-main > .mod-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .hist-heading-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .filters-grid input,
+  .filters-grid select {
+    width: 100%;
+  }
+
+  .filters-grid label {
+    flex: 1 1 100%;
+  }
+
   .filters-grid {
     flex-direction: column;
     align-items: stretch;

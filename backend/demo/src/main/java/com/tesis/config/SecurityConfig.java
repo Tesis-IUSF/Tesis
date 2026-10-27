@@ -103,6 +103,8 @@ public class SecurityConfig {
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR")
             .requestMatchers(HttpMethod.POST, "/api/matriculas/*/retiros")
                 .hasRole("COORDINADOR")
+            .requestMatchers(HttpMethod.GET, "/api/matriculas/nomina-estudiantil/pdf")
+                .hasRole("DIRECTOR")
             .requestMatchers(HttpMethod.GET, "/api/matriculas/**")
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR", "COORDINADOR", "ADMINISTRATIVO")
             .requestMatchers("/api/matriculas/**")
