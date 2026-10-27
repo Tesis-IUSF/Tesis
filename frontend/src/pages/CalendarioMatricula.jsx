@@ -1,3 +1,4 @@
+import AnimatedSelect from "../components/AnimatedSelect";
 import { useCallback, useEffect, useState } from "react";
 import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
@@ -495,7 +496,7 @@ function CalendarioMatricula() {
           </p>
           <label>
             Tipo de período *
-            <select
+            <AnimatedSelect
               value={formPeriodo.tipo}
               required
               onChange={(event) =>
@@ -507,7 +508,7 @@ function CalendarioMatricula() {
                   {tipo.label}
                 </option>
               ))}
-            </select>
+            </AnimatedSelect>
           </label>
           <label>
             Fecha de inicio *

@@ -1,3 +1,4 @@
+import AnimatedSelect from "../components/AnimatedSelect";
 // src/pages/BlogComunicados.jsx
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
@@ -118,7 +119,7 @@ function BlogComunicados() {
         <div className="filters-bar">
           <label>
             Categoría
-            <select
+            <AnimatedSelect
               value={categoriaId}
               onChange={(e) => setCategoriaId(e.target.value)}
             >
@@ -129,19 +130,19 @@ function BlogComunicados() {
                   {c.activo ? "" : " (inactiva)"}
                 </option>
               ))}
-            </select>
+            </AnimatedSelect>
           </label>
 
           <label>
             Estado
-            <select
+            <AnimatedSelect
               value={publicado}
               onChange={(e) => setPublicado(e.target.value)}
             >
               <option value="">Todos</option>
               <option value="true">Publicados</option>
               <option value="false">Borradores</option>
-            </select>
+            </AnimatedSelect>
           </label>
         </div>
 

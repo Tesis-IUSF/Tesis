@@ -1,3 +1,4 @@
+import AnimatedSelect from "../components/AnimatedSelect";
 // src/pages/BlogComunicadoForm.jsx
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -243,7 +244,7 @@ function BlogComunicadoForm() {
 
           <label>
             Categoría *
-            <select
+            <AnimatedSelect
               value={form.categoriaId}
               onChange={(e) => actualizar("categoriaId", e.target.value)}
             >
@@ -254,7 +255,7 @@ function BlogComunicadoForm() {
                   {c.activo ? "" : " (inactiva)"}
                 </option>
               ))}
-            </select>
+            </AnimatedSelect>
             {errores.categoriaId && (
               <span className="campo-error">{errores.categoriaId}</span>
             )}

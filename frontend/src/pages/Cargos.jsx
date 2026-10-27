@@ -1,3 +1,4 @@
+import AnimatedSelect from "../components/AnimatedSelect";
 // src/pages/Cargos.jsx
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Icon } from "@iconify/react";
@@ -158,7 +159,7 @@ function Cargos() {
         <div className="filters-bar">
           <label>
             Departamento
-            <select
+            <AnimatedSelect
               value={filtroDepto}
               onChange={(e) => setFiltroDepto(e.target.value)}
             >
@@ -168,7 +169,7 @@ function Cargos() {
                   {d.nombre}
                 </option>
               ))}
-            </select>
+            </AnimatedSelect>
           </label>
         </div>
 
@@ -257,7 +258,7 @@ function Cargos() {
 
           <label>
             Departamento *
-            <select
+            <AnimatedSelect
               value={modal.departamentoId}
               onChange={(e) => cambiar("departamentoId", e.target.value)}
               required
@@ -268,7 +269,7 @@ function Cargos() {
                   {d.nombre}
                 </option>
               ))}
-            </select>
+            </AnimatedSelect>
             {errores.departamentoId && (
               <span className="campo-error">{errores.departamentoId}</span>
             )}

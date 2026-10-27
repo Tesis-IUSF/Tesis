@@ -1,5 +1,6 @@
 // src/components/ModalFormulario.jsx
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import "./ModalFormulario.css";
 
 function ModalFormulario({
@@ -11,17 +12,29 @@ function ModalFormulario({
   className = "",
   children,
 }) {
-  // Esc cierra el modal (salvo mientras se guarda)
+  const [cerrando, setCerrando] = useState(false);
+
+  const cerrar = useCallback(() => {
+    if (guardando || cerrando) return;
+    setCerrando(true);
+  }, [cerrando, guardando]);
+
   useEffect(() => {
     const alPulsar = (e) => {
-      if (e.key === "Escape" && !guardando) onCerrar();
+      if (e.key === "Escape") cerrar();
     };
     document.addEventListener("keydown", alPulsar);
     return () => document.removeEventListener("keydown", alPulsar);
-  }, [guardando, onCerrar]);
+  }, [cerrar]);
 
-  return (
-    <div className="mf-overlay" onClick={() => !guardando && onCerrar()}>
+  return createPortal(
+    <div
+      className={`mf-overlay${cerrando ? " mf-overlay--cerrando" : ""}`}
+      onClick={cerrar}
+      onAnimationEnd={(event) => {
+        if (cerrando && event.target === event.currentTarget) onCerrar();
+      }}
+    >
       <form
         className={`mf-modal ${className}`.trim()}
         role="dialog"
@@ -39,7 +52,7 @@ function ModalFormulario({
           <button
             type="button"
             className="btn-secondary"
-            onClick={onCerrar}
+            onClick={cerrar}
             disabled={guardando}
           >
             Cancelar
@@ -49,7 +62,8 @@ function ModalFormulario({
           </button>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
