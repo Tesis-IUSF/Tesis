@@ -5,7 +5,6 @@ import { ICONOS } from "../utils/iconos";
 import { cargarFotoBlob } from "../utils/fotos";
 import "./FotoCarnet.css";
 
-const TIPOS_VALIDOS = ["image/jpeg", "image/png", "image/webp"];
 const MAX_MB = 2;
 
 /**
@@ -73,8 +72,8 @@ function FotoCarnet({
     const f = ev.target.files?.[0];
     ev.target.value = ""; // permite volver a elegir el mismo archivo
     if (!f) return;
-    if (!TIPOS_VALIDOS.includes(f.type)) {
-      setError("Usa una imagen JPG, PNG o WebP.");
+    if (f.size === 0) {
+      setError("La imagen está vacía.");
       return;
     }
     if (f.size > MAX_MB * 1024 * 1024) {
