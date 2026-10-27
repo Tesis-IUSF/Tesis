@@ -1,3 +1,4 @@
+import AnimatedSelect from "../components/AnimatedSelect";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../utils/api";
@@ -295,7 +296,7 @@ function UsuarioForm() {
 
           <label>
             Rol *
-            <select
+            <AnimatedSelect
               value={form.rolId}
               onChange={(e) => actualizarCampo("rolId", e.target.value)}
               disabled={cargandoRoles || rolesDisponibles.length === 0}
@@ -308,7 +309,7 @@ function UsuarioForm() {
                   {rol.nombreRol}
                 </option>
               ))}
-            </select>
+            </AnimatedSelect>
             {errores.rolId && (
               <span className="campo-error">{errores.rolId}</span>
             )}
@@ -320,7 +321,7 @@ function UsuarioForm() {
 
           <label>
             Tipo de usuario *
-            <select
+            <AnimatedSelect
               value={form.tipoUsuario}
               onChange={(e) => actualizarCampo("tipoUsuario", e.target.value)}
             >
@@ -329,12 +330,12 @@ function UsuarioForm() {
                   {etiqueta}
                 </option>
               ))}
-            </select>
+            </AnimatedSelect>
           </label>
 
           <label>
             Estado
-            <select
+            <AnimatedSelect
               value={form.activo ? "true" : "false"}
               onChange={(e) =>
                 actualizarCampo("activo", e.target.value === "true")
@@ -342,7 +343,7 @@ function UsuarioForm() {
             >
               <option value="true">Activo</option>
               <option value="false">Inactivo</option>
-            </select>
+            </AnimatedSelect>
           </label>
         </div>
 

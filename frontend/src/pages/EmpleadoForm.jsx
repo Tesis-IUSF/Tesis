@@ -1,3 +1,4 @@
+import AnimatedSelect from "../components/AnimatedSelect";
 // src/pages/EmpleadoForm.jsx
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -328,7 +329,7 @@ function EmpleadoForm() {
               <label>
                 Cédula *
                 <div className="cedula-controls">
-                  <select
+                  <AnimatedSelect
                     value={form.cedulaTipo}
                     onChange={(e) =>
                       actualizarCampo("cedulaTipo", e.target.value)
@@ -338,7 +339,7 @@ function EmpleadoForm() {
                     <option value="">Tipo</option>
                     <option value="V">Venezolana (V)</option>
                     <option value="E">Extranjera (E)</option>
-                  </select>
+                  </AnimatedSelect>
                   <input
                     value={form.cedulaNumero}
                     onChange={(e) =>
@@ -396,7 +397,7 @@ function EmpleadoForm() {
 
               <label>
                 Sexo
-                <select
+                <AnimatedSelect
                   value={form.sexo}
                   onChange={(e) => actualizarCampo("sexo", e.target.value)}
                 >
@@ -404,7 +405,7 @@ function EmpleadoForm() {
                   <option value="M">Masculino</option>
                   <option value="F">Femenino</option>
                   <option value="Otro">Otro</option>
-                </select>
+                </AnimatedSelect>
               </label>
 
               <label>
@@ -440,7 +441,7 @@ function EmpleadoForm() {
 
               <label>
                 Cargo *
-                <select
+                <AnimatedSelect
                   value={form.cargoId}
                   onChange={(e) => actualizarCampo("cargoId", e.target.value)}
                 >
@@ -450,7 +451,7 @@ function EmpleadoForm() {
                       {c.nombreCargo}
                     </option>
                   ))}
-                </select>
+                </AnimatedSelect>
                 {errores.cargoId && (
                   <span className="campo-error">{errores.cargoId}</span>
                 )}
@@ -458,7 +459,7 @@ function EmpleadoForm() {
 
               <label>
                 Departamento
-                <select
+                <AnimatedSelect
                   value={form.departamentoId}
                   onChange={(e) =>
                     actualizarCampo("departamentoId", e.target.value)
@@ -470,14 +471,14 @@ function EmpleadoForm() {
                       {d.nombre}
                     </option>
                   ))}
-                </select>
+                </AnimatedSelect>
               </label>
 
               {esEdicion ? (
                 <>
                   <label>
                     Turno asignado
-                    <select
+                    <AnimatedSelect
                       value={form.turnoId}
                       onChange={(e) =>
                         actualizarCampo("turnoId", e.target.value)
@@ -490,7 +491,7 @@ function EmpleadoForm() {
                           {t.nombre} {!t.activo ? "(Inactivo)" : ""}
                         </option>
                       ))}
-                    </select>
+                    </AnimatedSelect>
                   </label>
 
                   {form.activo &&
@@ -512,7 +513,7 @@ function EmpleadoForm() {
 
                   <label>
                     Estado
-                    <select
+                    <AnimatedSelect
                       value={form.activo ? "true" : "false"}
                       onChange={(e) => {
                         const nuevoActivo = e.target.value === "true";
@@ -526,7 +527,7 @@ function EmpleadoForm() {
                     >
                       <option value="true">Activo</option>
                       <option value="false">Inactivo (Dado de baja)</option>
-                    </select>
+                    </AnimatedSelect>
                   </label>
 
                   {!form.activo && (
@@ -552,7 +553,7 @@ function EmpleadoForm() {
               ) : (
                 <label>
                   Turno *
-                  <select
+                  <AnimatedSelect
                     value={form.turnoId}
                     onChange={(e) => actualizarCampo("turnoId", e.target.value)}
                   >
@@ -562,7 +563,7 @@ function EmpleadoForm() {
                         {t.nombre}
                       </option>
                     ))}
-                  </select>
+                  </AnimatedSelect>
                   {errores.turnoId && (
                     <span className="campo-error">{errores.turnoId}</span>
                   )}

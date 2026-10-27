@@ -515,64 +515,6 @@
   }
 }
 
-/* ===== Banda de asistencia ===== */
-.ini-banda {
-  padding: 2.5rem 1.25rem;
-  background: var(--ini-vino);
-  color: #fff;
-}
-
-.ini-banda-interior {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.ini-banda-icono {
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.14);
-  color: var(--ini-dorado);
-}
-
-.ini-banda-texto {
-  flex: 1 1 auto;
-}
-
-.ini-banda-texto h2 {
-  margin: 0 0 0.25rem;
-  font-family: var(--font-titulos, "Lora", serif);
-  font-size: 1.5rem;
-}
-
-.ini-banda-texto p {
-  margin: 0;
-  max-width: 560px;
-  line-height: 1.6;
-  opacity: 0.92;
-}
-
-.ini-banda-boton {
-  flex: 0 0 auto;
-  padding: 0.8rem 1.6rem;
-  border-radius: 999px;
-  background: var(--ini-dorado);
-  color: #2b1a00;
-  font-weight: 700;
-  text-decoration: none;
-  transition: background 0.2s;
-}
-
-.ini-banda-boton:hover {
-  background: var(--ini-dorado-oscuro);
-  color: #fff;
-}
-
-.ini-banda-boton:focus-visible,
 .ini-boton-borde:focus-visible,
 .ini-red:focus-visible,
 .ini-noticia h3 a:focus-visible {
@@ -719,10 +661,6 @@
 }
 
 @media (max-width: 768px) {
-  .ini-banda-interior {
-    flex-direction: column;
-    text-align: center;
-  }
   .ini-noticias-grid {
     grid-template-columns: 1fr;
   }

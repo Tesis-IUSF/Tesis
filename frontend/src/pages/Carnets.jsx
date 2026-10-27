@@ -1,3 +1,4 @@
+import AnimatedSelect from "../components/AnimatedSelect";
 // src/pages/Carnets.jsx
 import { useState, useEffect, useCallback } from "react";
 import api from "../utils/api";
@@ -353,7 +354,7 @@ function Carnets() {
 
           <label>
             Departamento
-            <select
+            <AnimatedSelect
               value={filtroDepartamentoId}
               onChange={(e) => setFiltroDepartamentoId(e.target.value)}
             >
@@ -363,12 +364,12 @@ function Carnets() {
                   {d.nombre}
                 </option>
               ))}
-            </select>
+            </AnimatedSelect>
           </label>
 
           <label>
             Cargo
-            <select
+            <AnimatedSelect
               value={filtroCargoId}
               onChange={(e) => setFiltroCargoId(e.target.value)}
             >
@@ -378,12 +379,12 @@ function Carnets() {
                   {c.nombreCargo}
                 </option>
               ))}
-            </select>
+            </AnimatedSelect>
           </label>
 
           <label>
             Estado
-            <select
+            <AnimatedSelect
               value={estadoQr}
               onChange={(e) => setEstadoQr(e.target.value)}
             >
@@ -392,12 +393,12 @@ function Carnets() {
                   {e.etiqueta}
                 </option>
               ))}
-            </select>
+            </AnimatedSelect>
           </label>
 
           <label className="filtro-corto">
             Por vencer en
-            <select
+            <AnimatedSelect
               value={diasAviso}
               onChange={(e) => setDiasAviso(Number(e.target.value))}
             >
@@ -406,7 +407,7 @@ function Carnets() {
                   {d} días
                 </option>
               ))}
-            </select>
+            </AnimatedSelect>
           </label>
 
           {hayFiltros && (

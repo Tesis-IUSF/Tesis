@@ -1,3 +1,4 @@
+import AnimatedSelect from "../components/AnimatedSelect";
 // src/pages/Empleados.jsx
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
@@ -139,7 +140,7 @@ function Empleados({ soloConsulta = false }) {
         <div className="filters-bar">
           <label>
             Cargo
-            <select
+            <AnimatedSelect
               value={filtroCargoId}
               onChange={(e) => setFiltroCargoId(e.target.value)}
             >
@@ -149,12 +150,12 @@ function Empleados({ soloConsulta = false }) {
                   {c.nombreCargo}
                 </option>
               ))}
-            </select>
+            </AnimatedSelect>
           </label>
 
           <label>
             Turno
-            <select
+            <AnimatedSelect
               value={filtroTurnoId}
               onChange={(e) => setFiltroTurnoId(e.target.value)}
             >
@@ -164,19 +165,19 @@ function Empleados({ soloConsulta = false }) {
                   {turno.nombre}
                 </option>
               ))}
-            </select>
+            </AnimatedSelect>
           </label>
 
           <label>
             Estado
-            <select
+            <AnimatedSelect
               value={filtroActivo}
               onChange={(e) => setFiltroActivo(e.target.value)}
             >
               <option value="">Todos</option>
               <option value="true">Activos</option>
               <option value="false">Dados de baja</option>
-            </select>
+            </AnimatedSelect>
           </label>
 
           {(filtroCargoId || filtroTurnoId || filtroActivo) && (

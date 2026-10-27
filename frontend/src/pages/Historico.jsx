@@ -1,3 +1,4 @@
+import AnimatedSelect from "../components/AnimatedSelect";
 // src/pages/Historico.jsx
 import { useState, useEffect, useCallback } from "react";
 import api from "../utils/api";
@@ -327,56 +328,56 @@ function Historico() {
             </label>
             <label>
               Empleado
-              <select value={empleadoId} onChange={(e) => setEmpleadoId(e.target.value)}>
+              <AnimatedSelect value={empleadoId} onChange={(e) => setEmpleadoId(e.target.value)}>
                 <option value="">Todos</option>
                 {empleados.map((empleado) => (
                   <option key={empleado.id} value={empleado.id}>
                     {empleado.apellido}, {empleado.nombre} · {empleado.cedula}
                   </option>
                 ))}
-              </select>
+              </AnimatedSelect>
             </label>
             <label>
               Departamento
-              <select value={departamentoId} onChange={(e) => setDepartamentoId(e.target.value)}>
+              <AnimatedSelect value={departamentoId} onChange={(e) => setDepartamentoId(e.target.value)}>
                 <option value="">Todos</option>
                 {departamentos.map((departamento) => (
                   <option key={departamento.id} value={departamento.id}>
                     {departamento.nombre}
                   </option>
                 ))}
-              </select>
+              </AnimatedSelect>
             </label>
             <label>
               Cargo
-              <select value={cargoId} onChange={(e) => setCargoId(e.target.value)}>
+              <AnimatedSelect value={cargoId} onChange={(e) => setCargoId(e.target.value)}>
                 <option value="">Todos</option>
                 {cargos.map((cargo) => (
                   <option key={cargo.id} value={cargo.id}>
                     {cargo.nombreCargo}
                   </option>
                 ))}
-              </select>
+              </AnimatedSelect>
             </label>
             <label>
               Turno
-              <select value={turnoId} onChange={(e) => setTurnoId(e.target.value)}>
+              <AnimatedSelect value={turnoId} onChange={(e) => setTurnoId(e.target.value)}>
                 <option value="">Todos</option>
                 {turnos.map((turno) => (
                   <option key={turno.id} value={turno.id}>
                     {turno.nombre}
                   </option>
                 ))}
-              </select>
+              </AnimatedSelect>
             </label>
             <label>
               Estado
-              <select value={estado} onChange={(e) => setEstado(e.target.value)}>
+              <AnimatedSelect value={estado} onChange={(e) => setEstado(e.target.value)}>
                 <option value="">Todos</option>
                 {Object.entries(BADGES).map(([valor, detalle]) => (
                   <option key={valor} value={valor}>{detalle.etiqueta}</option>
                 ))}
-              </select>
+              </AnimatedSelect>
             </label>
 
             {(desde !== desdeInicial || hasta !== hastaInicial || empleadoId

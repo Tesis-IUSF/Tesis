@@ -1,3 +1,4 @@
+import AnimatedSelect from "../components/AnimatedSelect";
 // src/pages/Preinscripcion.jsx
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -714,13 +715,13 @@ function Preinscripcion({
                 <>
                   <label>
                     Prefijo de cédula *
-                    <select
+                    <AnimatedSelect
                       value={est.cedulaTipo}
                       onChange={(e) => setEst("cedulaTipo", e.target.value)}
                     >
                       <option value="V">Venezolana (V-)</option>
                       <option value="E">Extranjera (E-)</option>
-                    </select>
+                    </AnimatedSelect>
                   </label>
                   <label>
                     Número de cédula *
@@ -746,13 +747,13 @@ function Preinscripcion({
                 <>
                   <label>
                     Nacionalidad para CI escolar *
-                    <select
+                    <AnimatedSelect
                       value={est.nacionalidad}
                       onChange={(e) => setEst("nacionalidad", e.target.value)}
                     >
                       <option value="V">Venezolano (V)</option>
                       <option value="E">Extranjero (E)</option>
-                    </select>
+                    </AnimatedSelect>
                     {err("est.nacionalidad")}
                   </label>
                   <label>
@@ -806,7 +807,7 @@ function Preinscripcion({
               </label>
               <label>
                 Sexo *
-                <select
+                <AnimatedSelect
                   value={est.sexo}
                   onChange={(e) => setEst("sexo", e.target.value)}
                 >
@@ -816,7 +817,7 @@ function Preinscripcion({
                       {s.etiqueta}
                     </option>
                   ))}
-                </select>
+                </AnimatedSelect>
                 {err("est.sexo")}
               </label>
               <label>
@@ -988,13 +989,13 @@ function Preinscripcion({
               <div className="form-grid-2">
                 <label>
                   Prefijo de cédula *
-                  <select
+                  <AnimatedSelect
                     value={rep.cedulaTipo}
                     onChange={(e) => setRep("cedulaTipo", e.target.value)}
                   >
                     <option value="V">Venezolana (V-)</option>
                     <option value="E">Extranjera (E-)</option>
-                  </select>
+                  </AnimatedSelect>
                 </label>
                 <label>
                   Número de cédula *
@@ -1016,7 +1017,7 @@ function Preinscripcion({
                 </label>
                 <label>
                   Parentesco *
-                  <select
+                  <AnimatedSelect
                     value={rep.parentesco}
                     onChange={(e) => setRep("parentesco", e.target.value)}
                   >
@@ -1026,7 +1027,7 @@ function Preinscripcion({
                         {p}
                       </option>
                     ))}
-                  </select>
+                  </AnimatedSelect>
                   {err("rep.parentesco")}
                 </label>
                 <label>
@@ -1194,7 +1195,7 @@ function Preinscripcion({
               <div className="form-grid-2">
                 <label>
                   Grado *
-                  <select
+                  <AnimatedSelect
                     value={gradoModalId}
                     onChange={(event) => {
                       setGradoModalId(event.target.value);
@@ -1207,11 +1208,11 @@ function Preinscripcion({
                         {grupo.nombre}
                       </option>
                     ))}
-                  </select>
+                  </AnimatedSelect>
                 </label>
                 <label>
                   Sección *
-                  <select
+                  <AnimatedSelect
                     value={seccionModalId}
                     disabled={!gradoModalId}
                     onChange={(event) => setSeccionModalId(event.target.value)}
@@ -1235,7 +1236,7 @@ function Preinscripcion({
                         </option>
                       );
                     })}
-                  </select>
+                  </AnimatedSelect>
                 </label>
               </div>
               {err("seccionId")}

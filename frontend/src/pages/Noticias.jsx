@@ -75,7 +75,10 @@ function Noticias() {
 
   const irAPagina = (page) => {
     cargar(page);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "auto"
+      : "smooth";
+    window.scrollTo({ top: 0, behavior });
   };
 
   return (

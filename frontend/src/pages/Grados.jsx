@@ -1,3 +1,4 @@
+import AnimatedSelect from "../components/AnimatedSelect";
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import api from "../utils/api";
@@ -324,7 +325,7 @@ function Grados() {
         >
           <label>
             Nivel educativo *
-            <select
+            <AnimatedSelect
               value={form.nivelEducativoId}
               onChange={(event) =>
                 actualizarCampo("nivelEducativoId", event.target.value)
@@ -341,7 +342,7 @@ function Grados() {
                   {!nivel.activo ? " (inactivo)" : ""}
                 </option>
               ))}
-            </select>
+            </AnimatedSelect>
             {errores.nivelEducativoId && (
               <span className="campo-error">{errores.nivelEducativoId}</span>
             )}
