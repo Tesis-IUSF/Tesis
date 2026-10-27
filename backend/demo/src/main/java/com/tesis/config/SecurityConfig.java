@@ -36,6 +36,9 @@ public class SecurityConfig {
                 .hasAnyRole("ADMINISTRADOR", "DIRECTOR", "COORDINADOR", "ADMINISTRATIVO")
             .requestMatchers("/api/director/estadisticas", "/api/director/estadisticas/**")
                 .hasRole("DIRECTOR")
+            .requestMatchers(HttpMethod.GET, "/api/catalogos/departamentos/**",
+                    "/api/catalogos/cargos/**")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR", "COORDINADOR")
             .requestMatchers("/api/catalogos/departamentos/**", "/api/catalogos/cargos/**")
                 .hasRole("ADMINISTRADOR")
             .requestMatchers(HttpMethod.POST, "/api/asistencias/empleado/*/salida")

@@ -116,15 +116,23 @@ class SecurityConfigTest {
 
             mockMvc.perform(get(recurso)
                             .with(user("director").roles("DIRECTOR")))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isOk());
             mockMvc.perform(get(recurso)
                             .with(user("administrador").roles("ADMINISTRADOR")))
                     .andExpect(status().isOk());
+            mockMvc.perform(put(recurso + "/1")
+                            .with(user("director").roles("DIRECTOR"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(delete(recurso + "/1")
+                            .with(user("director").roles("DIRECTOR")))
+                    .andExpect(status().isForbidden());
         }
     }
 
     @Test
-    void restringeLaGestionDeCatalogosAlDirectorYPermiteLecturaOperativaAlCoordinador() throws Exception {
+    void restringeLaGestionDeCatalogosYPermiteLecturaAlCoordinador() throws Exception {
         for (String recurso : new String[]{
                 "/api/catalogos/departamentos",
                 "/api/catalogos/cargos",
@@ -132,13 +140,25 @@ class SecurityConfigTest {
         }) {
             mockMvc.perform(get(recurso)
                             .with(user("coordinador").roles("COORDINADOR")))
-                    .andExpect(recurso.endsWith("turnos")
-                            ? status().isOk()
-                            : status().isForbidden());
+                    .andExpect(status().isOk());
             mockMvc.perform(post(recurso)
                             .with(user("coordinador").roles("COORDINADOR"))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{}"))
+                    .andExpect(status().isForbidden());
+        }
+
+        for (String recurso : new String[]{
+                "/api/catalogos/departamentos",
+                "/api/catalogos/cargos"
+        }) {
+            mockMvc.perform(put(recurso + "/1")
+                            .with(user("coordinador").roles("COORDINADOR"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(delete(recurso + "/1")
+                            .with(user("coordinador").roles("COORDINADOR")))
                     .andExpect(status().isForbidden());
         }
 

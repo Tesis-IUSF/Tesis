@@ -1,188 +1,355 @@
-// src/pages/Dashboard.jsx
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { Icon } from "@iconify/react";
 import api from "../utils/api";
+import { extractErrorMessage } from "../utils/errors";
+import { ICONOS } from "../utils/iconos";
 import "./Dashboard.css";
 
-// Fecha local en formato YYYY-MM-DD (toISOString usaría UTC y adelantaría el día de noche)
-const fmt = (d) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-
-// De lunes a HOY: los días que aún no llegan no cuentan como ausencias.
-function getSemanaActual() {
-  const hoy = new Date();
-  const diaSemana = hoy.getDay() || 7;
-  const lunes = new Date(hoy);
-  lunes.setDate(hoy.getDate() - (diaSemana - 1));
-  return { desde: fmt(lunes), hasta: fmt(hoy) };
-}
-
-// Total de una respuesta: lista paginada (totalElements) o arreglo simple.
-function contar(resultado) {
-  if (resultado.status !== "fulfilled") return "—";
-  const data = resultado.value.data;
-  return data?.totalElements ?? data?.length ?? "—";
-}
-
-// Si no tiene "ruta" se muestra como "Próximamente".
-const MODULOS = [
-  {
-    ruta: "/empleados",
-    titulo: "Empleados",
-    texto: "Ver y administrar empleados del plantel.",
-    enlace: "Ir a Empleados",
-  },
-  {
-    ruta: "/asistencia/historico",
-    titulo: "Asistencia",
-    texto: "Registrar y consultar asistencias del personal.",
-    enlace: "Ir a Asistencia",
-  },
-  {
-    ruta: "/turnos",
-    titulo: "Turnos",
-    texto: "Crear y editar los horarios de trabajo.",
-    enlace: "Ir a Turnos",
-  },
-  {
-    ruta: "/blog/comunicados",
-    titulo: "Blog",
-    texto: "Publicar comunicados y avisos para la comunidad.",
-    enlace: "Ir a Comunicados",
-  },
+const LISTA_VACIA = [];
+const SERIES_ASISTENCIA = [
+  { clave: "A tiempo", clase: "a-tiempo" },
+  { clave: "Tardanzas", clase: "tardanzas" },
+  { clave: "Salida anticipada", clase: "salida" },
+  { clave: "Ausencias", clase: "ausencias" },
 ];
 
-function Dashboard() {
-  const [nombre] = useState(() => localStorage.getItem("nombre") || "");
+const fechaISO = (fecha) =>
+  `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}-${String(fecha.getDate()).padStart(2, "0")}`;
 
-  const [totales, setTotales] = useState({
-    personal: "—",
-    asistencias: "—",
-  });
+function obtenerRangoSemana(fecha = new Date()) {
+  const lunes = new Date(fecha);
+  lunes.setDate(fecha.getDate() - ((fecha.getDay() + 6) % 7));
+  return { desde: fechaISO(lunes), hasta: fechaISO(fecha) };
+}
 
-  const [semana, setSemana] = useState({
-    presentes: "—",
-    ausentes: "—",
-    tardanzas: "—",
-    permisos: "—",
-  });
+function listaValida(data) {
+  return Array.isArray(data) ? data : null;
+}
 
-  const { desde, hasta } = getSemanaActual();
+function crearDatosDiarios(desde, hasta, registros, ausencias) {
+  const dias = [];
+  const cursor = new Date(`${desde}T12:00:00`);
+  const fin = new Date(`${hasta}T12:00:00`);
 
-  useEffect(() => {
-    let activo = true;
+  while (cursor <= fin) {
+    const fecha = fechaISO(cursor);
+    const diario = registros.filter((registro) => registro.fecha === fecha);
+    const ausentesRegistrados = new Set(
+      diario
+        .filter((registro) => registro.estado === "ausente")
+        .map((registro) => registro.empleadoId),
+    );
+    const ausentesSinDuplicar = new Set([
+      ...ausentesRegistrados,
+      ...ausencias
+        .filter((ausencia) => ausencia.fecha === fecha)
+        .map((ausencia) => ausencia.empleadoId),
+    ]);
 
-    // Cada petición es independiente: si una falla, solo su tarjeta muestra "—".
-    Promise.allSettled([
-      api.get("/empleados", { params: { page: 0, size: 1 } }),
-      api.get("/asistencias/hoy"),
-    ]).then(([empleados, hoy]) => {
-      if (!activo) return;
-      setTotales({
-        personal: contar(empleados),
-        asistencias: contar(hoy),
-      });
+    dias.push({
+      fecha,
+      dia: cursor.toLocaleDateString("es-VE", { weekday: "short" }),
+      numero: cursor.toLocaleDateString("es-VE", { day: "numeric", month: "short" }),
+      "A tiempo": diario.filter((r) => r.estado === "presente").length,
+      Tardanzas: diario.filter((r) => r.estado === "tardanza").length,
+      "Salida anticipada": diario.filter((r) => r.estado === "salida_anticipada").length,
+      Ausencias: ausentesSinDuplicar.size,
     });
+    cursor.setDate(cursor.getDate() + 1);
+  }
 
-    Promise.allSettled([
+  return dias;
+}
+
+function MetricCard({ icon, label, value, tone, helper }) {
+  return (
+    <article className={`dash-metric dash-metric--${tone}`}>
+      <div className="dash-metric-top">
+        <span className="dash-metric-icon" aria-hidden="true">
+          <Icon icon={icon} />
+        </span>
+        <span className="dash-metric-label">{label}</span>
+      </div>
+      <strong className="dash-metric-value">{value ?? "—"}</strong>
+      <span className="dash-metric-helper">{helper}</span>
+    </article>
+  );
+}
+
+function Dashboard() {
+  const nombre = localStorage.getItem("nombre") || "";
+  const { desde, hasta } = useMemo(() => obtenerRangoSemana(), []);
+  const [cargando, setCargando] = useState(true);
+  const [actualizado, setActualizado] = useState(null);
+  const [errores, setErrores] = useState([]);
+  const [personal, setPersonal] = useState(null);
+  const [asistenciasHoy, setAsistenciasHoy] = useState(null);
+  const [historico, setHistorico] = useState(null);
+  const [ausencias, setAusencias] = useState(null);
+
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    const resultados = await Promise.allSettled([
+      api.get("/empleados", { params: { page: 0, size: 1, activo: true } }),
+      api.get("/asistencias/hoy"),
       api.get("/asistencias/historico", { params: { desde, hasta } }),
       api.get("/asistencias/ausencias", { params: { desde, hasta } }),
-    ]).then(([historico, ausencias]) => {
-      if (!activo) return;
-      const registros =
-        historico.status === "fulfilled" ? historico.value.data : null;
-      const cuenta = (...estados) =>
-        registros
-          ? registros.filter((r) => estados.includes(r.estado)).length
-          : "—";
-
-      setSemana({
-        presentes: cuenta("presente", "tardanza", "salida_anticipada"),
-        ausentes:
-          ausencias.status === "fulfilled" ? ausencias.value.data.length : "—",
-        tardanzas: cuenta("tardanza"),
-        permisos: cuenta("permiso"),
-      });
+    ]);
+    const nombres = [
+      "personal",
+      "asistencia de hoy",
+      "histórico semanal",
+      "ausencias",
+    ];
+    const fallos = [];
+    const datos = resultados.map((resultado, indice) => {
+      if (resultado.status === "rejected") {
+        fallos.push(
+          `No se pudo cargar ${nombres[indice]}: ${extractErrorMessage(resultado.reason)}`,
+        );
+        return null;
+      }
+      return resultado.value.data;
     });
 
-    return () => {
-      activo = false;
-    };
+    if (datos[0] && !Number.isFinite(datos[0].totalElements)) {
+      fallos.push("La respuesta de personal no incluye el total de registros.");
+      datos[0] = null;
+    }
+
+    for (const indice of [1, 2, 3]) {
+      if (datos[indice] !== null && !listaValida(datos[indice])) {
+        fallos.push(`La respuesta de ${nombres[indice]} no tiene un formato válido.`);
+        datos[indice] = null;
+      }
+    }
+
+    setPersonal(datos[0]?.totalElements ?? null);
+    setAsistenciasHoy(datos[1]);
+    setHistorico(datos[2]);
+    setAusencias(datos[3]);
+    setErrores(fallos);
+    setActualizado(new Date());
+    setCargando(false);
   }, [desde, hasta]);
 
+  useEffect(() => {
+    const timer = window.setTimeout(cargar, 0);
+    return () => window.clearTimeout(timer);
+  }, [cargar]);
+
+  const registrosHoy = asistenciasHoy ?? LISTA_VACIA;
+  const registrosSemana = historico ?? LISTA_VACIA;
+  const ausenciasSemana = ausencias ?? LISTA_VACIA;
+  const fechaHoy = fechaISO(new Date());
+  const ausenciasHoy = new Set([
+    ...registrosSemana
+      .filter((registro) => registro.fecha === fechaHoy && registro.estado === "ausente")
+      .map((registro) => registro.empleadoId),
+    ...ausenciasSemana
+      .filter((ausencia) => ausencia.fecha === fechaHoy)
+      .map((ausencia) => ausencia.empleadoId),
+  ]).size;
+  const conteoHoy = (estado) =>
+    registrosHoy.filter((registro) => registro.estado === estado).length;
+  const datosGrafico = useMemo(
+    () =>
+      crearDatosDiarios(
+        desde,
+        hasta,
+        registrosSemana,
+        ausenciasSemana,
+      ),
+    [desde, hasta, registrosSemana, ausenciasSemana],
+  );
+  const maximoDia = Math.max(
+    1,
+    ...datosGrafico.map((dia) =>
+      SERIES_ASISTENCIA.reduce((total, serie) => total + dia[serie.clave], 0),
+    ),
+  );
+  const fechaTexto = new Intl.DateTimeFormat("es-VE", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
+
   return (
-    <>
-      <main className="dash-main">
-        <div className="dash-heading">
-          <h1>Panel principal</h1>
-          <p id="bienvenida-texto">
-            {nombre
-              ? `¡Hola, ${nombre}! Aquí el resumen de hoy.`
-              : "Aquí el resumen de hoy."}
+    <main className="dash-main">
+      <header className="dash-header">
+        <div>
+          <p className="dash-eyebrow">Resumen institucional</p>
+          <h1>{nombre ? `Hola, ${nombre}` : "Panel principal"}</h1>
+          <p className="dash-subtitle">
+            Seguimiento de asistencia del personal del plantel.
           </p>
         </div>
+        <div className="dash-header-actions">
+          <p className="dash-date">
+            <Icon icon={ICONOS.historico} aria-hidden="true" />
+            <span>{fechaTexto}</span>
+          </p>
+          <button
+            type="button"
+            className="dash-refresh"
+            onClick={cargar}
+            disabled={cargando}
+          >
+            <Icon icon="mdi:refresh" className={cargando ? "is-spinning" : ""} />
+            {cargando ? "Actualizando…" : "Actualizar"}
+          </button>
+        </div>
+      </header>
 
-        <div className="stats-row stats-row--resumen">
-          <div className="stat-card stat-card--azul">
-            <div className="stat-value">{totales.personal}</div>
-            <div className="stat-label">Personal registrado</div>
-          </div>
-          <div className="stat-card stat-card--verde">
-            <div className="stat-value">{totales.asistencias}</div>
-            <div className="stat-label">Registros de hoy</div>
+      {errores.length > 0 && (
+        <div className="dash-error" role="alert">
+          <Icon icon="mdi:alert-circle-outline" aria-hidden="true" />
+          <div>
+            <strong>Algunos datos no están disponibles.</strong>
+            <ul>
+              {errores.map((error) => <li key={error}>{error}</li>)}
+            </ul>
           </div>
         </div>
+      )}
 
-        <div className="semana-heading">
-          <p className="modules-title">Asistencia esta semana</p>
-          <Link to="/asistencia/historico" className="link-detalle-semana">
-            Ver a detalle
+      <section className="dash-section" aria-labelledby="dash-hoy-titulo">
+        <div className="dash-section-heading">
+          <div>
+            <p className="dash-eyebrow">Estado del día</p>
+            <h2 id="dash-hoy-titulo">Asistencia de hoy</h2>
+          </div>
+          <Link to="/asistencia/hoy" className="dash-text-link">
+            Ver registros <span aria-hidden="true">→</span>
           </Link>
         </div>
 
-        <div className="stats-row stats-row--semana">
-          <div className="stat-card stat-card--verde">
-            <div className="stat-value">{semana.presentes}</div>
-            <div className="stat-label">Presentes</div>
+        <div className="dash-metrics">
+          <MetricCard
+            icon="mdi:account-group-outline"
+            label="Personal registrado"
+            value={personal}
+            tone="blue"
+            helper="Empleados activos"
+          />
+          <MetricCard
+            icon="mdi:account-check-outline"
+            label="A tiempo"
+            value={asistenciasHoy === null ? null : conteoHoy("presente")}
+            tone="green"
+            helper="Registros de entrada"
+          />
+          <MetricCard
+            icon="mdi:clock-alert-outline"
+            label="Tardanzas"
+            value={asistenciasHoy === null ? null : conteoHoy("tardanza")}
+            tone="amber"
+            helper="Entradas fuera de horario"
+          />
+          <MetricCard
+            icon="mdi:exit-run"
+            label="Salidas anticipadas"
+            value={asistenciasHoy === null ? null : conteoHoy("salida_anticipada")}
+            tone="violet"
+            helper="Registros del día"
+          />
+          <MetricCard
+            icon="mdi:account-alert-outline"
+            label="Ausencias"
+            value={historico === null || ausencias === null ? null : ausenciasHoy}
+            tone="red"
+            helper="Según asignaciones activas"
+          />
+        </div>
+      </section>
+
+      <section className="dash-chart-card" aria-labelledby="dash-semana-titulo">
+        <div className="dash-section-heading">
+          <div>
+            <p className="dash-eyebrow">Tendencia</p>
+            <h2 id="dash-semana-titulo">Asistencia durante la semana</h2>
           </div>
-          <div className="stat-card stat-card--rojo">
-            <div className="stat-value">{semana.ausentes}</div>
-            <div className="stat-label">Ausentes</div>
-          </div>
-          <div className="stat-card stat-card--naranja">
-            <div className="stat-value">{semana.tardanzas}</div>
-            <div className="stat-label">Tardanzas</div>
-          </div>
-          <div className="stat-card stat-card--azul">
-            <div className="stat-value">{semana.permisos}</div>
-            <div className="stat-label">Permisos</div>
-          </div>
+          <Link to="/asistencia/historico" className="dash-text-link">
+            Consultar histórico <span aria-hidden="true">→</span>
+          </Link>
         </div>
 
-        <p className="modules-title">Accesos rápidos</p>
-        <div className="modules-grid">
-          {MODULOS.map((m) =>
-            m.ruta ? (
-              <Link key={m.titulo} className="module-card" to={m.ruta}>
-                <h3>{m.titulo}</h3>
-                <p>{m.texto}</p>
-                <span className="module-link">{m.enlace}</span>
-              </Link>
-            ) : (
-              <div
-                key={m.titulo}
-                className="module-card module-card--pronto"
-                aria-disabled="true"
-              >
-                <h3>{m.titulo}</h3>
-                <p>{m.texto}</p>
-                <span className="module-pronto">Próximamente</span>
-              </div>
-            ),
-          )}
-        </div>
-      </main>
-    </>
+        {historico === null || ausencias === null ? (
+          <div className="dash-chart-message">
+            {cargando ? "Cargando tendencia semanal…" : "No se pudo cargar la tendencia semanal."}
+          </div>
+        ) : datosGrafico.every(
+          (dia) =>
+            dia["A tiempo"] === 0 &&
+            dia.Tardanzas === 0 &&
+            dia["Salida anticipada"] === 0 &&
+            dia.Ausencias === 0,
+        ) ? (
+          <div className="dash-chart-message">
+            No hay registros de asistencia para mostrar esta semana.
+          </div>
+        ) : (
+          <div
+            className="dash-chart"
+            role="img"
+            aria-label="Comparación diaria de asistencia, tardanzas, salidas anticipadas y ausencias"
+          >
+            <div className="dash-chart-legend" aria-hidden="true">
+              {SERIES_ASISTENCIA.map((serie) => (
+                <span key={serie.clave}>
+                  <i className={`dash-legend-dot dash-legend-dot--${serie.clase}`} />
+                  {serie.clave}
+                </span>
+              ))}
+            </div>
+            <div className="dash-chart-days">
+              {datosGrafico.map((dia) => {
+                const total = SERIES_ASISTENCIA.reduce(
+                  (suma, serie) => suma + dia[serie.clave],
+                  0,
+                );
+                const detalle = SERIES_ASISTENCIA
+                  .map((serie) => `${serie.clave}: ${dia[serie.clave]}`)
+                  .join(", ");
+                return (
+                  <div
+                    className="dash-chart-row"
+                    key={dia.fecha}
+                    aria-label={`${dia.dia} ${dia.numero}: ${detalle}`}
+                  >
+                    <span className="dash-chart-day">
+                      <strong>{dia.dia}</strong>
+                      <small>{dia.numero}</small>
+                    </span>
+                    <div className="dash-chart-track" aria-hidden="true">
+                      {SERIES_ASISTENCIA.map((serie) => {
+                        const valor = dia[serie.clave];
+                        return valor > 0 ? (
+                          <span
+                            key={serie.clave}
+                            className={`dash-chart-segment dash-chart-segment--${serie.clase}`}
+                            style={{ width: `${(valor / maximoDia) * 100}%` }}
+                            title={`${serie.clave}: ${valor}`}
+                          />
+                        ) : null;
+                      })}
+                    </div>
+                    <strong className="dash-chart-total">{total}</strong>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        <p className="dash-updated">
+          {actualizado
+            ? `Datos actualizados a las ${actualizado.toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" })}`
+            : "Preparando datos…"}
+        </p>
+      </section>
+    </main>
   );
 }
 
