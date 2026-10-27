@@ -237,6 +237,23 @@ class PreinscripcionServiceTest {
     }
 
     @Test
+    void validaEdadConLaFechaGuardadaCuandoLaCedulaYaExiste() {
+        Seccion seccion = crearSeccion(2, "E");
+        Estudiante existente = crearEstudiante("EST-EDAD-GUARDADA");
+        existente.setFechaNacimiento(LocalDate.of(2017, 1, 1));
+        estudianteRepository.saveAndFlush(existente);
+        PreinscripcionRequestDTO request = crearRequest(
+                seccion.getId(), "EST-EDAD-GUARDADA", "REP-EDAD-GUARDADA");
+        request.getEstudiante().setFechaNacimiento(LocalDate.of(2020, 1, 1));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> preinscripcionService.validarEdadNuevaPreinscripcion(request));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
     void generaLaCedulaEstudiantilDesdeLosDatosDelEstudianteYRepresentante() {
         Seccion seccion = crearSeccion(2, "X");
         PreinscripcionRequestDTO request = crearRequest(

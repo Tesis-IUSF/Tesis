@@ -176,9 +176,24 @@ public class MatriculaController {
         return preinscripcionService.preinscribir(request);
     }
 
+    @PostMapping("/preinscripciones/validar-edad")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void validarEdadNuevaPreinscripcion(
+            @Valid @RequestBody PreinscripcionRequestDTO request) {
+        preinscripcionService.validarEdadNuevaPreinscripcion(request);
+    }
+
     @GetMapping("/{matriculaId}/preinscripcion")
     public PreinscripcionRequestDTO obtenerDatosPreinscripcion(@PathVariable Integer matriculaId) {
         return preinscripcionService.obtenerDatosPreinscripcion(matriculaId);
+    }
+
+    @PostMapping("/{matriculaId}/preinscripcion/validar-edad")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void validarEdadActualizacionPreinscripcion(
+            @PathVariable Integer matriculaId,
+            @Valid @RequestBody PreinscripcionRequestDTO request) {
+        preinscripcionService.validarEdadActualizacionPreinscripcion(matriculaId, request);
     }
 
     @PutMapping("/{matriculaId}/preinscripcion")

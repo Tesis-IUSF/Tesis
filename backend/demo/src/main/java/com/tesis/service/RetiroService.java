@@ -66,6 +66,10 @@ public class RetiroService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "La fecha y el motivo del retiro son obligatorios");
         }
+        if (request.getMotivo().length() > 500) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El motivo del retiro no puede superar los 500 caracteres");
+        }
         if (request.getFechaRetiro().isAfter(LocalDate.now(clock))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "La fecha de retiro no puede ser futura");

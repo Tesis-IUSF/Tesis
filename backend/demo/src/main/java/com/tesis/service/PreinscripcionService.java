@@ -107,7 +107,7 @@ public class PreinscripcionService {
 
         LocalDate fechaNacimiento = estudianteExistente == null
             ? datosEstudiante.getFechaNacimiento() : estudianteExistente.getFechaNacimiento();
-        edadMatriculaService.validarElegibilidad(fechaNacimiento, seccion.getGrado(), request.getAnioEscolar());
+        validarElegibilidadEdad(fechaNacimiento, seccion, request.getAnioEscolar());
 
         long cuposDisponibles = seccionRepository.calcularCuposDisponibles(seccion.getId())
                 .orElse(0L);
@@ -167,6 +167,48 @@ public class PreinscripcionService {
                 cuposDisponibles - 1,
                 matricula.getTipoIngreso(),
                 estudiante.getCedula());
+    }
+
+    @Transactional(readOnly = true)
+    public void validarEdadNuevaPreinscripcion(PreinscripcionRequestDTO request) {
+        calendarioService.validarAnioExistente(request.getAnioEscolar());
+        String cedulaRepresentante = normalizarCedulaRepresentante(request.getRepresentante());
+        String cedulaEstudiante = resolverCedulaNueva(
+                request.getEstudiante(), cedulaRepresentante);
+        Estudiante estudianteExistente = estudianteRepository.findByCedula(cedulaEstudiante)
+                .orElse(null);
+        Seccion seccion = seccionRepository.findById(request.getSeccionId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Sección no encontrada"));
+        LocalDate fechaNacimiento = estudianteExistente == null
+                ? request.getEstudiante().getFechaNacimiento()
+                : estudianteExistente.getFechaNacimiento();
+        validarElegibilidadEdad(fechaNacimiento, seccion, request.getAnioEscolar());
+    }
+
+    @Transactional(readOnly = true)
+    public void validarEdadActualizacionPreinscripcion(
+            Integer matriculaId, PreinscripcionRequestDTO request) {
+        Matricula matricula = matriculaRepository.findById(matriculaId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Matrícula no encontrada"));
+        if (!Objects.equals(matricula.getAnioEscolar(), request.getAnioEscolar())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El año escolar de la matrícula no se puede cambiar");
+        }
+        Seccion seccion = seccionRepository.findById(request.getSeccionId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Sección no encontrada"));
+        validarElegibilidadEdad(
+                request.getEstudiante().getFechaNacimiento(),
+                seccion,
+                matricula.getAnioEscolar());
+    }
+
+    private void validarElegibilidadEdad(
+            LocalDate fechaNacimiento, Seccion seccion, Short anioEscolar) {
+        edadMatriculaService.validarElegibilidad(
+                fechaNacimiento, seccion.getGrado(), anioEscolar);
     }
 
     @Transactional(readOnly = true)

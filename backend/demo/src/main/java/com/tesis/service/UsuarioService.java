@@ -6,6 +6,7 @@ import com.tesis.entity.TipoUsuario;
 import com.tesis.entity.Usuario;
 import com.tesis.repository.RolesRepository;
 import com.tesis.repository.UsuarioRepository;
+import com.tesis.validation.PasswordPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.nio.charset.StandardCharsets;
 
 @Service
 @Transactional
@@ -52,7 +52,8 @@ public class UsuarioService {
         Usuario usuario = new Usuario();
         usuario.setNombreUsuario(request.getNombreUsuario().trim());
         usuario.setEmail(request.getEmail().trim());
-        usuario.setPasswordHash(passwordEncoder.encode(obtenerPassword(request)));
+        String password = obtenerPassword(request);
+        usuario.setPasswordHash(passwordEncoder.encode(password));
         usuario.setRol(buscarRol(request.getRolId()));
         usuario.setTipoUsuario(request.getTipoUsuario() == null ? TipoUsuario.PERSONAL : request.getTipoUsuario());
         usuario.setActivo(request.getActivo() == null || request.getActivo());
@@ -74,7 +75,6 @@ public class UsuarioService {
 
         String password = obtenerPassword(request);
         if (password != null && !password.isBlank()) {
-            validarLongitudPassword(password);
             usuario.setPasswordHash(passwordEncoder.encode(password));
         }
         usuario.setRol(buscarRol(request.getRolId()));
@@ -130,14 +130,14 @@ public class UsuarioService {
         }
         String password = obtenerPassword(request);
         if (password != null && !password.isBlank()) {
-            validarLongitudPassword(password);
+            validarPassword(password, request.getNombreUsuario(), request.getEmail());
         }
     }
 
-    private void validarLongitudPassword(String password) {
-        if (password.getBytes(StandardCharsets.UTF_8).length > 72) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "La contraseña no puede superar 72 bytes UTF-8");
+    private void validarPassword(String password, String nombreUsuario, String email) {
+        String error = PasswordPolicy.validar(password, nombreUsuario, email);
+        if (error != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, error);
         }
     }
 
