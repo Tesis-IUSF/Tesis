@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import { ICONOS } from "../../utils/iconos";
+import useAparecer from "../../utils/useAparecer";
 
-// Mismas rutas públicas que usa el Hero (carpeta public/img)
+// Mismas rutas públicas que usa el Hero (carpeta public/img).
+// El mosaico está pensado para 4 fotos: la primera se muestra más grande.
 const FOTOS = [
   {
     src: "/img/asansa.jpeg",
@@ -26,85 +28,126 @@ const FOTOS = [
   },
 ];
 
-const INTERVALO = 4000;
-
 function Galeria() {
   const total = FOTOS.length;
-  const [indice, setIndice] = useState(0);
+  const [ref, visible] = useAparecer(0.15);
+  const [abierta, setAbierta] = useState(null);
 
+  const cerrar = useCallback(() => setAbierta(null), []);
+  const mover = useCallback(
+    (paso) => setAbierta((i) => (i === null ? i : (i + paso + total) % total)),
+    [total],
+  );
+
+  // Teclado y bloqueo del scroll mientras la foto está ampliada
   useEffect(() => {
-    if (total < 2) return undefined;
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
-      return undefined;
-    }
-    const t = setTimeout(() => setIndice((i) => (i + 1) % total), INTERVALO);
-    return () => clearTimeout(t);
-  }, [indice, total]);
+    if (abierta === null) return undefined;
+    const alPulsar = (evento) => {
+      if (evento.key === "Escape") cerrar();
+      if (evento.key === "ArrowLeft") mover(-1);
+      if (evento.key === "ArrowRight") mover(1);
+    };
+    const overflowPrevio = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", alPulsar);
+    return () => {
+      document.removeEventListener("keydown", alPulsar);
+      document.body.style.overflow = overflowPrevio;
+    };
+  }, [abierta, cerrar, mover]);
 
   if (total === 0) return null;
 
-  const irA = (n) => setIndice((n + total) % total);
+  const actual = abierta === null ? null : FOTOS[abierta];
 
   return (
-    <section id="galeria" className="ini-seccion ini-galeria">
+    <section id="galeria" className="ini-seccion ini-galeria" ref={ref}>
       <div className="ini-contenedor">
         <h2 className="ini-titulo">Galería</h2>
-        <p className="ini-subtitulo">Momentos de nuestra vida escolar.</p>
+        <p className="ini-subtitulo">
+          Momentos de nuestra vida escolar. Toca una foto para verla en grande.
+        </p>
 
-        <div className="ini-galeria-visor">
-          <div
-            className="ini-galeria-pista"
-            style={{ transform: `translateX(-${indice * 100}%)` }}
+        <div
+          className={`ini-gal-grid${visible ? " ini-gal-grid--visible" : ""}`}
+        >
+          {FOTOS.map((f, i) => (
+            <button
+              key={f.src}
+              type="button"
+              className="ini-gal-foto"
+              style={{ transitionDelay: `${i * 110}ms` }}
+              onClick={() => setAbierta(i)}
+              aria-label={`Ampliar foto: ${f.leyenda}`}
+            >
+              <img src={f.src} alt={f.alt} loading="lazy" />
+              <span className="ini-gal-leyenda">{f.leyenda}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {actual && (
+        <div
+          className="ini-lb"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Foto ampliada: ${actual.leyenda}`}
+          onClick={cerrar}
+        >
+          <button
+            type="button"
+            className="ini-lb-boton ini-lb-cerrar"
+            onClick={cerrar}
+            aria-label="Cerrar"
+            autoFocus
           >
-            {FOTOS.map((f, i) => (
-              <figure
-                key={f.src}
-                className="ini-galeria-diapo"
-                aria-hidden={i !== indice}
-              >
-                <img src={f.src} alt={f.alt} loading="lazy" />
-                <figcaption>{f.leyenda}</figcaption>
-              </figure>
-            ))}
-          </div>
+            <Icon icon={ICONOS.cerrar} width="26" height="26" />
+          </button>
 
           {total > 1 && (
-            <>
-              <button
-                type="button"
-                className="ini-galeria-flecha ini-galeria-flecha--prev"
-                onClick={() => irA(indice - 1)}
-                aria-label="Foto anterior"
-              >
-                <Icon icon={ICONOS.anterior} width="24" height="24" />
-              </button>
-              <button
-                type="button"
-                className="ini-galeria-flecha ini-galeria-flecha--sig"
-                onClick={() => irA(indice + 1)}
-                aria-label="Foto siguiente"
-              >
-                <Icon icon={ICONOS.siguiente} width="24" height="24" />
-              </button>
-            </>
+            <button
+              type="button"
+              className="ini-lb-boton ini-lb-flecha ini-lb-flecha--prev"
+              onClick={(evento) => {
+                evento.stopPropagation();
+                mover(-1);
+              }}
+              aria-label="Foto anterior"
+            >
+              <Icon icon={ICONOS.anterior} width="28" height="28" />
+            </button>
+          )}
+
+          <figure
+            className="ini-lb-figura"
+            key={abierta}
+            onClick={(evento) => evento.stopPropagation()}
+          >
+            <img src={actual.src} alt={actual.alt} />
+            <figcaption>
+              {actual.leyenda}
+              <span>
+                {abierta + 1} / {total}
+              </span>
+            </figcaption>
+          </figure>
+
+          {total > 1 && (
+            <button
+              type="button"
+              className="ini-lb-boton ini-lb-flecha ini-lb-flecha--sig"
+              onClick={(evento) => {
+                evento.stopPropagation();
+                mover(1);
+              }}
+              aria-label="Foto siguiente"
+            >
+              <Icon icon={ICONOS.siguiente} width="28" height="28" />
+            </button>
           )}
         </div>
-
-        {total > 1 && (
-          <div className="ini-galeria-puntos">
-            {FOTOS.map((f, i) => (
-              <button
-                key={f.src}
-                type="button"
-                className={`ini-galeria-punto${i === indice ? " activo" : ""}`}
-                onClick={() => irA(i)}
-                aria-label={`Ir a la foto ${i + 1}`}
-                aria-current={i === indice}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      )}
     </section>
   );
 }
