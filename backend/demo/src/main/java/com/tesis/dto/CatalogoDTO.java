@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -143,12 +144,12 @@ public class CatalogoDTO {
         @Max(12)
         private Short numeroGrado;
         @NotNull
-        @Min(0)
-        @Max(120)
+        @Min(1)
+        @Max(20)
         private Short edadMinima;
         @NotNull
-        @Min(0)
-        @Max(120)
+        @Min(1)
+        @Max(20)
         private Short edadMaxima;
         private String nombreEspecial;
         private Boolean activo;
@@ -177,6 +178,7 @@ public class CatalogoDTO {
         @NotNull
         private Integer gradoId;
         @NotBlank
+        @Pattern(regexp = "[A-Z]")
         @Size(max = 1)
         private String letraSeccion;
         @NotNull
