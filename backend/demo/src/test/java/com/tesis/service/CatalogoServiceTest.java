@@ -298,6 +298,36 @@ class CatalogoServiceTest {
                 () -> catalogoService.crearGrado(grado));
 
         assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, error.getStatusCode());
+
+        grado.setEdadMinima((short) 0);
+        grado.setEdadMaxima((short) 8);
+        error = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> catalogoService.crearGrado(grado));
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, error.getStatusCode());
+
+        grado.setEdadMinima((short) 1);
+        grado.setEdadMaxima((short) 21);
+        error = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> catalogoService.crearGrado(grado));
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, error.getStatusCode());
+    }
+
+    @Test
+    void rechazaLetraDeSeccionQueNoSeaUnaMayuscula() {
+        Seccion seccion = new Seccion();
+        Grado grado = new Grado();
+        grado.setId(3);
+        seccion.setGrado(grado);
+        seccion.setLetraSeccion("1");
+        seccion.setAnioEscolar((short) 2026);
+
+        org.springframework.web.server.ResponseStatusException error = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> catalogoService.crearSeccion(seccion));
+
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, error.getStatusCode());
     }
 
     @Test

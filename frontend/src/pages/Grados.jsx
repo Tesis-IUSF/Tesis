@@ -104,11 +104,21 @@ function Grados() {
       nuevosErrores.numeroGrado =
         "El número de grado debe estar entre 1 y 12.";
     }
-    if (!Number.isInteger(edadMinima) || edadMinima < 0 || edadMinima > 120) {
-      nuevosErrores.edadMinima = "Indica una edad entre 0 y 120 años.";
+    if (
+      !form.edadMinima ||
+      !Number.isInteger(edadMinima) ||
+      edadMinima < 1 ||
+      edadMinima > 20
+    ) {
+      nuevosErrores.edadMinima = "Indica una edad entre 1 y 20 años.";
     }
-    if (!Number.isInteger(edadMaxima) || edadMaxima < 0 || edadMaxima > 120) {
-      nuevosErrores.edadMaxima = "Indica una edad entre 0 y 120 años.";
+    if (
+      !form.edadMaxima ||
+      !Number.isInteger(edadMaxima) ||
+      edadMaxima < 1 ||
+      edadMaxima > 20
+    ) {
+      nuevosErrores.edadMaxima = "Indica una edad entre 1 y 20 años.";
     } else if (edadMaxima < edadMinima) {
       nuevosErrores.edadMaxima = "La edad máxima debe ser igual o mayor.";
     }
@@ -375,6 +385,8 @@ function Grados() {
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
+                maxLength={3}
+                required
                 value={form.edadMinima}
                 onChange={(event) =>
                   actualizarCampo("edadMinima", soloDigitos(event.target.value))
@@ -390,6 +402,8 @@ function Grados() {
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
+                maxLength={3}
+                required
                 value={form.edadMaxima}
                 onChange={(event) =>
                   actualizarCampo("edadMaxima", soloDigitos(event.target.value))
