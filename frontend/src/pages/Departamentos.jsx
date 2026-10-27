@@ -228,6 +228,7 @@ function Departamentos() {
                 setErrorNombre("");
               }}
               maxLength={100}
+              required
               placeholder="Ej: Administración"
               autoFocus
             />

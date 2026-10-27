@@ -52,6 +52,29 @@ class InputValidationTest {
     }
 
     @Test
+    void validaCamposDeDepartamentoYCargo() {
+        CatalogoDTO.DepartamentoRequestDTO departamento =
+                new CatalogoDTO.DepartamentoRequestDTO();
+        assertTrue(tieneViolacion(departamento, "nombre"));
+        departamento.setNombre("D".repeat(101));
+        assertTrue(tieneViolacion(departamento, "nombre"));
+        departamento.setNombre("Administración");
+        assertFalse(tieneViolacion(departamento, "nombre"));
+
+        CatalogoDTO.CargoRequestDTO cargo = new CatalogoDTO.CargoRequestDTO();
+        assertTrue(tieneViolacion(cargo, "nombreCargo"));
+        assertTrue(tieneViolacion(cargo, "departamentoId"));
+        cargo.setNombreCargo("C".repeat(101));
+        cargo.setDepartamentoId(1);
+        assertTrue(tieneViolacion(cargo, "nombreCargo"));
+        cargo.setNombreCargo("Asistente");
+        assertFalse(tieneViolacion(cargo, "nombreCargo"));
+        assertFalse(tieneViolacion(cargo, "departamentoId"));
+        cargo.setDepartamentoId(0);
+        assertTrue(tieneViolacion(cargo, "departamentoId"));
+    }
+
+    @Test
     void acotaNumeroDeGradoYMinutosDeTurno() {
         CatalogoDTO.GradoRequestDTO grado = new CatalogoDTO.GradoRequestDTO();
         grado.setNivelEducativoId(1);

@@ -29,11 +29,11 @@ public interface CatalogoMapper {
     CatalogoDTO.CargoResponseDTO cargoToCargoResponseDTO(Cargo cargo);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "departamento", ignore = true)
+    @Mapping(source = "departamentoId", target = "departamento.id")
     Cargo cargoRequestDTOToCargo(CatalogoDTO.CargoRequestDTO dto);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "departamento", ignore = true)
+    @Mapping(source = "departamentoId", target = "departamento.id")
     void updateCargoFromDTO(CatalogoDTO.CargoRequestDTO dto, @MappingTarget Cargo cargo);
 
     CatalogoDTO.TurnoResponseDTO turnoToTurnoResponseDTO(Turno turno);

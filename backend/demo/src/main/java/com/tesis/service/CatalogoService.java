@@ -92,14 +92,25 @@ public class CatalogoService {
     }
 
     public Departamento crearDepartamento(Departamento departamento) {
-        validarTexto(departamento != null ? departamento.getNombre() : null, "nombre");
+        String nombre = normalizarNombreCatalogo(
+                departamento != null ? departamento.getNombre() : null, "nombre");
+        if (departamentoRepository.existsByNombreIgnoreCase(nombre)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Ya existe un departamento con ese nombre");
+        }
+        departamento.setNombre(nombre);
         return departamentoRepository.save(departamento);
     }
 
     public Departamento actualizarDepartamento(Integer id, Departamento departamento) {
         Departamento actual = buscarDepartamento(id);
-        validarTexto(departamento != null ? departamento.getNombre() : null, "nombre");
-        actual.setNombre(departamento.getNombre());
+        String nombre = normalizarNombreCatalogo(
+                departamento != null ? departamento.getNombre() : null, "nombre");
+        if (departamentoRepository.existsByNombreIgnoreCaseAndIdNot(nombre, id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Ya existe un departamento con ese nombre");
+        }
+        actual.setNombre(nombre);
         return departamentoRepository.save(actual);
     }
 
@@ -121,15 +132,31 @@ public class CatalogoService {
     }
 
     public Cargo crearCargo(Cargo cargo) {
-        validarTexto(cargo != null ? cargo.getNombreCargo() : null, "nombre del cargo");
+        String nombreCargo = normalizarNombreCatalogo(
+                cargo != null ? cargo.getNombreCargo() : null, "nombre del cargo");
+        Departamento departamento = buscarDepartamentoCargo(cargo);
+        if (cargoRepository.existsByNombreCargoIgnoreCaseAndDepartamento_Id(
+                nombreCargo, departamento.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Ya existe un cargo con ese nombre en el departamento");
+        }
+        cargo.setNombreCargo(nombreCargo);
+        cargo.setDepartamento(departamento);
         return cargoRepository.save(cargo);
     }
 
     public Cargo actualizarCargo(Integer id, Cargo cargo) {
         Cargo actual = buscarCargo(id);
-        validarTexto(cargo != null ? cargo.getNombreCargo() : null, "nombre del cargo");
-        actual.setNombreCargo(cargo.getNombreCargo());
-        actual.setDepartamento(cargo.getDepartamento());
+        String nombreCargo = normalizarNombreCatalogo(
+                cargo != null ? cargo.getNombreCargo() : null, "nombre del cargo");
+        Departamento departamento = buscarDepartamentoCargo(cargo);
+        if (cargoRepository.existsByNombreCargoIgnoreCaseAndDepartamento_IdAndIdNot(
+                nombreCargo, departamento.getId(), id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Ya existe un cargo con ese nombre en el departamento");
+        }
+        actual.setNombreCargo(nombreCargo);
+        actual.setDepartamento(departamento);
         return cargoRepository.save(actual);
     }
 
@@ -602,6 +629,28 @@ public class CatalogoService {
     private Departamento buscarDepartamento(Integer id) {
         return departamentoRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Departamento no encontrado"));
+    }
+
+    private Departamento buscarDepartamentoCargo(Cargo cargo) {
+        if (cargo == null || cargo.getDepartamento() == null
+                || cargo.getDepartamento().getId() == null
+                || cargo.getDepartamento().getId() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Debe seleccionar un departamento para el cargo");
+        }
+        return departamentoRepository.findById(cargo.getDepartamento().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "El departamento seleccionado no existe"));
+    }
+
+    private String normalizarNombreCatalogo(String valor, String campo) {
+        validarTexto(valor, campo);
+        String normalizado = valor.trim();
+        if (normalizado.length() > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El campo " + campo + " no puede superar 100 caracteres");
+        }
+        return normalizado;
     }
 
     private Cargo buscarCargo(Integer id) {
