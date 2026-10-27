@@ -12,7 +12,7 @@
   top: 0;
   z-index: 100;
   height: 72px;
-  padding: 0 2rem;
+  padding: 0 clamp(1rem, 4vw, 2rem);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -119,18 +119,24 @@
 .publico-footer {
   background: var(--vino);
   color: rgba(255, 255, 255, 0.75);
-  padding: 3rem 2rem 0;
+  padding: clamp(2.5rem, 5vw, 3rem) clamp(1.25rem, 4vw, 2rem) 0;
   scroll-margin-top: 72px;
 }
 
+/* Las columnas se acomodan solas según el ancho disponible:
+   3 en pantallas grandes, 2 en medianas y 1 en celular. */
 .publico-footer-top {
   max-width: 1100px;
   margin: 0 auto;
   padding-bottom: 2.5rem;
   display: grid;
-  grid-template-columns: 1fr 1.4fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
   gap: 2rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.publico-footer-top > * {
+  min-width: 0;
 }
 
 .publico-footer-marca {
@@ -144,6 +150,7 @@
   height: 52px;
   object-fit: cover;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .publico-footer-marca strong {
@@ -174,8 +181,10 @@
   display: flex;
   align-items: flex-start;
   gap: 0.6rem;
+  min-width: 0;
   font-size: 0.875rem;
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .publico-contacto svg {
@@ -226,10 +235,6 @@
 
 /* Celular: el menú pasa a ser un desplegable bajo la barra */
 @media (max-width: 768px) {
-  .publico-header {
-    padding: 0 1rem;
-  }
-
   .publico-toggle {
     display: inline-flex;
     align-items: center;
@@ -273,14 +278,6 @@
     justify-content: center;
     margin-top: 0.5rem;
     padding: 0.6rem 1rem;
-  }
-
-  .publico-footer {
-    padding: 2.5rem 1.25rem 0;
-  }
-
-  .publico-footer-top {
-    grid-template-columns: 1.2fr 1fr 1.4fr;
   }
 }
 

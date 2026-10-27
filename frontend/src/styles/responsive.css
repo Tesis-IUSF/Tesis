@@ -1,0 +1,49 @@
+/* Base fluida: el contenido se adapta al ancho disponible,
+   sin depender de un dispositivo concreto. */
+
+/* Todo lo que esté en rem escala solo con el ancho de la pantalla.
+   Tope de 16px: en computador se ve igual que antes. */
+html {
+  font-size: clamp(14px, 0.8rem + 0.4vw, 16px);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Las palabras largas se parten en vez de empujar la página */
+body {
+  overflow-wrap: break-word;
+}
+
+img,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Un hijo de flex/grid no se encoge por debajo de su contenido
+   salvo que se le permita: esta es la causa más común de contenido cortado */
+.layout-cuerpo,
+.layout-contenido,
+.layout-contenido > *,
+main,
+section,
+article,
+header,
+footer,
+form {
+  min-width: 0;
+}
+
+/* Tablas anchas: se desplazan dentro de su caja, no ensanchan la página */
+.table-container {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Ventanas emergentes: nunca más grandes que la pantalla */
+.mf-modal {
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
