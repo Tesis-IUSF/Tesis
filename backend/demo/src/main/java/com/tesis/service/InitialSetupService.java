@@ -8,6 +8,7 @@ import com.tesis.entity.TipoUsuario;
 import com.tesis.entity.Usuario;
 import com.tesis.repository.RolesRepository;
 import com.tesis.repository.UsuarioRepository;
+import com.tesis.validation.PasswordPolicy;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -71,9 +72,10 @@ public class InitialSetupService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "El email o nombre de usuario ya está registrado");
         }
-        if (request.password().getBytes(StandardCharsets.UTF_8).length > 72) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "La contraseña no puede superar 72 bytes UTF-8");
+        String errorPassword = PasswordPolicy.validar(
+                request.password(), nombreUsuario, email);
+        if (errorPassword != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorPassword);
         }
 
         Usuario admin = new Usuario();

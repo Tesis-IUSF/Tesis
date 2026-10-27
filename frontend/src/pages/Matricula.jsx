@@ -329,12 +329,25 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
             datosSolicitante.apellido.trim() &&
             datosSolicitante.cedula.trim(),
           );
-    if (
-      !datosSolicitante.motivo.trim() ||
-      !datosSolicitante.fechaRetiro ||
-      !camposSolicitanteValidos
-    ) {
+    if (!datosSolicitante.motivo.trim() || !datosSolicitante.fechaRetiro) {
       toast.error("Completa los datos del solicitante, la fecha y el motivo.");
+      return;
+    }
+    if (datosSolicitante.motivo.length > 500) {
+      toast.error("El motivo del retiro no puede superar los 500 caracteres.");
+      return;
+    }
+    if (
+      retiroMatricula.fechaFormalizacion &&
+      datosSolicitante.fechaRetiro < retiroMatricula.fechaFormalizacion
+    ) {
+      toast.error(
+        "La fecha de retiro no puede ser anterior a la formalización de la matrícula.",
+      );
+      return;
+    }
+    if (!camposSolicitanteValidos) {
+      toast.error("Completa los datos del solicitante.");
       return;
     }
     setRetirando(true);
@@ -886,6 +899,7 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
             <input
               type="date"
               value={datosSolicitante.fechaRetiro}
+              min={retiroMatricula.fechaFormalizacion || undefined}
               max={fechaLocalISO()}
               onChange={(event) =>
                 setDatosSolicitante((actual) => ({

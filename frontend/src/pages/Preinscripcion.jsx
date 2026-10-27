@@ -538,13 +538,22 @@ function Preinscripcion({
     try {
       // Las fotos nuevas se suben primero; las ya guardadas se conservan
       const urls = {};
+      const payload = crearPayloadPreinscripcion(form, id, anio);
+      if (id) {
+        await api.post(
+          `/matriculas/${id}/preinscripcion/validar-edad`,
+          payload,
+        );
+      } else {
+        await api.post("/matriculas/preinscripciones/validar-edad", payload);
+      }
       if (form.est.foto) urls.fotoCarnetUrl = await subirFoto(form.est.foto);
       if (form.rep.foto) urls.fotoUrl = await subirFoto(form.rep.foto);
-      const payload = crearPayloadPreinscripcion(form, id, anio, urls);
+      const payloadConFotos = crearPayloadPreinscripcion(form, id, anio, urls);
 
       const { data } = id
-        ? await api.put(`/matriculas/${id}/preinscripcion`, payload)
-        : await api.post("/matriculas/preinscripciones", payload);
+        ? await api.put(`/matriculas/${id}/preinscripcion`, payloadConFotos)
+        : await api.post("/matriculas/preinscripciones", payloadConFotos);
       if (id) {
         if (embedded && onSaved) {
           await onSaved({ fichaModificada: true, respuesta: data });
