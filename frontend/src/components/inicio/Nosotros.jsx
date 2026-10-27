@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { ICONOS } from "../../utils/iconos";
+import useAparecer from "../../utils/useAparecer";
 
 const TARJETAS = [
   {
@@ -26,29 +26,14 @@ const TARJETAS = [
   },
 ];
 
-function Nosotros() {
-  const ref = useRef(null);
-  const [visible, setVisible] = useState(false);
+const PUNTOS = [
+  "Formación integral",
+  "Disciplina y valores",
+  "Compromiso con la comunidad",
+];
 
-  // Aparece una sola vez al entrar en pantalla
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver === "undefined") {
-      setVisible(true);
-      return undefined;
-    }
-    const obs = new IntersectionObserver(
-      ([entrada]) => {
-        if (entrada.isIntersecting) {
-          setVisible(true);
-          obs.disconnect();
-        }
-      },
-      { threshold: 0.2 },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
+function Nosotros() {
+  const [ref, visible] = useAparecer(0.15);
 
   return (
     <section id="mision" className="ini-seccion ini-nosotros" ref={ref}>
@@ -59,6 +44,42 @@ function Nosotros() {
           comunidad.
         </p>
 
+        <div
+          className={`ini-nos-intro${visible ? " ini-nos-intro--visible" : ""}`}
+        >
+          <div className="ini-nos-texto">
+            <span className="ini-nos-etiqueta">
+              C.E.N. Licenciada Roraima Asansa Escandela
+            </span>
+            <h3>Educación con disciplina, valores y comunidad</h3>
+            <p>
+              Somos una institución educativa de la Parroquia San Francisco que
+              forma estudiantes integrales, con conocimientos, disciplina y
+              valores.
+            </p>
+            <p>
+              Trabajamos junto a representantes, docentes y comunidad para que
+              cada estudiante crezca con respeto, responsabilidad y sentido de
+              pertenencia.
+            </p>
+            <ul className="ini-nos-puntos">
+              {PUNTOS.map((punto) => (
+                <li key={punto}>
+                  <Icon icon={ICONOS.check} width="18" height="18" />
+                  {punto}
+                </li>
+              ))}
+            </ul>
+            <a href="#galeria" className="ini-boton-borde">
+              Conoce nuestro plantel
+            </a>
+          </div>
+
+          <figure className="ini-nos-foto">
+            <img src="/img/aula.jpeg" alt="Aula del plantel" loading="lazy" />
+          </figure>
+        </div>
+
         <div className="ini-tarjetas">
           {TARJETAS.map((t, i) => (
             <article
@@ -66,7 +87,7 @@ function Nosotros() {
               className={`ini-tarjeta ini-tarjeta--${t.clave}${
                 visible ? " ini-tarjeta--visible" : ""
               }`}
-              style={{ transitionDelay: `${i * 120}ms` }}
+              style={{ transitionDelay: `${300 + i * 120}ms` }}
             >
               <span className="ini-tarjeta-icono" aria-hidden="true">
                 <Icon icon={t.icono} width="28" height="28" />
