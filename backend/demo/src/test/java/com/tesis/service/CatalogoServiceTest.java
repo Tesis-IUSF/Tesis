@@ -155,6 +155,21 @@ class CatalogoServiceTest {
     }
 
     @Test
+    void crearTurnoRechazaMinutosFueraDelRangoPermitido() {
+        Turno turno = new Turno();
+        turno.setNombre("Turno válido");
+        turno.setHoraEntrada(java.time.LocalTime.of(7, 0));
+        turno.setHoraSalida(java.time.LocalTime.of(12, 0));
+        turno.setToleranciaMin((short) 181);
+
+        org.springframework.web.server.ResponseStatusException error = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> catalogoService.crearTurno(turno));
+
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, error.getStatusCode());
+    }
+
+    @Test
     void actualizarTurnoConservaCamposOpcionalesOmitidos() {
         Turno actual = new Turno();
         actual.setId(4);

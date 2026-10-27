@@ -151,10 +151,14 @@ public class CatalogoService {
 
     public Turno crearTurno(Turno turno) {
         validarTexto(turno != null ? turno.getNombre() : null, "nombre del turno");
+        validarNombreTurno(turno.getNombre());
         if (turno.getHoraEntrada() == null || turno.getHoraSalida() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                 "Debe indicar las horas de entrada y salida del turno");
         }
+        validarMinutosTurno(turno.getToleranciaMin(), "tolerancia");
+        validarMinutosTurno(turno.getMinutosSalidaAnticipadaPermitidos(),
+                "minutos de salida anticipada");
         turno.setNombre(turno.getNombre().trim());
         turno.setToleranciaMin(turno.getToleranciaMin() == null ? (short) 0 : turno.getToleranciaMin());
         turno.setMinutosSalidaAnticipadaPermitidos(turno.getMinutosSalidaAnticipadaPermitidos() == null
@@ -175,6 +179,10 @@ public class CatalogoService {
     public Turno actualizarTurno(Integer id, Turno turno) {
         Turno actual = buscarTurno(id);
         validarTexto(turno != null ? turno.getNombre() : null, "nombre del turno");
+        validarNombreTurno(turno.getNombre());
+        validarMinutosTurno(turno.getToleranciaMin(), "tolerancia");
+        validarMinutosTurno(turno.getMinutosSalidaAnticipadaPermitidos(),
+                "minutos de salida anticipada");
         actual.setNombre(turno.getNombre().trim());
         if (turno.getHoraEntrada() != null) actual.setHoraEntrada(turno.getHoraEntrada());
         if (turno.getHoraSalida() != null) actual.setHoraSalida(turno.getHoraSalida());
@@ -194,6 +202,20 @@ public class CatalogoService {
         if (turno.getDomingo() != null) actual.setDomingo(turno.getDomingo());
         if (turno.getActivo() != null) actual.setActivo(turno.getActivo());
         return turnoRepository.save(actual);
+    }
+
+    private void validarNombreTurno(String nombre) {
+        if (nombre.trim().length() > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El nombre del turno no puede superar 100 caracteres");
+        }
+    }
+
+    private void validarMinutosTurno(Short minutos, String campo) {
+        if (minutos != null && (minutos < 0 || minutos > 180)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Los " + campo + " deben estar entre 0 y 180 minutos");
+        }
     }
 
     public void eliminarTurno(Integer id) {
