@@ -408,6 +408,14 @@ class SecurityConfigTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void permiteCargaDeFotosParaRolCoordinador() throws Exception {
+        mockMvc.perform(multipart("/api/fotos")
+                        .file(new MockMultipartFile("archivo", "foto.png", "image/png", new byte[]{1}))
+                        .with(user("coordinador").roles("COORDINADOR")))
+                .andExpect(status().isBadRequest());
+    }
+
         @Test
         void rechazaEmisionDeCarnetParaRolEscaner() throws Exception {
             mockMvc.perform(post("/api/empleados/1/carnet")
