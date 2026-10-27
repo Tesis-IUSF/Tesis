@@ -98,7 +98,7 @@ class SecurityConfigTest {
     }
 
     @Test
-    void permiteEscriturasDeDepartamentosYCargosSoloAlDirector() throws Exception {
+    void permiteGestionarDepartamentosYCargosSoloAlAdministrador() throws Exception {
         for (String recurso : new String[]{
                 "/api/catalogos/departamentos", "/api/catalogos/cargos"
         }) {
@@ -106,13 +106,20 @@ class SecurityConfigTest {
                             .with(user("director").roles("DIRECTOR"))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{}"))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isForbidden());
 
             mockMvc.perform(post(recurso)
-                            .with(user("admin").roles("ADMINISTRADOR"))
+                            .with(user("administrador").roles("ADMINISTRADOR"))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{}"))
+                    .andExpect(status().isBadRequest());
+
+            mockMvc.perform(get(recurso)
+                            .with(user("director").roles("DIRECTOR")))
                     .andExpect(status().isForbidden());
+            mockMvc.perform(get(recurso)
+                            .with(user("administrador").roles("ADMINISTRADOR")))
+                    .andExpect(status().isOk());
         }
     }
 
@@ -125,7 +132,9 @@ class SecurityConfigTest {
         }) {
             mockMvc.perform(get(recurso)
                             .with(user("coordinador").roles("COORDINADOR")))
-                    .andExpect(status().isOk());
+                    .andExpect(recurso.endsWith("turnos")
+                            ? status().isOk()
+                            : status().isForbidden());
             mockMvc.perform(post(recurso)
                             .with(user("coordinador").roles("COORDINADOR"))
                             .contentType(MediaType.APPLICATION_JSON)
@@ -150,7 +159,7 @@ class SecurityConfigTest {
     }
 
     @Test
-    void restringeLaGestionDeGradosYSeccionesAAdministradorYDirector() throws Exception {
+    void restringeLaGestionDeGradosYSeccionesAlAdministrador() throws Exception {
         for (String recurso : new String[]{"/api/catalogos/grados", "/api/catalogos/secciones"}) {
             mockMvc.perform(get(recurso)
                             .with(user("administrativo").roles("ADMINISTRATIVO")))
@@ -160,7 +169,7 @@ class SecurityConfigTest {
                             .with(user("director").roles("DIRECTOR"))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{}"))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isForbidden());
             mockMvc.perform(post(recurso)
                             .with(user("admin").roles("ADMINISTRADOR"))
                             .contentType(MediaType.APPLICATION_JSON)
@@ -192,6 +201,15 @@ class SecurityConfigTest {
                 .andExpect(status().isOk());
         mockMvc.perform(get("/api/catalogos/docentes")
                         .with(user("coordinador").roles("COORDINADOR")))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/catalogos/requisitos-matricula")
+                        .with(user("director").roles("DIRECTOR")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/catalogos/requisitos-matricula")
+                        .with(user("director").roles("DIRECTOR"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -320,13 +338,17 @@ class SecurityConfigTest {
                     .andExpect(status().isOk());
         }
 
-        for (String rol : new String[]{
-                "ADMINISTRADOR", "COORDINADOR", "ADMINISTRATIVO"
-        }) {
+        for (String rol : new String[]{"COORDINADOR", "ADMINISTRATIVO"}) {
             mockMvc.perform(post("/api/matriculas/999999/checklist")
                             .with(user("usuario").roles(rol)))
                     .andExpect(status().isNotFound());
         }
+        mockMvc.perform(get("/api/matriculas/preinscripciones")
+                        .with(user("admin").roles("ADMINISTRADOR")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/matriculas/999999/checklist")
+                        .with(user("admin").roles("ADMINISTRADOR")))
+                .andExpect(status().isForbidden());
         mockMvc.perform(post("/api/matriculas/1/checklist")
                         .with(user("director").roles("DIRECTOR")))
                 .andExpect(status().isForbidden());
@@ -348,8 +370,8 @@ class SecurityConfigTest {
     }
 
     @Test
-    void permiteGestionarCalendarioEscolarSoloAAdministradorYDirector() throws Exception {
-        for (String rol : new String[]{"ADMINISTRADOR", "DIRECTOR"}) {
+    void permiteGestionarCalendarioEscolarSoloAlAdministrador() throws Exception {
+        for (String rol : new String[]{"ADMINISTRADOR"}) {
             mockMvc.perform(post("/api/matriculas/gestion/anios")
                             .with(user("usuario").roles(rol))
                             .contentType(MediaType.APPLICATION_JSON)
@@ -393,8 +415,20 @@ class SecurityConfigTest {
                         .content("{}"))
                 .andExpect(status().isForbidden());
 
+        mockMvc.perform(post("/api/matriculas/gestion/anios")
+                        .with(user("director").roles("DIRECTOR"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+
         mockMvc.perform(post("/api/matriculas/gestion/anios/2027/periodos")
                         .with(user("administrativo").roles("ADMINISTRATIVO"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(patch("/api/matriculas/gestion/egresos/999999/resolver")
+                        .with(user("director").roles("DIRECTOR"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isForbidden());

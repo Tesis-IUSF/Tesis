@@ -40,3 +40,43 @@ h4 {
   vertical-align: -0.15em;
   margin-right: 0.35rem;
 }
+
+.btn-estado {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.8rem;
+  padding: 0.3rem 0.75rem;
+  margin-right: 0.4rem;
+  border: 0;
+  border-radius: 6px;
+  font: 600 0.8rem var(--font-texto);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.btn-estado--desactivar {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.btn-estado--desactivar:hover:not(:disabled) {
+  background: #fed7aa;
+}
+
+.btn-estado--activar {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.btn-estado--activar:hover:not(:disabled) {
+  background: #a7f3d0;
+}
+
+.btn-estado:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
