@@ -46,18 +46,8 @@ function Topbar({ onToggleMenu }) {
         </Link>
       </div>
 
-      {esEscaner && (
-        <nav className="topbar-nav">
-          <Link to="/asistencia/hoy" className="btn-back">
-            Asistencia de hoy
-          </Link>
-          <Link to="/asistencia/historico" className="btn-back">
-            Histórico
-          </Link>
-        </nav>
-      )}
-
-      {/* Con menú lateral, el usuario y "Cerrar sesión" van al final del menú */}
+      {/* Con menú lateral, el usuario y "Cerrar sesión" van al final del menú.
+          El Escáner no tiene menú lateral, así que conserva el botón aquí. */}
       <div className="topbar-right">
         {!onToggleMenu && (
           <>
