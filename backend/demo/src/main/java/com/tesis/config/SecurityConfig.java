@@ -33,7 +33,7 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.GET, "/api/asistencias/**")
                 .hasRole("DIRECTOR")
             .requestMatchers(HttpMethod.POST, "/api/fotos")
-                .hasAnyRole("ADMINISTRADOR", "DIRECTOR", "ADMINISTRATIVO")
+                .hasAnyRole("ADMINISTRADOR", "DIRECTOR", "COORDINADOR", "ADMINISTRATIVO")
             .requestMatchers("/api/director/estadisticas", "/api/director/estadisticas/**")
                 .hasRole("DIRECTOR")
             .requestMatchers(HttpMethod.POST, "/api/asistencias/empleado/*/salida")
