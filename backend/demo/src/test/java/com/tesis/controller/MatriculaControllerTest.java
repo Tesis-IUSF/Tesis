@@ -65,7 +65,7 @@ class MatriculaControllerTest {
     @Test
     void listaPreinscripcionesYMatriculasEnProceso() throws Exception {
         mockMvc.perform(get("/api/matriculas/preinscripciones")
-                        .with(user("admin").roles("ADMINISTRADOR")))
+                        .with(user("coordinador").roles("COORDINADOR")))
                 .andExpect(status().isOk())
                         .andExpect(jsonPath("$.content").isArray())
                         .andExpect(jsonPath("$.content.length()").value(0))
@@ -73,14 +73,14 @@ class MatriculaControllerTest {
                         .andExpect(jsonPath("$.size").value(25));
 
         mockMvc.perform(get("/api/matriculas/en-proceso")
-                        .with(user("admin").roles("ADMINISTRADOR")))
+                        .with(user("coordinador").roles("COORDINADOR")))
                 .andExpect(status().isOk())
                         .andExpect(jsonPath("$.content").isArray())
                         .andExpect(jsonPath("$.content.length()").value(0))
                         .andExpect(jsonPath("$.totalElements").value(0));
 
         mockMvc.perform(get("/api/matriculas/listado")
-                        .with(user("admin").roles("ADMINISTRADOR")))
+                        .with(user("coordinador").roles("COORDINADOR")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isEmpty())
                 .andExpect(jsonPath("$.totalElements").value(0));
@@ -129,7 +129,7 @@ class MatriculaControllerTest {
     @Test
     void creaAnioEscolarEnPreparacionYExponeSuListaDePeriodos() throws Exception {
         mockMvc.perform(post("/api/matriculas/gestion/anios")
-                        .with(user("director").roles("DIRECTOR"))
+                        .with(user("admin").roles("ADMINISTRADOR"))
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -214,7 +214,7 @@ class MatriculaControllerTest {
                 mockMvc.perform(get("/api/matriculas/en-proceso")
                                                 .param("page", "2")
                                                 .param("size", "500")
-                                                .with(user("admin").roles("ADMINISTRADOR")))
+                                                .with(user("coordinador").roles("COORDINADOR")))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.page").value(2))
                                 .andExpect(jsonPath("$.size").value(100));
@@ -224,7 +224,7 @@ class MatriculaControllerTest {
         void rechazaParametrosDePaginaInvalidos() throws Exception {
                 mockMvc.perform(get("/api/matriculas/en-proceso")
                                                 .param("page", "-1")
-                                                .with(user("admin").roles("ADMINISTRADOR")))
+                                                .with(user("coordinador").roles("COORDINADOR")))
                                 .andExpect(status().isBadRequest());
         }
 
@@ -264,7 +264,7 @@ class MatriculaControllerTest {
         Integer matriculaId = fixture.matriculaId();
 
         mockMvc.perform(get("/api/matriculas/{id}/preinscripcion", matriculaId)
-                        .with(user("admin").roles("ADMINISTRADOR")))
+                        .with(user("coordinador").roles("COORDINADOR")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estudiante.cedula").value("V-18456789"))
                 .andExpect(jsonPath("$.estudiante.tieneCedulaIdentidad").value(true))
@@ -277,7 +277,7 @@ class MatriculaControllerTest {
                 .andExpect(jsonPath("$.recibeComunicados").value(false));
 
         mockMvc.perform(get("/api/matriculas/{id}/expediente", matriculaId)
-                        .with(user("admin").roles("ADMINISTRADOR")))
+                        .with(user("coordinador").roles("COORDINADOR")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.matriculaId").value(matriculaId))
                 .andExpect(jsonPath("$.estudiante.cedula").value("V-18456789"))
@@ -289,7 +289,7 @@ class MatriculaControllerTest {
                 .andExpect(jsonPath("$.representantes[0].relacionPrincipal").value(true));
 
         mockMvc.perform(get("/api/matriculas/{id}/historial-academico", matriculaId)
-                        .with(user("admin").roles("ADMINISTRADOR")))
+                        .with(user("coordinador").roles("COORDINADOR")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].matriculaId").value(matriculaId))
@@ -297,7 +297,7 @@ class MatriculaControllerTest {
                 .andExpect(jsonPath("$[0].gradoNombre").value("1° grado"));
 
         mockMvc.perform(put("/api/matriculas/{id}/preinscripcion", matriculaId)
-                        .with(user("admin").roles("ADMINISTRADOR"))
+                        .with(user("coordinador").roles("COORDINADOR"))
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .content(String.format("""
                                 {
@@ -331,7 +331,7 @@ class MatriculaControllerTest {
                 .andExpect(jsonPath("$.estudianteNombreCompleto").value("Nombre corregido Estudiante"));
 
         mockMvc.perform(get("/api/matriculas/preinscripciones")
-                        .with(user("admin").roles("ADMINISTRADOR")))
+                        .with(user("coordinador").roles("COORDINADOR")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].estudianteCedula").value("V-18456789"));
 
@@ -341,14 +341,14 @@ class MatriculaControllerTest {
                         .param("anioEscolar", "2026")
                         .param("gradoId", fixture.gradoId().toString())
                         .param("seccionId", fixture.seccionId().toString())
-                        .with(user("admin").roles("ADMINISTRADOR")))
+                        .with(user("coordinador").roles("COORDINADOR")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(1))
                 .andExpect(jsonPath("$.content[0].estudianteCedula").value("V-18456789"));
 
         mockMvc.perform(get("/api/matriculas/{id}/retiros/representantes-autorizados",
                         fixture.matriculaId())
-                        .with(user("admin").roles("ADMINISTRADOR")))
+                        .with(user("coordinador").roles("COORDINADOR")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.length()").value(1))
@@ -356,7 +356,7 @@ class MatriculaControllerTest {
 
         mockMvc.perform(get("/api/matriculas/listado")
                         .param("estado", "no-es-valido")
-                        .with(user("admin").roles("ADMINISTRADOR")))
+                        .with(user("coordinador").roles("COORDINADOR")))
                 .andExpect(status().isBadRequest());
     }
 
@@ -394,7 +394,7 @@ class MatriculaControllerTest {
                         .param("seccionId", posible.seccionId().toString())
                         .param("page", "0")
                         .param("size", "10")
-                        .with(user("admin").roles("ADMINISTRADOR")))
+                        .with(user("coordinador").roles("COORDINADOR")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.content[0].estudianteNombreCompleto")

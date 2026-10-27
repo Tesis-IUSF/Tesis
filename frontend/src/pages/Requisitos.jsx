@@ -385,7 +385,7 @@ function Requisitos() {
                         </button>
                         <button
                           type="button"
-                          className="btn-reactivar"
+                          className={`btn-estado ${r.activo ? "btn-estado--desactivar" : "btn-estado--activar"}`}
                           disabled={ocupado}
                           onClick={() => alternarActivo(r)}
                         >

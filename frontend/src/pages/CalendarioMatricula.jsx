@@ -316,7 +316,7 @@ function CalendarioMatricula() {
                   {!anio.activo && (
                     <button
                       type="button"
-                      className="btn-reactivar"
+                      className="btn-estado btn-estado--activar"
                       disabled={accionId === `anio-${anio.anio}`}
                       onClick={() => setAnioAActivar(anio)}
                     >
@@ -378,7 +378,7 @@ function CalendarioMatricula() {
                               </button>
                               <button
                                 type="button"
-                                className={periodo.activo ? "btn-delete" : "btn-reactivar"}
+                                className={`btn-estado ${periodo.activo ? "btn-estado--desactivar" : "btn-estado--activar"}`}
                                 disabled={ocupado}
                                 onClick={() => alternarPeriodo(periodo)}
                               >

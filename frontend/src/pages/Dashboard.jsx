@@ -50,18 +50,6 @@ const MODULOS = [
     texto: "Publicar comunicados y avisos para la comunidad.",
     enlace: "Ir a Comunicados",
   },
-  {
-    ruta: "/departamentos",
-    titulo: "Departamentos",
-    texto: "Administrar las áreas institucionales.",
-    enlace: "Ir a Departamentos",
-  },
-  {
-    ruta: "/cargos",
-    titulo: "Cargos",
-    texto: "Crear, editar y eliminar cargos vinculados a departamentos.",
-    enlace: "Ir a Cargos",
-  },
 ];
 
 function Dashboard() {
@@ -70,7 +58,6 @@ function Dashboard() {
   const [totales, setTotales] = useState({
     personal: "—",
     asistencias: "—",
-    deptos: "—",
   });
 
   const [semana, setSemana] = useState({
@@ -89,13 +76,11 @@ function Dashboard() {
     Promise.allSettled([
       api.get("/empleados", { params: { page: 0, size: 1 } }),
       api.get("/asistencias/hoy"),
-      api.get("/catalogos/departamentos", { params: { page: 0, size: 1 } }),
-    ]).then(([empleados, hoy, departamentos]) => {
+    ]).then(([empleados, hoy]) => {
       if (!activo) return;
       setTotales({
         personal: contar(empleados),
         asistencias: contar(hoy),
-        deptos: contar(departamentos),
       });
     });
 
@@ -137,7 +122,7 @@ function Dashboard() {
           </p>
         </div>
 
-        <div className="stats-row">
+        <div className="stats-row stats-row--resumen">
           <div className="stat-card stat-card--azul">
             <div className="stat-value">{totales.personal}</div>
             <div className="stat-label">Personal registrado</div>
@@ -145,10 +130,6 @@ function Dashboard() {
           <div className="stat-card stat-card--verde">
             <div className="stat-value">{totales.asistencias}</div>
             <div className="stat-label">Registros de hoy</div>
-          </div>
-          <div className="stat-card stat-card--dorado">
-            <div className="stat-value">{totales.deptos}</div>
-            <div className="stat-label">Departamentos</div>
           </div>
         </div>
 

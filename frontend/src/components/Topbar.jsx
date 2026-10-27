@@ -3,6 +3,7 @@ import { Icon } from "@iconify/react";
 import { getNombre, getRol, logout } from "../utils/auth";
 import { ROLES } from "../constants/roles";
 import { ICONOS } from "../utils/iconos";
+import { getFirstSidebarRoute } from "../utils/sidebarNavigation";
 import "./Topbar.css";
 
 function Topbar({ onToggleMenu }) {
@@ -10,6 +11,7 @@ function Topbar({ onToggleMenu }) {
   const rol = getRol();
   const nombre = getNombre();
   const esEscaner = rol === ROLES.ESCANER;
+  const rutaInicial = esEscaner ? "/escaner" : getFirstSidebarRoute(rol);
 
   const handleLogout = () => {
     logout();
@@ -32,7 +34,7 @@ function Topbar({ onToggleMenu }) {
 
         <Link
           className="topbar-brand"
-          to={esEscaner ? "/escaner" : "/dashboard"}
+          to={rutaInicial}
         >
           <img
             src="/img/logo_asansa.jpeg"
