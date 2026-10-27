@@ -15,6 +15,16 @@ function fechaLocal(fecha) {
   return `${anio}-${mes}-${dia}`;
 }
 
+function errorRangoFechas(desde, hasta, hoy) {
+  if (!desde || !hasta) return "Selecciona ambas fechas para consultar.";
+  if (desde > hasta) return "La fecha desde no puede ser posterior a la fecha hasta.";
+  if (hasta > hoy) return "La fecha hasta no puede ser posterior a hoy.";
+  const dias = (Date.parse(`${hasta}T00:00:00Z`) - Date.parse(`${desde}T00:00:00Z`))
+    / (24 * 60 * 60 * 1000);
+  if (dias > 366) return "El rango máximo permitido es de 366 días.";
+  return "";
+}
+
 function rangoHoy() {
   const hoy = new Date();
   const fecha = fechaLocal(hoy);
@@ -106,6 +116,8 @@ function Historico() {
   const [descargando, setDescargando] = useState(false);
   const [error, setError] = useState("");
   const [errorEmpleados, setErrorEmpleados] = useState("");
+  const hoy = fechaLocal(new Date());
+  const validacionRango = errorRangoFechas(desde, hasta, hoy);
 
   useEffect(() => {
     let vigente = true;
@@ -146,6 +158,14 @@ function Historico() {
   }), [desde, hasta, empleadoId, departamentoId, cargoId, turnoId, estado]);
 
   const consultar = useCallback(async () => {
+    const errorFecha = errorRangoFechas(desde, hasta, fechaLocal(new Date()));
+    if (errorFecha) {
+      setError(errorFecha);
+      setRegistros([]);
+      setInasistencias(0);
+      setCargando(false);
+      return;
+    }
     setCargando(true);
     setError("");
     try {
@@ -195,7 +215,7 @@ function Historico() {
     } finally {
       setCargando(false);
     }
-  }, [parametrosFiltro]);
+  }, [parametrosFiltro, desde, hasta]);
 
   useEffect(() => {
     const timer = window.setTimeout(consultar, 0);
@@ -257,7 +277,7 @@ function Historico() {
               type="button"
               className="btn-secondary"
               onClick={descargarReporte}
-              disabled={descargando || cargando}
+              disabled={descargando || cargando || Boolean(validacionRango)}
             >
               <Icon icon={ICONOS.descargar} className="icono-inline" />{" "}
               {descargando ? "Generando reporte..." : "Descargar reporte"}
@@ -289,6 +309,7 @@ function Historico() {
               <input
                 type="date"
                 value={desde}
+                max={hoy}
                 onChange={(e) => setDesde(e.target.value)}
                 required
               />
@@ -298,6 +319,8 @@ function Historico() {
               <input
                 type="date"
                 value={hasta}
+                min={desde || undefined}
+                max={hoy}
                 onChange={(e) => setHasta(e.target.value)}
                 required
               />
