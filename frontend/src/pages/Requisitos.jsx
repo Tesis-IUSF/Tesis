@@ -1,3 +1,4 @@
+import AnimatedSelect from "../components/AnimatedSelect";
 // src/pages/Requisitos.jsx
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Icon } from "@iconify/react";
@@ -279,11 +280,11 @@ function Requisitos() {
         </label>
         <label>
           Estado
-          <select value={filtro} onChange={(e) => setFiltro(e.target.value)}>
+          <AnimatedSelect value={filtro} onChange={(e) => setFiltro(e.target.value)}>
             <option value="todos">Todos</option>
             <option value="activos">Activos</option>
             <option value="inactivos">Inactivos</option>
-          </select>
+          </AnimatedSelect>
         </label>
       </div>
 
@@ -441,7 +442,7 @@ function Requisitos() {
 
             <label>
               Nivel educativo
-              <select
+              <AnimatedSelect
                 value={form.nivelEducativoId}
                 onChange={(e) => cambiar("nivelEducativoId", e.target.value)}
               >
@@ -451,7 +452,7 @@ function Requisitos() {
                     {n.nombre}
                   </option>
                 ))}
-              </select>
+              </AnimatedSelect>
             </label>
 
             <fieldset className="req-tipos">

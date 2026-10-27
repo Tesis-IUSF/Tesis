@@ -1,3 +1,4 @@
+import AnimatedSelect from "../components/AnimatedSelect";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import api from "../utils/api";
@@ -268,7 +269,7 @@ function Secciones() {
         <div className="filters-bar">
           <label>
             Grado
-            <select
+            <AnimatedSelect
               value={filtroGrado}
               onChange={(event) => setFiltroGrado(event.target.value)}
             >
@@ -278,11 +279,11 @@ function Secciones() {
                   {grado.nivelEducativoNombre} · {nombreGrado(grado)}
                 </option>
               ))}
-            </select>
+            </AnimatedSelect>
           </label>
           <label>
             Año escolar
-            <select
+            <AnimatedSelect
               value={filtroAnio}
               onChange={(event) => setFiltroAnio(event.target.value)}
             >
@@ -292,7 +293,7 @@ function Secciones() {
                   {anio.nombre} {anio.activo ? "(vigente)" : ""}
                 </option>
               ))}
-            </select>
+            </AnimatedSelect>
           </label>
         </div>
 
@@ -395,7 +396,7 @@ function Secciones() {
         >
           <label>
             Grado *
-            <select
+            <AnimatedSelect
               value={form.gradoId}
               onChange={(event) => actualizarCampo("gradoId", event.target.value)}
             >
@@ -406,7 +407,7 @@ function Secciones() {
                   {!grado.activo ? " (inactivo)" : ""}
                 </option>
               ))}
-            </select>
+            </AnimatedSelect>
             {errores.gradoId && (
               <span className="campo-error">{errores.gradoId}</span>
             )}
@@ -446,7 +447,7 @@ function Secciones() {
             </label>
             <label>
               Año escolar *
-              <select
+              <AnimatedSelect
                 value={form.anioEscolar}
                 onChange={(event) =>
                   actualizarCampo("anioEscolar", event.target.value)
@@ -458,14 +459,14 @@ function Secciones() {
                     {anio.nombre} {anio.activo ? "(vigente)" : ""}
                   </option>
                 ))}
-              </select>
+              </AnimatedSelect>
               {errores.anioEscolar && (
                 <span className="campo-error">{errores.anioEscolar}</span>
               )}
             </label>
             <label>
               Docente principal
-              <select
+              <AnimatedSelect
                 value={form.docentePrincipalId}
                 onChange={(event) =>
                   actualizarCampo("docentePrincipalId", event.target.value)
@@ -487,11 +488,11 @@ function Secciones() {
                     {docente.apellido}, {docente.nombre}
                   </option>
                 ))}
-              </select>
+              </AnimatedSelect>
             </label>
             <label>
               Turno
-              <select
+              <AnimatedSelect
                 value={form.turnoId}
                 onChange={(event) =>
                   actualizarCampo("turnoId", event.target.value)
@@ -504,7 +505,7 @@ function Secciones() {
                     {!turno.activo ? " (inactivo)" : ""}
                   </option>
                 ))}
-              </select>
+              </AnimatedSelect>
             </label>
           </div>
           <label className="checkbox-label">

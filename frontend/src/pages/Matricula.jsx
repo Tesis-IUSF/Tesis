@@ -1,3 +1,4 @@
+import AnimatedSelect from "../components/AnimatedSelect";
 // src/pages/Matricula.jsx
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
@@ -819,7 +820,7 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
           </p>
           <label>
             Solicitante
-            <select
+            <AnimatedSelect
               value={tipoSolicitante}
               onChange={(event) => setTipoSolicitante(event.target.value)}
             >
@@ -829,12 +830,12 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
                 </option>
               )}
               <option value="externo">Solicitante externo</option>
-            </select>
+            </AnimatedSelect>
           </label>
           {tipoSolicitante === "representante" ? (
             <label>
               Representante autorizado
-              <select
+              <AnimatedSelect
                 value={representanteRetiroId}
                 onChange={(event) =>
                   setRepresentanteRetiroId(event.target.value)
@@ -846,7 +847,7 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
                     {representante.nombreCompleto} · {representante.cedula}
                   </option>
                 ))}
-              </select>
+              </AnimatedSelect>
             </label>
           ) : (
             <>
@@ -945,7 +946,7 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
               </p>
               <label>
                 Año escolar
-                <select
+                <AnimatedSelect
                   value={filtrosNomina.anioEscolar}
                   onChange={(event) =>
                     cambiarFiltroNomina("anioEscolar", event.target.value)
@@ -959,7 +960,7 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
                       {anio.activo ? " · Activo" : ""}
                     </option>
                   ))}
-                </select>
+                </AnimatedSelect>
               </label>
               <fieldset className="mat-nomina-opciones">
                 <legend>Estados de matrícula</legend>
@@ -979,7 +980,7 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
               <div className="mat-nomina-filtros-academicos">
                 <label>
                   Nivel educativo
-                  <select
+                  <AnimatedSelect
                     value={filtrosNomina.nivelId}
                     onChange={(event) =>
                       cambiarFiltroNomina("nivelId", event.target.value)
@@ -991,11 +992,11 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
                         {nivel.nombre}
                       </option>
                     ))}
-                  </select>
+                  </AnimatedSelect>
                 </label>
                 <label>
                   Grado
-                  <select
+                  <AnimatedSelect
                     value={filtrosNomina.gradoId}
                     onChange={(event) =>
                       cambiarFiltroNomina("gradoId", event.target.value)
@@ -1009,11 +1010,11 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
                           `${grado.numeroGrado}° grado`}
                       </option>
                     ))}
-                  </select>
+                  </AnimatedSelect>
                 </label>
                 <label>
                   Sección
-                  <select
+                  <AnimatedSelect
                     value={filtrosNomina.seccionId}
                     onChange={(event) =>
                       cambiarFiltroNomina("seccionId", event.target.value)
@@ -1026,7 +1027,7 @@ function Matricula({ soloConsulta = false, permitirRetiros = false }) {
                         {seccion.gradoNombre} · Sección {seccion.letraSeccion}
                       </option>
                     ))}
-                  </select>
+                  </AnimatedSelect>
                 </label>
               </div>
               <fieldset className="mat-nomina-opciones">

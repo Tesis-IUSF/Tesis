@@ -6,6 +6,12 @@ import { ROLES } from "../constants/roles";
 import { ICONOS } from "../utils/iconos";
 import "./PublicLayout.css";
 
+function comportamientoDesplazamiento() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : "smooth";
+}
+
 function PublicLayout() {
   const { pathname, hash } = useLocation();
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -27,7 +33,7 @@ function PublicLayout() {
     const temporizador = setTimeout(() => {
       document
         .getElementById(hash.slice(1))
-        ?.scrollIntoView({ behavior: "smooth" });
+        ?.scrollIntoView({ behavior: comportamientoDesplazamiento() });
     }, 50);
     return () => clearTimeout(temporizador);
   }, [pathname, hash]);
@@ -39,7 +45,9 @@ function PublicLayout() {
     setMenuAbierto(false);
     if (pathname === "/") {
       e.preventDefault();
-      document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+      document
+        .getElementById(id)
+        ?.scrollIntoView({ behavior: comportamientoDesplazamiento() });
     }
   };
 
