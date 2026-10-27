@@ -27,8 +27,10 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -111,34 +113,43 @@ public class AsistenciaService {
         }
 
         LocalDateTime ahora = LocalDateTime.now(clock);
-        LocalDate fecha = ahora.toLocalDate();
-        AsignacionTurno asignacion = asignacionTurnoRepository.buscarVigentes(empleadoId, fecha)
+        LocalDate fechaHoy = ahora.toLocalDate();
+        LocalTime horaActual = ahora.toLocalTime().truncatedTo(ChronoUnit.SECONDS);
+        AsignacionTurno asignacionNocturnaAnterior = buscarTurnoNocturnoAnterior(
+                empleadoId, fechaHoy, horaActual);
+        LocalDate fecha = asignacionNocturnaAnterior == null ? fechaHoy : fechaHoy.minusDays(1);
+        AsignacionTurno asignacion = Optional.ofNullable(asignacionNocturnaAnterior)
+                .orElseGet(() -> asignacionTurnoRepository.buscarVigentes(empleadoId, fechaHoy)
                 .stream().findFirst().orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.CONFLICT, "El empleado no tiene un turno asignado para hoy"));
+                        HttpStatus.CONFLICT, "El empleado no tiene un turno asignado para hoy")));
         Turno turno = asignacion.getTurno();
-        if (!turnoAplicaHoy(turno, fecha.getDayOfWeek())) {
+        if (asignacionNocturnaAnterior == null && !turnoAplicaHoy(turno, fecha.getDayOfWeek())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "El turno asignado no aplica para el día de hoy");
         }
 
         Asistencia asistencia = asistenciaRepository.findByPersonal_IdAndFecha(empleadoId, fecha)
                 .orElseGet(() -> nuevaAsistencia(empleado, turno, fecha));
-        LocalTime horaActual = ahora.toLocalTime().truncatedTo(ChronoUnit.SECONDS);
         String tipoRegistro;
 
         if (asistencia.getHoraEntrada() == null) {
-            if (horaActual.isAfter(turno.getHoraSalida())) {
+            if (asignacionNocturnaAnterior == null
+                    && esTurnoNocturno(turno) && horaActual.isBefore(turno.getHoraEntrada())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "No se puede registrar entrada fuera del horario del turno");
+            }
+            if (!esTurnoNocturno(turno) && horaActual.isAfter(turno.getHoraSalida())) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
                         "No se puede registrar entrada después de finalizar el turno");
             }
-            registrarEntrada(asistencia, turno, horaActual);
+            registrarEntrada(asistencia, turno, ahora);
             tipoRegistro = "entrada";
         } else if (asistencia.getHoraSalida() == null) {
-            registrarSalidaValidada(asistencia, horaActual);
+            registrarSalidaValidada(asistencia, ahora);
             tipoRegistro = "salida";
         } else {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "La asistencia de hoy ya tiene entrada y salida registradas");
+                    "La asistencia ya tiene entrada y salida registradas");
         }
 
         return toResponse(asistenciaRepository.save(asistencia), tipoRegistro);
@@ -148,10 +159,18 @@ public class AsistenciaService {
         empleadoRepository.findByIdForUpdate(empleadoId).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.NOT_FOUND, "Empleado no encontrado"));
         LocalDateTime ahora = LocalDateTime.now(clock);
-        Asistencia asistencia = asistenciaRepository.findByPersonal_IdAndFecha(
-                        empleadoId, ahora.toLocalDate())
+        LocalDate fechaHoy = ahora.toLocalDate();
+        Asistencia asistenciaNocturnaAbierta = asistenciaRepository.findByPersonal_IdAndFecha(
+                        empleadoId, fechaHoy.minusDays(1))
+                .filter(registro -> registro.getHoraEntrada() != null
+                        && registro.getHoraSalida() == null
+                        && esTurnoNocturno(registro.getTurno())
+                        && turnoAplicaHoy(registro.getTurno(), registro.getFecha().getDayOfWeek()))
+                .orElse(null);
+        Asistencia asistencia = Optional.ofNullable(asistenciaNocturnaAbierta)
+                .orElseGet(() -> asistenciaRepository.findByPersonal_IdAndFecha(empleadoId, fechaHoy)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
-                        "No hay una entrada registrada para hoy"));
+                        "No hay una entrada registrada para hoy")));
         if (asistencia.getHoraEntrada() == null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "No se puede registrar salida sin una entrada previa");
@@ -160,7 +179,7 @@ public class AsistenciaService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "La asistencia de hoy ya tiene salida registrada");
         }
-        registrarSalidaValidada(asistencia, ahora.toLocalTime().truncatedTo(ChronoUnit.SECONDS));
+        registrarSalidaValidada(asistencia, ahora);
         return toResponse(asistenciaRepository.save(asistencia), "salida");
     }
 
@@ -172,9 +191,18 @@ public class AsistenciaService {
     @Transactional(readOnly = true)
     public List<AsistenciaHoyDTO> listarHoy(Integer cargoId, Integer turnoId) {
         LocalDateTime ahora = LocalDateTime.now(clock);
-        return asistenciaRepository.findAllByFechaWithPersonalOrderByHoraEntrada(
-                        ahora.toLocalDate(), cargoId, turnoId)
+        LocalDate hoy = ahora.toLocalDate();
+        List<Asistencia> registrosHoy = asistenciaRepository.findAllByFechaWithPersonalOrderByHoraEntrada(
+                hoy, cargoId, turnoId);
+        List<Asistencia> entradasNocturnasAbiertas = asistenciaRepository
+                .findAllByFechaWithPersonalOrderByHoraEntrada(hoy.minusDays(1), cargoId, turnoId)
                 .stream()
+                .filter(asistencia -> asistencia.getHoraEntrada() != null
+                        && asistencia.getHoraSalida() == null
+                        && esTurnoNocturno(asistencia.getTurno()))
+                .toList();
+        return java.util.stream.Stream.concat(registrosHoy.stream(), entradasNocturnasAbiertas.stream())
+                .sorted(Comparator.comparing(Asistencia::getFecha))
                 .map(asistencia -> toAsistenciaHoy(asistencia, ahora))
                 .toList();
     }
@@ -349,6 +377,10 @@ public class AsistenciaService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "El rango máximo permitido para el reporte es de 366 días");
         }
+        if (hasta.isAfter(LocalDate.now(clock))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "La fecha hasta no puede ser posterior a hoy");
+        }
     }
 
     private String claveAsistencia(Integer empleadoId, LocalDate fecha) {
@@ -361,8 +393,9 @@ public class AsistenciaService {
         String horasTrabajadas = null;
         if (horaEntrada != null) {
             LocalDate fechaEntrada = asistencia.getFecha();
-            if (asistencia.getHoraSalida() == null && horaEntrada.isAfter(ahora.toLocalTime())) {
-                fechaEntrada = fechaEntrada.minusDays(1);
+            Turno turno = asistencia.getTurno();
+            if (esTurnoNocturno(turno) && !horaEntrada.isAfter(turno.getHoraSalida())) {
+                fechaEntrada = fechaEntrada.plusDays(1);
             }
             LocalDateTime inicio = LocalDateTime.of(fechaEntrada, horaEntrada);
             LocalDateTime fin = asistencia.getHoraSalida() == null
@@ -400,46 +433,90 @@ public class AsistenciaService {
         return asistencia;
     }
 
-    private void registrarEntrada(Asistencia asistencia, Turno turno, LocalTime hora) {
+    private void registrarEntrada(Asistencia asistencia, Turno turno, LocalDateTime fechaHora) {
+        LocalTime hora = fechaHora.toLocalTime().truncatedTo(ChronoUnit.SECONDS);
         asistencia.setTurno(turno);
         asistencia.setHoraEntrada(hora);
-        long minutosTardanza = hora.isAfter(turno.getHoraEntrada())
-                ? Duration.between(turno.getHoraEntrada(), hora).toMinutes() : 0;
+        LocalDate fechaEntrada = asistencia.getFecha();
+        if (esTurnoNocturno(turno) && !hora.isAfter(turno.getHoraSalida())) {
+            fechaEntrada = fechaEntrada.plusDays(1);
+        }
+        LocalDateTime inicioTurno = LocalDateTime.of(asistencia.getFecha(), turno.getHoraEntrada());
+        LocalDateTime entradaReal = LocalDateTime.of(fechaEntrada, hora);
+        long minutosTardanza = Math.max(0, Duration.between(inicioTurno, entradaReal).toMinutes());
         asistencia.setMinutosTardanza((short) Math.min(Short.MAX_VALUE, minutosTardanza));
         long tolerancia = turno.getToleranciaMin() == null ? 0 : turno.getToleranciaMin();
         asistencia.setEstado(minutosTardanza > tolerancia ? "tardanza" : "presente");
     }
 
-    private void registrarSalida(Asistencia asistencia, Turno turno, LocalTime hora) {
+    private void registrarSalida(Asistencia asistencia, Turno turno, LocalDateTime fechaHora) {
+        LocalTime hora = fechaHora.toLocalTime().truncatedTo(ChronoUnit.SECONDS);
         asistencia.setHoraSalida(hora);
-        if (hora.isBefore(turno.getHoraSalida())) {
-            long minutosAnticipados = Duration.between(hora, turno.getHoraSalida()).toMinutes();
+        LocalDateTime finTurno = LocalDateTime.of(asistencia.getFecha(), turno.getHoraSalida());
+        if (esTurnoNocturno(turno)) {
+            finTurno = finTurno.plusDays(1);
+        }
+        if (fechaHora.isBefore(finTurno)) {
+            long minutosAnticipados = Duration.between(fechaHora, finTurno).toMinutes();
             long permitidos = turno.getMinutosSalidaAnticipadaPermitidos() == null
                     ? 0 : turno.getMinutosSalidaAnticipadaPermitidos();
             if (minutosAnticipados > permitidos) {
                 asistencia.setEstado("salida_anticipada");
             }
-        } else if (hora.isAfter(turno.getHoraSalida())) {
-            long minutosExtra = ChronoUnit.MINUTES.between(turno.getHoraSalida(), hora);
+        } else if (fechaHora.isAfter(finTurno)) {
+            long minutosExtra = Duration.between(finTurno, fechaHora).toMinutes();
             asistencia.setMinutosExtra((short) Math.min(Short.MAX_VALUE, minutosExtra));
         }
     }
 
-    private void registrarSalidaValidada(Asistencia asistencia, LocalTime hora) {
+    private void registrarSalidaValidada(Asistencia asistencia, LocalDateTime fechaHora) {
         Turno turno = asistencia.getTurno();
-        if (turno != null && hora.isBefore(turno.getHoraEntrada())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "No se puede registrar salida antes del inicio del turno");
+        LocalDateTime fechaHoraEntrada = fechaHoraEntrada(asistencia);
+        if (turno != null) {
+            LocalDateTime inicioTurno = LocalDateTime.of(asistencia.getFecha(), turno.getHoraEntrada());
+            if (fechaHora.isBefore(inicioTurno)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "No se puede registrar salida antes del inicio del turno");
+            }
         }
-        if (!hora.isAfter(asistencia.getHoraEntrada())) {
+        if (!fechaHora.isAfter(fechaHoraEntrada)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "La salida debe registrarse después de la entrada");
         }
         if (turno == null) {
-            asistencia.setHoraSalida(hora);
+            asistencia.setHoraSalida(fechaHora.toLocalTime().truncatedTo(ChronoUnit.SECONDS));
         } else {
-            registrarSalida(asistencia, turno, hora);
+            registrarSalida(asistencia, turno, fechaHora);
         }
+    }
+
+    private LocalDateTime fechaHoraEntrada(Asistencia asistencia) {
+        LocalDate fechaEntrada = asistencia.getFecha();
+        Turno turno = asistencia.getTurno();
+        if (esTurnoNocturno(turno) && !asistencia.getHoraEntrada().isAfter(turno.getHoraSalida())) {
+            fechaEntrada = fechaEntrada.plusDays(1);
+        }
+        return LocalDateTime.of(fechaEntrada, asistencia.getHoraEntrada());
+    }
+
+    private AsignacionTurno buscarTurnoNocturnoAnterior(Integer empleadoId,
+                                                        LocalDate hoy,
+                                                        LocalTime horaActual) {
+        LocalDate ayer = hoy.minusDays(1);
+        return asignacionTurnoRepository.buscarVigentes(empleadoId, ayer).stream()
+                .filter(asignacion -> esTurnoNocturno(asignacion.getTurno()))
+                .filter(asignacion -> turnoAplicaHoy(asignacion.getTurno(), ayer.getDayOfWeek()))
+                .filter(asignacion -> horaActual.isBefore(asignacion.getTurno().getHoraSalida())
+                        || asistenciaRepository.findByPersonal_IdAndFecha(empleadoId, ayer)
+                        .filter(asistencia -> asistencia.getHoraEntrada() != null
+                                && asistencia.getHoraSalida() == null)
+                        .isPresent())
+                .findFirst()
+                .orElse(null);
+    }
+
+    private boolean esTurnoNocturno(Turno turno) {
+        return turno != null && turno.getHoraSalida().isBefore(turno.getHoraEntrada());
     }
 
     private boolean turnoAplicaHoy(Turno turno, DayOfWeek dia) {
