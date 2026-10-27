@@ -5,6 +5,7 @@ import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
 import { ICONOS } from "../utils/iconos";
+import { esUrlHttpHttpsOpcional } from "../utils/validacionesEntrada";
 import ModalFormulario from "../components/ModalFormulario";
 import "./Requisitos.css";
 
@@ -166,6 +167,10 @@ function Requisitos() {
     }
     if (form.documentoTemplateUrl.trim().length > 500) {
       setErrorForm("El enlace de la plantilla admite máximo 500 caracteres.");
+      return;
+    }
+    if (!esUrlHttpHttpsOpcional(form.documentoTemplateUrl)) {
+      setErrorForm("El enlace de la plantilla debe comenzar con http:// o https://.");
       return;
     }
 
@@ -472,10 +477,13 @@ function Requisitos() {
             <label>
               Enlace de la plantilla (opcional)
               <input
+                type="url"
                 value={form.documentoTemplateUrl}
                 onChange={(e) =>
                   cambiar("documentoTemplateUrl", e.target.value)
                 }
+                maxLength={500}
+                pattern="https?://.+"
                 placeholder="https://..."
               />
             </label>

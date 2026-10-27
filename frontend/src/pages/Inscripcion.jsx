@@ -6,6 +6,7 @@ import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
 import { ICONOS } from "../utils/iconos";
+import { esUrlHttpHttpsOpcional } from "../utils/validacionesEntrada";
 import { descargarArchivo, mensajeErrorBlob } from "../utils/descargas";
 import ModalFormulario from "../components/ModalFormulario";
 import FotoCarnet from "../components/FotoCarnet";
@@ -131,6 +132,16 @@ function Inscripcion({ soloConsulta = false }) {
   const pendientesChecklist = items.filter((item) => !item.cumplido).length;
 
   const alGuardarFicha = async ({ fichaModificada }) => {
+    const enlaceChecklistInvalido = (data?.checklist ?? []).some((item) => {
+      const url =
+        checklistBorrador[item.requisitoId]?.archivoUrl ?? item.archivoUrl;
+      return !esUrlHttpHttpsOpcional(url);
+    });
+    if (enlaceChecklistInvalido) {
+      toast.error("Los enlaces de documentos deben comenzar con http:// o https://.");
+      return;
+    }
+
     try {
       const checklistModificado = await guardarChecklistBorrador();
       await cargar({ silencioso: true });
@@ -216,9 +227,10 @@ function Inscripcion({ soloConsulta = false }) {
           Boolean(item.cumplido),
         notas: checklistBorrador[item.requisitoId]?.notas ?? item.notas ?? null,
         archivoUrl:
-          checklistBorrador[item.requisitoId]?.archivoUrl ??
-          item.archivoUrl ??
-          null,
+          (checklistBorrador[item.requisitoId]?.archivoUrl ??
+            item.archivoUrl ??
+            "")
+            .trim() || null,
       }));
 
     if (cambios.length === 0) {
@@ -685,9 +697,11 @@ function Inscripcion({ soloConsulta = false }) {
                           <label>
                             Enlace del documento
                             <input
+                              type="url"
                               value={b.archivoUrl}
                               disabled={!checklistEditable}
                               maxLength={500}
+                              pattern="https?://.+"
                               onChange={(e) =>
                                 setChecklistBorrador((actual) => ({
                                   ...actual,

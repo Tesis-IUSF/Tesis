@@ -234,12 +234,18 @@ public class CatalogoDTO {
     @AllArgsConstructor
     @Builder
     public static class RequisitoMatriculaRequestDTO {
+        @NotBlank
+        @Size(max = 200)
         private String nombre;
         private String descripcion;
+        @NotNull
         private Boolean obligatorio;
         private String aplicaTipoIngreso;
         private Integer nivelEducativoId;
+        @Size(max = 500)
+        @Pattern(regexp = "^(?:(?i:https?)://\\S+)?$")
         private String documentoTemplateUrl;
+        @NotNull
         private Boolean activo;
     }
 

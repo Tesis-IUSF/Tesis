@@ -4,6 +4,7 @@ import com.tesis.dto.BlogDTO;
 import com.tesis.dto.CatalogoDTO;
 import com.tesis.dto.EmpleadoDTO;
 import com.tesis.dto.AuthDTO;
+import com.tesis.dto.InscripcionDTO;
 import com.tesis.dto.PreinscripcionDTO;
 import com.tesis.dto.RetiroDTO;
 import com.tesis.dto.UsuarioDTO;
@@ -153,6 +154,43 @@ class InputValidationTest {
         assertTrue(tieneViolacion(solicitud, "motivo"));
         solicitud.setMotivo("x".repeat(500));
         assertFalse(tieneViolacion(solicitud, "motivo"));
+    }
+
+    @Test
+    void validaCamposYEnlaceHttpDeRequisitosDeMatricula() {
+        CatalogoDTO.RequisitoMatriculaRequestDTO requisito =
+                new CatalogoDTO.RequisitoMatriculaRequestDTO();
+        assertTrue(tieneViolacion(requisito, "nombre"));
+        assertTrue(tieneViolacion(requisito, "obligatorio"));
+        assertTrue(tieneViolacion(requisito, "activo"));
+
+        requisito.setNombre("R".repeat(201));
+        requisito.setObligatorio(true);
+        requisito.setActivo(true);
+        requisito.setDocumentoTemplateUrl("ftp://ejemplo.com/plantilla.pdf");
+        assertTrue(tieneViolacion(requisito, "nombre"));
+        assertTrue(tieneViolacion(requisito, "documentoTemplateUrl"));
+
+        requisito.setNombre("Partida de nacimiento");
+        requisito.setDocumentoTemplateUrl("https://ejemplo.com/plantilla.pdf");
+        assertFalse(tieneViolacion(requisito, "nombre"));
+        assertFalse(tieneViolacion(requisito, "obligatorio"));
+        assertFalse(tieneViolacion(requisito, "activo"));
+        assertFalse(tieneViolacion(requisito, "documentoTemplateUrl"));
+        requisito.setDocumentoTemplateUrl("x".repeat(501));
+        assertTrue(tieneViolacion(requisito, "documentoTemplateUrl"));
+    }
+
+    @Test
+    void validaEnlaceHttpDeDocumentosEnChecklist() {
+        InscripcionDTO.ChecklistUpdateRequestDTO requisito =
+                new InscripcionDTO.ChecklistUpdateRequestDTO(true, null, "ftp://ejemplo.com/documento.pdf");
+        assertTrue(tieneViolacion(requisito, "archivoUrl"));
+
+        requisito.setArchivoUrl("https://ejemplo.com/documento.pdf");
+        assertFalse(tieneViolacion(requisito, "archivoUrl"));
+        requisito.setArchivoUrl("x".repeat(501));
+        assertTrue(tieneViolacion(requisito, "archivoUrl"));
     }
 
     @Test
