@@ -110,8 +110,19 @@ public class UsuarioService {
         if (request.getNombreUsuario() == null || request.getNombreUsuario().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El nombre de usuario es obligatorio");
         }
+        if (request.getNombreUsuario().trim().length() > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El nombre de usuario no puede superar 100 caracteres");
+        }
         if (request.getEmail() == null || request.getEmail().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El email es obligatorio");
+        }
+        if (request.getEmail().trim().length() > 150) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El email no puede superar 150 caracteres");
+        }
+        if (request.getRolId() == null || request.getRolId() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debe indicar un rol válido");
         }
         if (passwordObligatoria
                 && (obtenerPassword(request) == null || obtenerPassword(request).isBlank())) {

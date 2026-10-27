@@ -21,6 +21,9 @@ const TIPOS_USUARIO = [
   ["VISITANTE", "Visitante"],
 ];
 
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_PASSWORD_BYTES = 72;
+
 function UsuarioForm() {
   const { id } = useParams();
   const esEdicion = Boolean(id);
@@ -100,11 +103,20 @@ function UsuarioForm() {
     }
     if (!form.email.trim()) {
       nuevosErrores.email = "El email es obligatorio.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+    } else if (form.email.trim().length > 150) {
+      nuevosErrores.email = "El email no puede superar 150 caracteres.";
+    } else if (!EMAIL.test(form.email.trim())) {
       nuevosErrores.email = "Ingresa un email válido.";
     }
     if (!esEdicion && !form.password.trim()) {
       nuevosErrores.password = "La contraseña es obligatoria.";
+    }
+    if (
+      form.password &&
+      new TextEncoder().encode(form.password).length > MAX_PASSWORD_BYTES
+    ) {
+      nuevosErrores.password =
+        "La contraseña no puede superar 72 bytes UTF-8.";
     }
     if (!form.rolId) {
       nuevosErrores.rolId = "Selecciona un rol.";
@@ -166,6 +178,7 @@ function UsuarioForm() {
           <label>
             Nombre de usuario *
             <input
+              maxLength={100}
               value={form.nombreUsuario}
               onChange={(e) =>
                 actualizarCampo("nombreUsuario", e.target.value)
@@ -181,6 +194,8 @@ function UsuarioForm() {
             Email *
             <input
               type="email"
+              maxLength={150}
+              required
               value={form.email}
               onChange={(e) => actualizarCampo("email", e.target.value)}
               autoComplete="email"
@@ -198,12 +213,14 @@ function UsuarioForm() {
               onChange={(e) => actualizarCampo("password", e.target.value)}
               autoComplete="new-password"
               required={!esEdicion}
+              maxLength={72}
+              aria-describedby="ayuda-password"
             />
-            {esEdicion && (
-              <span className="campo-ayuda">
-                Déjala vacía para conservar la contraseña actual.
-              </span>
-            )}
+            <span className="campo-ayuda" id="ayuda-password">
+              {esEdicion
+                ? "Déjala vacía para conservar la contraseña actual. Máximo 72 bytes UTF-8."
+                : "Máximo 72 bytes UTF-8."}
+            </span>
             {errores.password && (
               <span className="campo-error">{errores.password}</span>
             )}

@@ -127,7 +127,7 @@ function TurnoForm() {
 
     setGuardando(true);
     const payload = {
-      nombre: form.nombre,
+      nombre: form.nombre.trim(),
       horaEntrada: `${form.horaEntrada}:00`,
       horaSalida: `${form.horaSalida}:00`,
       toleranciaMin: Number(form.toleranciaMin) || 0,
@@ -182,9 +182,11 @@ function TurnoForm() {
             <label>
               Nombre *
               <input
+                maxLength={100}
                 value={form.nombre}
                 onChange={(e) => actualizarCampo("nombre", e.target.value)}
                 placeholder="Ej: Turno Mañana"
+                required
               />
               {errores.nombre && (
                 <span className="campo-error">{errores.nombre}</span>
