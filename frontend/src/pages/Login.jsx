@@ -13,6 +13,8 @@ const RUTA_INICIAL_POR_ROL = {
   [ROLES.ESCANER]: "/escaner",
 };
 
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,6 +25,10 @@ function Login() {
   const iniciarSesion = async () => {
     if (!email.trim() || !password) {
       setError("Por favor completa todos los campos.");
+      return;
+    }
+    if (!EMAIL.test(email.trim()) || email.trim().length > 150) {
+      setError("Ingresa un correo electrónico válido (máximo 150 caracteres).");
       return;
     }
     setCargando(true);
@@ -107,6 +113,7 @@ function Login() {
                 required
                 autoFocus
                 autoComplete="username"
+                maxLength={150}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />

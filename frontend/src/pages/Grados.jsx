@@ -3,6 +3,7 @@ import { Icon } from "@iconify/react";
 import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
+import { soloDigitos } from "../utils/validacionesEntrada";
 import { ICONOS } from "../utils/iconos";
 import ModalFormulario from "../components/ModalFormulario";
 
@@ -95,8 +96,13 @@ function Grados() {
     if (!form.nivelEducativoId) {
       nuevosErrores.nivelEducativoId = "Selecciona un nivel educativo.";
     }
-    if (!Number.isInteger(numeroGrado) || numeroGrado < 1) {
-      nuevosErrores.numeroGrado = "Indica un número de grado válido.";
+    if (
+      !Number.isInteger(numeroGrado) ||
+      numeroGrado < 1 ||
+      numeroGrado > 12
+    ) {
+      nuevosErrores.numeroGrado =
+        "El número de grado debe estar entre 1 y 12.";
     }
     if (!Number.isInteger(edadMinima) || edadMinima < 0 || edadMinima > 120) {
       nuevosErrores.edadMinima = "Indica una edad entre 0 y 120 años.";
@@ -334,11 +340,15 @@ function Grados() {
             <label>
               Número de grado *
               <input
-                type="number"
-                min="1"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={form.numeroGrado}
                 onChange={(event) =>
-                  actualizarCampo("numeroGrado", event.target.value)
+                  actualizarCampo(
+                    "numeroGrado",
+                    soloDigitos(event.target.value),
+                  )
                 }
               />
               {errores.numeroGrado && (
@@ -362,12 +372,12 @@ function Grados() {
             <label>
               Edad mínima *
               <input
-                type="number"
-                min="0"
-                max="120"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={form.edadMinima}
                 onChange={(event) =>
-                  actualizarCampo("edadMinima", event.target.value)
+                  actualizarCampo("edadMinima", soloDigitos(event.target.value))
                 }
               />
               {errores.edadMinima && (
@@ -377,12 +387,12 @@ function Grados() {
             <label>
               Edad máxima *
               <input
-                type="number"
-                min="0"
-                max="120"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={form.edadMaxima}
                 onChange={(event) =>
-                  actualizarCampo("edadMaxima", event.target.value)
+                  actualizarCampo("edadMaxima", soloDigitos(event.target.value))
                 }
               />
               {errores.edadMaxima && (

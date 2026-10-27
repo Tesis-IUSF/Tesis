@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
+import { soloDigitos } from "../utils/validacionesEntrada";
 import ModalFormulario from "../components/ModalFormulario";
 import ConfirmDialog from "../components/ConfirmDialog";
 import "./CalendarioMatricula.css";
@@ -90,8 +91,12 @@ function CalendarioMatricula() {
 
   const guardarAnio = async (event) => {
     event.preventDefault();
+    const anio = Number(formAnio.anio);
+    if (!Number.isInteger(anio) || anio < 1900 || anio > 2200) {
+      toast.error("El año escolar debe ser un entero entre 1900 y 2200.");
+      return;
+    }
     if (
-      !formAnio.anio ||
       !formAnio.nombre.trim() ||
       !formAnio.fechaInicio ||
       !formAnio.fechaFin ||
@@ -103,7 +108,7 @@ function CalendarioMatricula() {
 
     setGuardando(true);
     const payload = {
-      anio: Number(formAnio.anio),
+      anio,
       nombre: formAnio.nombre.trim(),
       fechaInicio: formAnio.fechaInicio,
       fechaFin: formAnio.fechaFin,
@@ -416,14 +421,17 @@ function CalendarioMatricula() {
           <label>
             Número del año escolar *
             <input
-              type="number"
-              min="1900"
-              max="2200"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={formAnio.anio}
               disabled={modalAnio.modo === "editar"}
               required
               onChange={(event) =>
-                setFormAnio((actual) => ({ ...actual, anio: event.target.value }))
+                setFormAnio((actual) => ({
+                  ...actual,
+                  anio: soloDigitos(event.target.value).slice(0, 4),
+                }))
               }
             />
           </label>

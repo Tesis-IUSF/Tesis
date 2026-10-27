@@ -67,9 +67,11 @@ public class CatalogoDTO {
         private LocalTime horaSalida;
 
         @Min(0)
+        @Max(180)
         private Short toleranciaMin;
 
         @Min(0)
+        @Max(180)
         private Short minutosSalidaAnticipadaPermitidos;
         private Boolean requiereJustificacionTardanza;
         private Boolean lunes;
@@ -138,6 +140,7 @@ public class CatalogoDTO {
         private Integer nivelEducativoId;
         @NotNull
         @Min(1)
+        @Max(12)
         private Short numeroGrado;
         @NotNull
         @Min(0)
@@ -178,6 +181,7 @@ public class CatalogoDTO {
         private String letraSeccion;
         @NotNull
         @Min(1)
+        @Max(60)
         private Short capacidadMaxima;
         private Integer docentePrincipalId;
         private Integer turnoId;

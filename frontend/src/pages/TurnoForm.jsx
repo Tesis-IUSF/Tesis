@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
+import { soloDigitos } from "../utils/validacionesEntrada";
 import "./TurnoForm.css";
 import { Icon } from "@iconify/react";
 import { ICONOS } from "../utils/iconos";
@@ -89,11 +90,30 @@ function TurnoForm() {
 
   const validar = () => {
     const nuevosErrores = {};
+    const toleranciaMin = Number(form.toleranciaMin);
+    const minutosSalidaAnticipadaPermitidos = Number(
+      form.minutosSalidaAnticipadaPermitidos,
+    );
     if (!form.nombre.trim()) nuevosErrores.nombre = "El nombre es obligatorio.";
     if (!form.horaEntrada)
       nuevosErrores.horaEntrada = "La hora de entrada es obligatoria.";
     if (!form.horaSalida)
       nuevosErrores.horaSalida = "La hora de salida es obligatoria.";
+    if (
+      !Number.isInteger(toleranciaMin) ||
+      toleranciaMin < 0 ||
+      toleranciaMin > 180
+    ) {
+      nuevosErrores.toleranciaMin = "Indica entre 0 y 180 minutos.";
+    }
+    if (
+      !Number.isInteger(minutosSalidaAnticipadaPermitidos) ||
+      minutosSalidaAnticipadaPermitidos < 0 ||
+      minutosSalidaAnticipadaPermitidos > 180
+    ) {
+      nuevosErrores.minutosSalidaAnticipadaPermitidos =
+        "Indica entre 0 y 180 minutos.";
+    }
     // Nota: no se valida que horaSalida > horaEntrada — los turnos de
     // vigilancia cruzan medianoche (ej: 22:00 a 06:00).
 
@@ -174,13 +194,17 @@ function TurnoForm() {
             <label>
               Tolerancia (minutos)
               <input
-                type="number"
-                min="0"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={form.toleranciaMin}
                 onChange={(e) =>
-                  actualizarCampo("toleranciaMin", e.target.value)
+                  actualizarCampo("toleranciaMin", soloDigitos(e.target.value))
                 }
               />
+              {errores.toleranciaMin && (
+                <span className="campo-error">{errores.toleranciaMin}</span>
+              )}
             </label>
 
             <label>
@@ -210,16 +234,22 @@ function TurnoForm() {
             <label>
               Minutos de salida anticipada permitidos
               <input
-                type="number"
-                min="0"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={form.minutosSalidaAnticipadaPermitidos}
                 onChange={(e) =>
                   actualizarCampo(
                     "minutosSalidaAnticipadaPermitidos",
-                    e.target.value,
+                    soloDigitos(e.target.value),
                   )
                 }
               />
+              {errores.minutosSalidaAnticipadaPermitidos && (
+                <span className="campo-error">
+                  {errores.minutosSalidaAnticipadaPermitidos}
+                </span>
+              )}
             </label>
 
             <label className="switch-inline-label">

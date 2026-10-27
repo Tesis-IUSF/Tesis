@@ -7,6 +7,11 @@ import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
 import { ICONOS } from "../utils/iconos";
 import { subirFoto } from "../utils/fotos";
+import {
+  TELEFONO_VENEZOLANO,
+  limpiarEntradaTelefono,
+  soloDigitos,
+} from "../utils/validacionesEntrada";
 import FotoCarnet from "../components/FotoCarnet";
 import "./Preinscripcion.css";
 
@@ -438,8 +443,13 @@ function Preinscripcion({
       if (!est.sexo) e["est.sexo"] = "Selecciona el sexo.";
       if (est.correo.trim() && !EMAIL.test(est.correo.trim()))
         e["est.correo"] = "Correo no válido.";
-      if (est.telefono.trim().length > 20)
-        e["est.telefono"] = "Máximo 20 caracteres.";
+      else if (est.correo.trim().length > 150)
+        e["est.correo"] = "Máximo 150 caracteres.";
+      if (
+        est.telefono.trim() &&
+        !TELEFONO_VENEZOLANO.test(est.telefono.trim())
+      )
+        e["est.telefono"] = "Ingresa un teléfono venezolano válido.";
       if (form.institucionProcedencia.length > 150)
         e.institucionProcedencia = "Máximo 150 caracteres.";
     }
@@ -466,12 +476,18 @@ function Preinscripcion({
         if (!rep.correo.trim()) e["rep.correo"] = "El correo es obligatorio.";
         else if (!EMAIL.test(rep.correo.trim()))
           e["rep.correo"] = "Correo no válido.";
+        else if (rep.correo.trim().length > 150)
+          e["rep.correo"] = "Máximo 150 caracteres.";
         if (!rep.telefono.trim())
           e["rep.telefono"] = "El teléfono principal es obligatorio.";
-        else if (rep.telefono.trim().length > 20)
-          e["rep.telefono"] = "Máximo 20 caracteres.";
-        if (rep.telefonoSecundario.trim().length > 20)
-          e["rep.telefonoSecundario"] = "Máximo 20 caracteres.";
+        else if (!TELEFONO_VENEZOLANO.test(rep.telefono.trim()))
+          e["rep.telefono"] = "Ingresa un teléfono venezolano válido.";
+        if (
+          rep.telefonoSecundario.trim() &&
+          !TELEFONO_VENEZOLANO.test(rep.telefonoSecundario.trim())
+        )
+          e["rep.telefonoSecundario"] =
+            "Ingresa un teléfono venezolano válido.";
       }
     }
     if (n === 2) {
@@ -733,13 +749,12 @@ function Preinscripcion({
                   <label>
                     Orden de nacimiento *
                     <input
-                      type="number"
-                      min="1"
-                      max="9"
-                      step="1"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       value={est.ordenNacimiento}
                       onChange={(e) =>
-                        setEst("ordenNacimiento", e.target.value)
+                        setEst("ordenNacimiento", soloDigitos(e.target.value))
                       }
                     />
                     {err("est.ordenNacimiento")}
@@ -798,8 +813,12 @@ function Preinscripcion({
               <label>
                 Teléfono
                 <input
+                  type="tel"
+                  inputMode="tel"
                   value={est.telefono}
-                  onChange={(e) => setEst("telefono", e.target.value)}
+                  onChange={(e) =>
+                    setEst("telefono", limpiarEntradaTelefono(e.target.value))
+                  }
                   maxLength={20}
                   placeholder="04121234567"
                 />
@@ -811,6 +830,7 @@ function Preinscripcion({
                   type="email"
                   value={est.correo}
                   onChange={(e) => setEst("correo", e.target.value)}
+                  maxLength={150}
                   placeholder="Opcional"
                 />
                 {err("est.correo")}
@@ -1024,6 +1044,7 @@ function Preinscripcion({
                     type="email"
                     value={rep.correo}
                     onChange={(e) => setRep("correo", e.target.value)}
+                    maxLength={150}
                     placeholder="representante@correo.com"
                   />
                   {err("rep.correo")}
@@ -1031,8 +1052,15 @@ function Preinscripcion({
                 <label>
                   Teléfono principal *
                   <input
+                    type="tel"
+                    inputMode="tel"
                     value={rep.telefono}
-                    onChange={(e) => setRep("telefono", e.target.value)}
+                    onChange={(e) =>
+                      setRep(
+                        "telefono",
+                        limpiarEntradaTelefono(e.target.value),
+                      )
+                    }
                     maxLength={20}
                     placeholder="04121234567"
                     required
@@ -1042,9 +1070,14 @@ function Preinscripcion({
                 <label>
                   Teléfono secundario
                   <input
+                    type="tel"
+                    inputMode="tel"
                     value={rep.telefonoSecundario}
                     onChange={(e) =>
-                      setRep("telefonoSecundario", e.target.value)
+                      setRep(
+                        "telefonoSecundario",
+                        limpiarEntradaTelefono(e.target.value),
+                      )
                     }
                     maxLength={20}
                   />
