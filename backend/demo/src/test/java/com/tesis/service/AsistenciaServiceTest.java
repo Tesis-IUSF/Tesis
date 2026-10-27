@@ -83,6 +83,8 @@ class AsistenciaServiceTest {
         Turno turno = turnoVigente();
         stubCredencialQr();
         when(empleadoRepository.findByIdForUpdate(7)).thenReturn(Optional.of(empleado));
+        when(asignacionTurnoRepository.buscarVigentes(7, LocalDate.now().minusDays(1)))
+                .thenReturn(List.of());
         when(asignacionTurnoRepository.buscarVigentes(7, LocalDate.now()))
                 .thenReturn(List.of(asignacion(turno)));
         when(asistenciaRepository.findByPersonal_IdAndFecha(7, LocalDate.now()))
@@ -106,6 +108,8 @@ class AsistenciaServiceTest {
         LocalTime entrada = LocalTime.now(clock).minusMinutes(1);
         asistencia.setHoraEntrada(entrada);
         when(empleadoRepository.findByIdForUpdate(7)).thenReturn(Optional.of(empleado));
+        when(asignacionTurnoRepository.buscarVigentes(7, LocalDate.now(clock).minusDays(1)))
+                .thenReturn(List.of());
         when(asignacionTurnoRepository.buscarVigentes(7, LocalDate.now()))
                 .thenReturn(List.of(asignacion(turno)));
         when(asistenciaRepository.findByPersonal_IdAndFecha(7, LocalDate.now()))
@@ -121,12 +125,112 @@ class AsistenciaServiceTest {
     }
 
     @Test
+    void escaneoDeMadrugadaRegistraEntradaEnLaFechaDelTurnoNocturno() {
+        LocalDate fechaTurno = LocalDate.now(clock);
+        fijarAhora(fechaTurno.plusDays(1).atTime(1, 0));
+        Empleado empleado = empleadoActivo();
+        Turno turno = turnoNocturno();
+        stubCredencialQr();
+        when(empleadoRepository.findByIdForUpdate(7)).thenReturn(Optional.of(empleado));
+        when(asignacionTurnoRepository.buscarVigentes(7, fechaTurno))
+                .thenReturn(List.of(asignacion(turno)));
+        when(asistenciaRepository.findByPersonal_IdAndFecha(7, fechaTurno))
+                .thenReturn(Optional.empty());
+        when(asistenciaRepository.save(any(Asistencia.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        AsistenciaResponseDTO respuesta = asistenciaService.registrarEscaneo(QR_TOKEN);
+
+        assertEquals(fechaTurno, respuesta.getFecha());
+        assertEquals(LocalTime.of(1, 0), respuesta.getHoraEntrada());
+        assertEquals("tardanza", respuesta.getEstado());
+        assertEquals(Short.valueOf((short) 180), respuesta.getMinutosTardanza());
+    }
+
+    @Test
+    void escaneoDeMadrugadaCierraLaEntradaAbiertaDelTurnoAnterior() {
+        LocalDate fechaTurno = LocalDate.now(clock);
+        fijarAhora(fechaTurno.plusDays(1).atTime(1, 0));
+        Empleado empleado = empleadoActivo();
+        Turno turno = turnoNocturno();
+        stubCredencialQr();
+        Asistencia asistencia = asistenciaExistente(empleado, turno);
+        asistencia.setFecha(fechaTurno);
+        asistencia.setHoraEntrada(LocalTime.of(22, 0));
+        when(empleadoRepository.findByIdForUpdate(7)).thenReturn(Optional.of(empleado));
+        when(asignacionTurnoRepository.buscarVigentes(7, fechaTurno))
+                .thenReturn(List.of(asignacion(turno)));
+        when(asistenciaRepository.findByPersonal_IdAndFecha(7, fechaTurno))
+                .thenReturn(Optional.of(asistencia));
+        when(asistenciaRepository.save(any(Asistencia.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        AsistenciaResponseDTO respuesta = asistenciaService.registrarEscaneo(QR_TOKEN);
+
+        assertEquals(fechaTurno, respuesta.getFecha());
+        assertEquals(LocalTime.of(1, 0), respuesta.getHoraSalida());
+        assertEquals("salida_anticipada", respuesta.getEstado());
+        verify(asistenciaRepository).save(asistencia);
+    }
+
+    @Test
+    void escaneoDeMadrugadaRechazaTurnoAnteriorYaCompletado() {
+        LocalDate fechaTurno = LocalDate.now(clock);
+        fijarAhora(fechaTurno.plusDays(1).atTime(1, 0));
+        Empleado empleado = empleadoActivo();
+        Turno turno = turnoNocturno();
+        stubCredencialQr();
+        Asistencia asistencia = asistenciaExistente(empleado, turno);
+        asistencia.setFecha(fechaTurno);
+        asistencia.setHoraEntrada(LocalTime.of(22, 0));
+        asistencia.setHoraSalida(LocalTime.of(0, 30));
+        when(empleadoRepository.findByIdForUpdate(7)).thenReturn(Optional.of(empleado));
+        when(asignacionTurnoRepository.buscarVigentes(7, fechaTurno))
+                .thenReturn(List.of(asignacion(turno)));
+        when(asistenciaRepository.findByPersonal_IdAndFecha(7, fechaTurno))
+                .thenReturn(Optional.of(asistencia));
+
+        ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
+                () -> asistenciaService.registrarEscaneo(QR_TOKEN));
+
+        assertEquals(HttpStatus.CONFLICT, excepcion.getStatusCode());
+        verify(asistenciaRepository, never()).save(any(Asistencia.class));
+    }
+
+    @Test
+    void escaneoDespuesDelFinDelTurnoCierraEntradaNocturnaAbierta() {
+        LocalDate fechaTurno = LocalDate.now(clock);
+        fijarAhora(fechaTurno.plusDays(1).atTime(7, 0));
+        Empleado empleado = empleadoActivo();
+        Turno turno = turnoNocturno();
+        stubCredencialQr();
+        Asistencia asistencia = asistenciaExistente(empleado, turno);
+        asistencia.setFecha(fechaTurno);
+        asistencia.setHoraEntrada(LocalTime.of(22, 0));
+        when(empleadoRepository.findByIdForUpdate(7)).thenReturn(Optional.of(empleado));
+        when(asignacionTurnoRepository.buscarVigentes(7, fechaTurno))
+                .thenReturn(List.of(asignacion(turno)));
+        when(asistenciaRepository.findByPersonal_IdAndFecha(7, fechaTurno))
+                .thenReturn(Optional.of(asistencia));
+        when(asistenciaRepository.save(any(Asistencia.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        AsistenciaResponseDTO respuesta = asistenciaService.registrarEscaneo(QR_TOKEN);
+
+        assertEquals(fechaTurno, respuesta.getFecha());
+        assertEquals(LocalTime.of(7, 0), respuesta.getHoraSalida());
+        assertEquals(Short.valueOf((short) 60), respuesta.getMinutosExtra());
+    }
+
+    @Test
     void salidaManualRegistraHoraYTipoSinQr() {
         Empleado empleado = empleadoActivo();
         Turno turno = turnoVigente();
         Asistencia asistencia = asistenciaExistente(empleado, turno);
         asistencia.setHoraEntrada(LocalTime.now(clock).minusMinutes(1));
         when(empleadoRepository.findByIdForUpdate(7)).thenReturn(Optional.of(empleado));
+        when(asistenciaRepository.findByPersonal_IdAndFecha(7, LocalDate.now(clock).minusDays(1)))
+                .thenReturn(Optional.empty());
         when(asistenciaRepository.findByPersonal_IdAndFecha(7, LocalDate.now(clock)))
                 .thenReturn(Optional.of(asistencia));
         when(asistenciaRepository.save(any(Asistencia.class)))
@@ -145,6 +249,8 @@ class AsistenciaServiceTest {
         Empleado empleado = empleadoActivo();
         Asistencia asistencia = asistenciaExistente(empleado, turnoVigente());
         when(empleadoRepository.findByIdForUpdate(7)).thenReturn(Optional.of(empleado));
+        when(asistenciaRepository.findByPersonal_IdAndFecha(7, LocalDate.now(clock).minusDays(1)))
+                .thenReturn(Optional.empty());
         when(asistenciaRepository.findByPersonal_IdAndFecha(7, LocalDate.now(clock)))
                 .thenReturn(Optional.of(asistencia));
 
@@ -156,6 +262,30 @@ class AsistenciaServiceTest {
     }
 
     @Test
+    void salidaManualCierraTurnoNocturnoAnteriorAunqueEmpleadoEsteInactivo() {
+        LocalDate fechaTurno = LocalDate.now(clock);
+        fijarAhora(fechaTurno.plusDays(1).atTime(1, 0));
+        Empleado empleado = empleadoActivo();
+        empleado.setActivo(false);
+        Turno turno = turnoNocturno();
+        Asistencia asistencia = asistenciaExistente(empleado, turno);
+        asistencia.setFecha(fechaTurno);
+        asistencia.setHoraEntrada(LocalTime.of(22, 0));
+        when(empleadoRepository.findByIdForUpdate(7)).thenReturn(Optional.of(empleado));
+        when(asistenciaRepository.findByPersonal_IdAndFecha(7, fechaTurno))
+                .thenReturn(Optional.of(asistencia));
+        when(asistenciaRepository.save(any(Asistencia.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        AsistenciaResponseDTO respuesta = asistenciaService.registrarSalidaManual(7);
+
+        assertEquals(fechaTurno, respuesta.getFecha());
+        assertEquals("salida", respuesta.getTipoRegistro());
+        assertEquals(LocalTime.of(1, 0), respuesta.getHoraSalida());
+        verify(asistenciaRepository).save(asistencia);
+    }
+
+    @Test
     void tercerEscaneoSeRechazaSinModificarAsistencia() {
         Empleado empleado = empleadoActivo();
         Turno turno = turnoVigente();
@@ -164,6 +294,8 @@ class AsistenciaServiceTest {
         asistencia.setHoraEntrada(LocalTime.now(clock).minusHours(1));
         asistencia.setHoraSalida(LocalTime.now(clock).minusMinutes(1));
         when(empleadoRepository.findByIdForUpdate(7)).thenReturn(Optional.of(empleado));
+        when(asignacionTurnoRepository.buscarVigentes(7, LocalDate.now(clock).minusDays(1)))
+                .thenReturn(List.of());
         when(asignacionTurnoRepository.buscarVigentes(7, LocalDate.now()))
                 .thenReturn(List.of(asignacion(turno)));
         when(asistenciaRepository.findByPersonal_IdAndFecha(7, LocalDate.now()))
@@ -185,6 +317,8 @@ class AsistenciaServiceTest {
         Asistencia asistencia = asistenciaExistente(empleado, turno);
         asistencia.setHoraEntrada(LocalTime.now(clock).minusMinutes(1));
         when(empleadoRepository.findByIdForUpdate(7)).thenReturn(Optional.of(empleado));
+        when(asignacionTurnoRepository.buscarVigentes(7, LocalDate.now(clock).minusDays(1)))
+                .thenReturn(List.of());
         when(asignacionTurnoRepository.buscarVigentes(7, LocalDate.now()))
                 .thenReturn(List.of(asignacion(turno)));
         when(asistenciaRepository.findByPersonal_IdAndFecha(7, LocalDate.now()))
@@ -215,6 +349,7 @@ class AsistenciaServiceTest {
 
         @Test
         void listarHoyCalculaDuracionYConservaSalidaNula() {
+                fijarAhora(LocalDate.now(clock).atTime(10, 0));
                 Empleado empleado = empleadoActivo();
                 Asistencia asistencia = asistenciaExistente(empleado, turnoVigente());
                 asistencia.setHoraEntrada(LocalTime.now(clock).minusHours(2).minusMinutes(15));
@@ -231,6 +366,28 @@ class AsistenciaServiceTest {
                 assertEquals(null, respuesta.get(0).getHoraSalida());
                 assertEquals("2:15", respuesta.get(0).getHorasTrabajadas());
                 assertEquals(135, respuesta.get(0).getMinutosTrabajados());
+        }
+
+        @Test
+        void listarHoyIncluyeEntradaNocturnaAbiertaDelDiaAnteriorConDuracionCorrecta() {
+                LocalDate fechaTurno = LocalDate.now(clock);
+                fijarAhora(fechaTurno.plusDays(1).atTime(1, 0));
+                Empleado empleado = empleadoActivo();
+                Asistencia asistencia = asistenciaExistente(empleado, turnoNocturno());
+                asistencia.setFecha(fechaTurno);
+                asistencia.setHoraEntrada(LocalTime.of(22, 0));
+                when(asistenciaRepository.findAllByFechaWithPersonalOrderByHoraEntrada(
+                        fechaTurno.plusDays(1), null, null)).thenReturn(List.of());
+                when(asistenciaRepository.findAllByFechaWithPersonalOrderByHoraEntrada(
+                        fechaTurno, null, null)).thenReturn(List.of(asistencia));
+
+                List<AsistenciaHoyDTO> respuesta = asistenciaService.listarHoy();
+
+                assertEquals(1, respuesta.size());
+                assertEquals(11, respuesta.getFirst().getAsistenciaId());
+                assertEquals("3:00", respuesta.getFirst().getHorasTrabajadas());
+                assertEquals(180, respuesta.getFirst().getMinutosTrabajados());
+                assertEquals(null, respuesta.getFirst().getHoraSalida());
         }
 
         @Test
@@ -391,13 +548,14 @@ class AsistenciaServiceTest {
             }
 
             @Test
-            void noListaAusenciasParaFechasFuturas() {
+            void rechazaFechasFuturasEnElHistorico() {
                 LocalDate manana = LocalDate.now().plusDays(1);
 
-                List<AusenciaDTO> ausencias = asistenciaService.listarAusencias(
-                        manana, manana.plusDays(1), null, null, null);
+                ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
+                        () -> asistenciaService.listarAusencias(
+                                manana, manana, null, null, null));
 
-                assertEquals(List.of(), ausencias);
+                assertEquals(HttpStatus.BAD_REQUEST, excepcion.getStatusCode());
                 verify(asignacionTurnoRepository, never())
                         .buscarAsignacionesActivasEnRango(any(LocalDate.class), any(LocalDate.class));
             }
@@ -470,6 +628,23 @@ class AsistenciaServiceTest {
         when(credencialQrRepository.findByIdAndEmpleado_IdAndActivaTrueAndExpiraEnAfter(
                 eq(QR_CREDENTIAL_ID), eq(7), any(LocalDateTime.class)))
                 .thenReturn(Optional.of(credencial));
+    }
+
+    private void fijarAhora(LocalDateTime ahora) {
+        clock = Clock.fixed(ahora.atZone(clock.getZone()).toInstant(), clock.getZone());
+        asistenciaService = new AsistenciaService(
+                asistenciaRepository, asignacionTurnoRepository, empleadoRepository,
+                credencialQrRepository, jwtProvider, clock);
+    }
+
+    private Turno turnoNocturno() {
+        Turno turno = turnoVigente();
+        turno.setNombre("Nocturno");
+        turno.setHoraEntrada(LocalTime.of(22, 0));
+        turno.setHoraSalida(LocalTime.of(6, 0));
+        turno.setToleranciaMin((short) 0);
+        turno.setMinutosSalidaAnticipadaPermitidos((short) 0);
+        return turno;
     }
 
     private Turno turnoVigente() {
