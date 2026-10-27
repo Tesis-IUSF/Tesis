@@ -20,6 +20,8 @@ public class CatalogoDTO {
     @AllArgsConstructor
     @Builder
     public static class DepartamentoRequestDTO {
+        @NotBlank
+        @Size(max = 100)
         private String nombre;
     }
 
@@ -37,7 +39,12 @@ public class CatalogoDTO {
     @AllArgsConstructor
     @Builder
     public static class CargoRequestDTO {
+        @NotBlank
+        @Size(max = 100)
         private String nombreCargo;
+
+        @NotNull
+        @Min(1)
         private Integer departamentoId;
     }
 
