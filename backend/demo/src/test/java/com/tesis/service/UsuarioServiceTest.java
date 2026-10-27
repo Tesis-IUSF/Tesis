@@ -70,7 +70,7 @@ class UsuarioServiceTest {
         UsuarioDTO.UsuarioRequestDTO request = UsuarioDTO.UsuarioRequestDTO.builder()
                 .nombreUsuario("usuario1")
                 .email("usuario1@test.com")
-                .passwordHash("abc")
+                .passwordHash("FraseSegura2026!")
                 .rolId(2)
                 .tipoUsuario(TipoUsuario.PERSONAL)
                 .activo(true)
@@ -89,7 +89,7 @@ class UsuarioServiceTest {
         UsuarioDTO.UsuarioRequestDTO request = UsuarioDTO.UsuarioRequestDTO.builder()
                 .nombreUsuario("usuario2")
                 .email("usuario2@test.com")
-                .password("abc123")
+                .password("FraseSegura2026!")
                 .rolId(2)
                 .tipoUsuario(TipoUsuario.PERSONAL)
                 .activo(true)
@@ -103,7 +103,7 @@ class UsuarioServiceTest {
         guardado.setId(5);
         guardado.setNombreUsuario("usuario2");
         guardado.setEmail("usuario2@test.com");
-        guardado.setPasswordHash("abc123");
+        guardado.setPasswordHash(passwordEncoder.encode("FraseSegura2026!"));
         guardado.setRol(rol);
         guardado.setTipoUsuario(TipoUsuario.PERSONAL);
         guardado.setActivo(true);
@@ -120,7 +120,8 @@ class UsuarioServiceTest {
         org.mockito.ArgumentCaptor<Usuario> captor =
                 org.mockito.ArgumentCaptor.forClass(Usuario.class);
         org.mockito.Mockito.verify(usuarioRepository).save(captor.capture());
-        assertTrue(passwordEncoder.matches("abc123", captor.getValue().getPasswordHash()));
+        assertTrue(passwordEncoder.matches(
+                "FraseSegura2026!", captor.getValue().getPasswordHash()));
     }
 
     @Test
@@ -137,6 +138,53 @@ class UsuarioServiceTest {
                         () -> usuarioService.crear(request));
 
         assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, error.getStatusCode());
+    }
+
+    @Test
+    void crearUsuarioRechazaPasswordCortaComunOConDatosDelUsuario() {
+        for (String password : List.of(
+                "corta",
+                "123456789012",
+                "Password2026!",
+                "UsuarioSeguro2026!",
+                "persona@example.com!")) {
+            UsuarioDTO.UsuarioRequestDTO request = UsuarioDTO.UsuarioRequestDTO.builder()
+                    .nombreUsuario("usuario")
+                    .email("persona@example.com")
+                    .password(password)
+                    .rolId(1)
+                    .build();
+
+            org.springframework.web.server.ResponseStatusException error =
+                    org.junit.jupiter.api.Assertions.assertThrows(
+                            org.springframework.web.server.ResponseStatusException.class,
+                            () -> usuarioService.crear(request));
+
+            assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, error.getStatusCode());
+        }
+    }
+
+    @Test
+    void crearUsuarioExigeMayusculaNumeroSimboloYRechazaEspacios() {
+        for (String password : List.of(
+                "frasesegura2026!",
+                "FraseSegura!",
+                "FraseSegura2026",
+                "Frase Segura2026!")) {
+            UsuarioDTO.UsuarioRequestDTO request = UsuarioDTO.UsuarioRequestDTO.builder()
+                    .nombreUsuario("usuario")
+                    .email("persona@example.com")
+                    .password(password)
+                    .rolId(1)
+                    .build();
+
+            org.springframework.web.server.ResponseStatusException error =
+                    org.junit.jupiter.api.Assertions.assertThrows(
+                            org.springframework.web.server.ResponseStatusException.class,
+                            () -> usuarioService.crear(request));
+
+            assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, error.getStatusCode());
+        }
     }
 
     @Test

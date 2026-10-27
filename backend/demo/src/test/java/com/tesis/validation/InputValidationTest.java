@@ -5,6 +5,7 @@ import com.tesis.dto.CatalogoDTO;
 import com.tesis.dto.EmpleadoDTO;
 import com.tesis.dto.AuthDTO;
 import com.tesis.dto.PreinscripcionDTO;
+import com.tesis.dto.RetiroDTO;
 import com.tesis.dto.UsuarioDTO;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -118,6 +119,17 @@ class InputValidationTest {
         solicitud.setPassword("clave");
 
         assertTrue(tieneViolacion(solicitud, "email"));
+    }
+
+    @Test
+    void limitaElMotivoDeRetiroA500Caracteres() {
+        RetiroDTO.RetiroRequestDTO solicitud = new RetiroDTO.RetiroRequestDTO();
+        solicitud.setMotivo("x".repeat(501));
+        solicitud.setFechaRetiro(LocalDate.now());
+
+        assertTrue(tieneViolacion(solicitud, "motivo"));
+        solicitud.setMotivo("x".repeat(500));
+        assertFalse(tieneViolacion(solicitud, "motivo"));
     }
 
     @Test

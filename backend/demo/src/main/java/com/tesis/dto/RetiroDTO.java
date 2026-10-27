@@ -18,6 +18,7 @@ public class RetiroDTO {
     @AllArgsConstructor
     public static class RetiroRequestDTO {
         @NotBlank
+        @Size(max = 500)
         private String motivo;
 
         @NotNull

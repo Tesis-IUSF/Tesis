@@ -23,6 +23,34 @@ const TIPOS_USUARIO = [
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_PASSWORD_BYTES = 72;
+const PASSWORDS_COMUNES = new Set([
+  "123456",
+  "12345678",
+  "123456789",
+  "1234567890",
+  "123456789012",
+  "password",
+  "password1",
+  "password123",
+  "qwerty",
+  "qwerty123",
+  "admin",
+  "admin123",
+  "letmein",
+  "welcome",
+  "iloveyou",
+  "monkey",
+  "dragon",
+  "sunshine",
+  "princess",
+  "football",
+  "baseball",
+  "secret",
+  "contrasena",
+  "contraseña",
+  "clave123",
+  "tequiero",
+]);
 
 function UsuarioForm() {
   const { id } = useParams();
@@ -111,12 +139,51 @@ function UsuarioForm() {
     if (!esEdicion && !form.password.trim()) {
       nuevosErrores.password = "La contraseña es obligatoria.";
     }
-    if (
-      form.password &&
-      new TextEncoder().encode(form.password).length > MAX_PASSWORD_BYTES
-    ) {
-      nuevosErrores.password =
-        "La contraseña no puede superar 72 bytes UTF-8.";
+    if (form.password.trim()) {
+      if (Array.from(form.password).length < 12) {
+        nuevosErrores.password =
+          "La contraseña debe tener al menos 12 caracteres.";
+      } else if (
+        new TextEncoder().encode(form.password).length > MAX_PASSWORD_BYTES
+      ) {
+        nuevosErrores.password =
+          "La contraseña no puede superar 72 bytes UTF-8.";
+      } else if (/\s/u.test(form.password)) {
+        nuevosErrores.password = "La contraseña no puede contener espacios.";
+      } else if (!/\p{Lu}/u.test(form.password)) {
+        nuevosErrores.password =
+          "La contraseña debe incluir al menos una mayúscula.";
+      } else if (!/\p{Nd}/u.test(form.password)) {
+        nuevosErrores.password =
+          "La contraseña debe incluir al menos un número.";
+      } else if (!/[^\p{L}\p{N}\s]/u.test(form.password)) {
+        nuevosErrores.password =
+          "La contraseña debe incluir al menos un símbolo.";
+      } else {
+        const passwordNormalizada = form.password.toLowerCase();
+        const baseComun = passwordNormalizada.replace(/[^\p{L}]+$/u, "");
+        const usuarioNormalizado = form.nombreUsuario.trim().toLowerCase();
+        const emailNormalizado = form.email.trim().toLowerCase();
+        const usuarioEmail = emailNormalizado.split("@", 1)[0];
+        const contieneIdentificador = [
+          usuarioNormalizado,
+          emailNormalizado,
+          usuarioEmail,
+        ].some(
+          (identificador) =>
+            identificador.length >= 3 &&
+            passwordNormalizada.includes(identificador),
+        );
+        if (
+          PASSWORDS_COMUNES.has(passwordNormalizada) ||
+          PASSWORDS_COMUNES.has(baseComun)
+        ) {
+          nuevosErrores.password = "Elige una contraseña menos común.";
+        } else if (contieneIdentificador) {
+          nuevosErrores.password =
+            "La contraseña no puede incluir el nombre de usuario ni el correo.";
+        }
+      }
     }
     if (!form.rolId) {
       nuevosErrores.rolId = "Selecciona un rol.";
@@ -218,8 +285,8 @@ function UsuarioForm() {
             />
             <span className="campo-ayuda" id="ayuda-password">
               {esEdicion
-                ? "Déjala vacía para conservar la contraseña actual. Máximo 72 bytes UTF-8."
-                : "Máximo 72 bytes UTF-8."}
+                ? "Déjala vacía para conservar la contraseña actual. Usa al menos 12 caracteres, sin espacios; incluye una mayúscula, un número y un símbolo. Límite: 72 bytes UTF-8. Evita contraseñas comunes y datos de usuario o correo."
+                : "Usa al menos 12 caracteres, sin espacios; incluye una mayúscula, un número y un símbolo. Límite: 72 bytes UTF-8. Evita contraseñas comunes y datos de usuario o correo."}
             </span>
             {errores.password && (
               <span className="campo-error">{errores.password}</span>

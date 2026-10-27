@@ -687,6 +687,7 @@ function Inscripcion({ soloConsulta = false }) {
                             <input
                               value={b.archivoUrl}
                               disabled={!checklistEditable}
+                              maxLength={500}
                               onChange={(e) =>
                                 setChecklistBorrador((actual) => ({
                                   ...actual,

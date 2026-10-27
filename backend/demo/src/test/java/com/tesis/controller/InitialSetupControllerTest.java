@@ -70,7 +70,7 @@ class InitialSetupControllerTest {
                                 {
                                   "nombreUsuario": "admin.inicial",
                                   "email": "ADMIN@ejemplo.com",
-                                  "password": "una-clave-segura-123"
+                                  "password": "UnaClaveSegura-123"
                                 }
                                 """))
                 .andExpect(status().isCreated())
@@ -82,7 +82,22 @@ class InitialSetupControllerTest {
         assertThat(admin.getActivo()).isTrue();
         assertThat(admin.getTipoUsuario()).isEqualTo(TipoUsuario.PERSONAL);
         assertThat(admin.getRol().getNombreRol()).isEqualTo("ADMINISTRADOR");
-        assertThat(admin.getPasswordHash()).isNotEqualTo("una-clave-segura-123");
+        assertThat(admin.getPasswordHash()).isNotEqualTo("UnaClaveSegura-123");
+    }
+
+    @Test
+    void rechazaContrasenaComunEnElAltaInicial() throws Exception {
+        mockMvc.perform(post("/api/setup/initial-admin")
+                        .header("X-Initial-Admin-Token", SETUP_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nombreUsuario": "gestor.inicial",
+                                  "email": "gestor@ejemplo.com",
+                                  "password": "Password2026!"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -91,7 +106,7 @@ class InitialSetupControllerTest {
                 {
                   "nombreUsuario": "admin.inicial",
                   "email": "admin@ejemplo.com",
-                  "password": "una-clave-segura-123"
+                  "password": "UnaClaveSegura-123"
                 }
                 """;
 
@@ -114,7 +129,7 @@ class InitialSetupControllerTest {
                 {
                   "nombreUsuario": "admin.inicial",
                   "email": "admin@ejemplo.com",
-                  "password": "una-clave-segura-123"
+                  "password": "UnaClaveSegura-123"
                 }
                 """;
 

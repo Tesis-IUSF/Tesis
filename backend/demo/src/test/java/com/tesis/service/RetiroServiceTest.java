@@ -90,6 +90,18 @@ class RetiroServiceTest {
     }
 
     @Test
+    void rechazaMotivoDeRetiroConMasDe500Caracteres() {
+        RetiroRequestDTO request = new RetiroRequestDTO(
+                "x".repeat(501), LocalDate.now(clock), null, "Persona", "Externa", "CED-04");
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> retiroService.retirar(999, request, "procesador@test.local"));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
     void permiteRetiroPorRepresentanteVinculadoYAutorizado() {
                 crearProcesador();
         Matricula matricula = crearMatricula("completada", "RETIRO-REP-01", "B");
