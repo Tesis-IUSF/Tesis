@@ -81,6 +81,7 @@ public class PreinscripcionDTO {
         private String correo;
 
         @Size(max = 20)
+        @Pattern(regexp = "^(?:\\+?58\\s?|0)?(?:2\\d{2}|412|414|424|416|426)\\d{7}$")
         private String telefono;
 
         @Size(max = 500)
@@ -120,9 +121,11 @@ public class PreinscripcionDTO {
 
         @NotBlank
         @Size(max = 20)
+        @Pattern(regexp = "^(?:\\+?58\\s?|0)?(?:2\\d{2}|412|414|424|416|426)\\d{7}$")
         private String telefono;
 
         @Size(max = 20)
+        @Pattern(regexp = "^(?:\\+?58\\s?|0)?(?:2\\d{2}|412|414|424|416|426)\\d{7}$")
         private String telefonoSecundario;
 
         private String direccion;

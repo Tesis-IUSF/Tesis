@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
+import { soloDigitos } from "../utils/validacionesEntrada";
 import { ICONOS } from "../utils/iconos";
 import "./BlogCategorias.css";
 
@@ -105,6 +106,9 @@ function BlogCategorias() {
       e.colorHex = "Usa el formato #RRGGBB.";
     if (form.iconoUrl.trim().length > 500)
       e.iconoUrl = "Máximo 500 caracteres.";
+    const ordinal = Number(form.ordinal);
+    if (!Number.isInteger(ordinal) || ordinal < 0 || ordinal > 999)
+      e.ordinal = "El orden debe ser un entero entre 0 y 999.";
     setErrores(e);
     return Object.keys(e).length === 0;
   };
@@ -334,11 +338,17 @@ function BlogCategorias() {
               <label>
                 Orden
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={modal.form.ordinal}
-                  onChange={(e) => cambiar("ordinal", e.target.value)}
+                  onChange={(e) =>
+                    cambiar("ordinal", soloDigitos(e.target.value))
+                  }
                 />
+                {errores.ordinal && (
+                  <span className="campo-error">{errores.ordinal}</span>
+                )}
               </label>
             </div>
 

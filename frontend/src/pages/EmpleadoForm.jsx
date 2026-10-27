@@ -6,6 +6,10 @@ import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
 import { useCargos, useDepartamentos, useTurnos } from "../hooks/useCatalogos";
 import { subirFoto } from "../utils/fotos";
+import {
+  TELEFONO_VENEZOLANO,
+  limpiarEntradaTelefono,
+} from "../utils/validacionesEntrada";
 import FotoCarnet from "../components/FotoCarnet";
 import { Icon } from "@iconify/react";
 import { ICONOS } from "../utils/iconos";
@@ -28,7 +32,10 @@ const VACIO = {
   fechaEgreso: "",
 };
 
-const hoyISO = () => new Date().toISOString().split("T")[0];
+const hoyISO = () => {
+  const fecha = new Date();
+  return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}-${String(fecha.getDate()).padStart(2, "0")}`;
+};
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -144,13 +151,19 @@ function EmpleadoForm() {
     const errorCedula = validarCedula(form.cedulaTipo, form.cedulaNumero);
     if (errorCedula) nuevosErrores.cedula = errorCedula;
 
-    if (form.telefono && form.telefono.length !== 11) {
-      nuevosErrores.telefono =
-        "El teléfono debe tener 11 dígitos (ej: 04121234567).";
+    if (form.telefono && !TELEFONO_VENEZOLANO.test(form.telefono.trim())) {
+      nuevosErrores.telefono = "Ingresa un teléfono venezolano válido.";
     }
 
     if (form.correo.trim() && !EMAIL.test(form.correo.trim())) {
       nuevosErrores.correo = "Correo no válido.";
+    } else if (form.correo.trim().length > 150) {
+      nuevosErrores.correo = "El correo no puede superar 150 caracteres.";
+    }
+
+    if (form.fechaNacimiento && form.fechaNacimiento > hoyISO()) {
+      nuevosErrores.fechaNacimiento =
+        "La fecha de nacimiento no puede ser futura.";
     }
 
     if (!form.fechaIngreso) {
@@ -188,7 +201,7 @@ function EmpleadoForm() {
       apellido: form.apellido,
       cedula: `${form.cedulaTipo}-${form.cedulaNumero}`.trim().toUpperCase(),
       correo: form.correo.trim() || null,
-      telefono: form.telefono || null,
+      telefono: form.telefono.trim() || null,
       sexo: form.sexo || null,
       cargoId: form.cargoId ? Number(form.cargoId) : null,
       departamentoId: form.departamentoId ? Number(form.departamentoId) : null,
@@ -291,6 +304,7 @@ function EmpleadoForm() {
               <label>
                 Nombre *
                 <input
+                  maxLength={100}
                   value={form.nombre}
                   onChange={(e) => actualizarCampo("nombre", e.target.value)}
                 />
@@ -302,6 +316,7 @@ function EmpleadoForm() {
               <label>
                 Apellido *
                 <input
+                  maxLength={100}
                   value={form.apellido}
                   onChange={(e) => actualizarCampo("apellido", e.target.value)}
                 />
@@ -350,6 +365,7 @@ function EmpleadoForm() {
                 Correo
                 <input
                   type="email"
+                  maxLength={150}
                   value={form.correo}
                   onChange={(e) =>
                     actualizarCampo("correo", e.target.value.trim())
@@ -364,15 +380,14 @@ function EmpleadoForm() {
               <label>
                 Teléfono
                 <input
+                  type="tel"
+                  inputMode="tel"
                   value={form.telefono}
                   onChange={(e) =>
-                    actualizarCampo(
-                      "telefono",
-                      soloDigitos(e.target.value).slice(0, 11),
-                    )
+                    actualizarCampo("telefono", limpiarEntradaTelefono(e.target.value))
                   }
-                  inputMode="numeric"
-                  placeholder="04121234567"
+                  maxLength={20}
+                  placeholder="04121234567 o +58 4121234567"
                 />
                 {errores.telefono && (
                   <span className="campo-error">{errores.telefono}</span>
@@ -396,11 +411,17 @@ function EmpleadoForm() {
                 Fecha de nacimiento
                 <input
                   type="date"
+                  max={hoyISO()}
                   value={form.fechaNacimiento}
                   onChange={(e) =>
                     actualizarCampo("fechaNacimiento", e.target.value)
                   }
                 />
+                {errores.fechaNacimiento && (
+                  <span className="campo-error">
+                    {errores.fechaNacimiento}
+                  </span>
+                )}
               </label>
 
               <label>

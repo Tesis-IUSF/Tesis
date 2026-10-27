@@ -3,6 +3,7 @@ import { Icon } from "@iconify/react";
 import api from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import { extractErrorMessage } from "../utils/errors";
+import { soloDigitos } from "../utils/validacionesEntrada";
 import { ICONOS } from "../utils/iconos";
 import ModalFormulario from "../components/ModalFormulario";
 
@@ -124,8 +125,13 @@ function Secciones() {
     if (!/^[A-Z]$/.test(letraSeccion)) {
       nuevosErrores.letraSeccion = "Indica una sola letra.";
     }
-    if (!Number.isInteger(capacidadMaxima) || capacidadMaxima < 1) {
-      nuevosErrores.capacidadMaxima = "La capacidad debe ser mayor que cero.";
+    if (
+      !Number.isInteger(capacidadMaxima) ||
+      capacidadMaxima < 1 ||
+      capacidadMaxima > 60
+    ) {
+      nuevosErrores.capacidadMaxima =
+        "La capacidad debe estar entre 1 y 60 estudiantes.";
     }
     if (!form.anioEscolar) nuevosErrores.anioEscolar = "Selecciona un año escolar.";
 
@@ -423,11 +429,15 @@ function Secciones() {
             <label>
               Capacidad máxima *
               <input
-                type="number"
-                min="1"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={form.capacidadMaxima}
                 onChange={(event) =>
-                  actualizarCampo("capacidadMaxima", event.target.value)
+                  actualizarCampo(
+                    "capacidadMaxima",
+                    soloDigitos(event.target.value),
+                  )
                 }
               />
               {errores.capacidadMaxima && (

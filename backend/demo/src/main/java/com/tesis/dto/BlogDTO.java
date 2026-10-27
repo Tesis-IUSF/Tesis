@@ -2,6 +2,8 @@ package com.tesis.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -17,7 +19,7 @@ public final class BlogDTO {
             String descripcion,
             @Size(max = 500) String iconoUrl,
             @Pattern(regexp = "^#[0-9A-Fa-f]{6}$") String colorHex,
-            Short ordinal,
+            @Min(0) @Max(999) Short ordinal,
             Boolean activo) {
     }
 
@@ -41,7 +43,7 @@ public final class BlogDTO {
             LocalDateTime fechaPublicacion,
             LocalDateTime fechaExpiracion,
             @Size(max = 500) String imagenUrl,
-            Integer ordenVisualizacion,
+            @Min(0) @Max(999) Integer ordenVisualizacion,
             Boolean visiblePublico) {
     }
 
