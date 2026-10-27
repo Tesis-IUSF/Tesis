@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -24,6 +25,7 @@ public class InscripcionDTO {
         private String notas;
 
         @Size(max = 500)
+        @Pattern(regexp = "^(?:(?i:https?)://\\S+)?$")
         private String archivoUrl;
     }
 
@@ -49,6 +51,7 @@ public class InscripcionDTO {
         private String notas;
 
         @Size(max = 500)
+        @Pattern(regexp = "^(?:(?i:https?)://\\S+)?$")
         private String archivoUrl;
     }
 
