@@ -46,10 +46,27 @@ class FotoServiceTest {
     }
 
     @Test
+    void validaLosBytesAunqueElMimeDeclaradoSeaDistinto() throws IOException {
+        FotoResponseDTO respuesta = fotoService.guardar(
+                new MockMultipartFile("archivo", "foto.png", "application/octet-stream", imagenPng()));
+
+        assertEquals(".png", respuesta.url().substring(respuesta.url().lastIndexOf('.')));
+    }
+
+    @Test
     void rechazaContenidoQueNoEsImagenAunqueDeclareMimeDeImagen() {
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> fotoService.guardar(new MockMultipartFile(
                         "archivo", "foto.png", "image/png", "no es una imagen".getBytes())));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
+    void rechazaArchivoVacio() {
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> fotoService.guardar(new MockMultipartFile(
+                        "archivo", "foto.png", "image/png", new byte[0])));
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
     }
