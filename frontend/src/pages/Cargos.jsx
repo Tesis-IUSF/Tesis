@@ -246,6 +246,7 @@ function Cargos() {
               value={modal.nombreCargo}
               onChange={(e) => cambiar("nombreCargo", e.target.value)}
               maxLength={100}
+              required
               placeholder="Ej: Docente de aula"
               autoFocus
             />
@@ -259,6 +260,7 @@ function Cargos() {
             <select
               value={modal.departamentoId}
               onChange={(e) => cambiar("departamentoId", e.target.value)}
+              required
             >
               <option value="">Selecciona...</option>
               {departamentos.map((d) => (

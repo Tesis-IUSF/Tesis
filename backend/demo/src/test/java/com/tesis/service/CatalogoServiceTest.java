@@ -1,5 +1,6 @@
 package com.tesis.service;
 
+import com.tesis.entity.Cargo;
 import com.tesis.entity.Departamento;
 import com.tesis.entity.AnioEscolar;
 import com.tesis.entity.NivelEducativo;
@@ -89,7 +90,9 @@ class CatalogoServiceTest {
     @Test
     void crearDepartamentoGuardaLaEntidad() {
         Departamento departamento = new Departamento();
-        departamento.setNombre("Administración");
+        departamento.setNombre("  Administración  ");
+        when(departamentoRepository.existsByNombreIgnoreCase("Administración"))
+                .thenReturn(false);
         when(departamentoRepository.save(any(Departamento.class))).thenAnswer(invocation -> {
             Departamento value = invocation.getArgument(0);
             value.setId(1);
@@ -100,6 +103,89 @@ class CatalogoServiceTest {
 
         assertNotNull(resultado.getId());
         assertEquals("Administración", resultado.getNombre());
+    }
+
+    @Test
+    void rechazaDepartamentoDuplicadoSinDistinguirMayusculas() {
+        Departamento departamento = new Departamento();
+        departamento.setNombre("  administración ");
+        when(departamentoRepository.existsByNombreIgnoreCase("administración"))
+                .thenReturn(true);
+
+        org.springframework.web.server.ResponseStatusException error = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> catalogoService.crearDepartamento(departamento));
+
+        assertEquals(org.springframework.http.HttpStatus.CONFLICT, error.getStatusCode());
+        verify(departamentoRepository, never()).save(any(Departamento.class));
+    }
+
+    @Test
+    void rechazaNombreDeDepartamentoQueSuperaElLimiteDeLaColumna() {
+        Departamento departamento = new Departamento();
+        departamento.setNombre("D".repeat(101));
+
+        org.springframework.web.server.ResponseStatusException error = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> catalogoService.crearDepartamento(departamento));
+
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, error.getStatusCode());
+        verify(departamentoRepository, never()).save(any(Departamento.class));
+    }
+
+    @Test
+    void creaCargoConNombreNormalizadoYDepartamentoExistente() {
+        Departamento departamento = new Departamento();
+        departamento.setId(9);
+        departamento.setNombre("Administración");
+        Cargo cargo = new Cargo();
+        cargo.setNombreCargo("  Asistente  ");
+        Departamento referenciaDepartamento = new Departamento();
+        referenciaDepartamento.setId(9);
+        cargo.setDepartamento(referenciaDepartamento);
+        when(departamentoRepository.findById(9)).thenReturn(Optional.of(departamento));
+        when(cargoRepository.existsByNombreCargoIgnoreCaseAndDepartamento_Id("Asistente", 9))
+                .thenReturn(false);
+        when(cargoRepository.save(any(Cargo.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Cargo resultado = catalogoService.crearCargo(cargo);
+
+        assertEquals("Asistente", resultado.getNombreCargo());
+        assertEquals(departamento, resultado.getDepartamento());
+    }
+
+    @Test
+    void rechazaCargoSinDepartamento() {
+        Cargo cargo = new Cargo();
+        cargo.setNombreCargo("Docente");
+
+        org.springframework.web.server.ResponseStatusException error = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> catalogoService.crearCargo(cargo));
+
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, error.getStatusCode());
+        verify(cargoRepository, never()).save(any(Cargo.class));
+    }
+
+    @Test
+    void rechazaCargoDuplicadoDentroDelMismoDepartamento() {
+        Departamento departamento = new Departamento();
+        departamento.setId(9);
+        Cargo cargo = new Cargo();
+        cargo.setNombreCargo("Asistente");
+        Departamento referenciaDepartamento = new Departamento();
+        referenciaDepartamento.setId(9);
+        cargo.setDepartamento(referenciaDepartamento);
+        when(departamentoRepository.findById(9)).thenReturn(Optional.of(departamento));
+        when(cargoRepository.existsByNombreCargoIgnoreCaseAndDepartamento_Id("Asistente", 9))
+                .thenReturn(true);
+
+        org.springframework.web.server.ResponseStatusException error = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> catalogoService.crearCargo(cargo));
+
+        assertEquals(org.springframework.http.HttpStatus.CONFLICT, error.getStatusCode());
+        verify(cargoRepository, never()).save(any(Cargo.class));
     }
 
     @Test
